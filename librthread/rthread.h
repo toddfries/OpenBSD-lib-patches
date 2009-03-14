@@ -1,4 +1,4 @@
-/*	$OpenBSD: rthread.h,v 1.18 2008/06/05 21:06:11 kurt Exp $ */
+/*	$OpenBSD: rthread.h,v 1.20 2009/02/20 02:38:57 guenther Exp $ */
 /*
  * Copyright (c) 2004,2005 Ted Unangst <tedu@openbsd.org>
  * All Rights Reserved.
@@ -119,7 +119,6 @@ struct pthread {
 	struct pthread_attr attr;
 	struct sched_param sched_param;
 	struct rthread_storage *local_storage;
-	int sigpend;
 	struct rthread_cleanup_fn *cleanup_fns;
 };
 #define	THREAD_DONE		0x001
@@ -167,4 +166,4 @@ void threxit(int);
 int thrsleep(void *, int, void *);
 int thrwakeup(void *, int n);
 int sched_yield(void);
-int thrsigdivert(const sigset_t *);
+int thrsigdivert(sigset_t);

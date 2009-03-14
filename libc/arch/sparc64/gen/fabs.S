@@ -1,4 +1,4 @@
-/*	$OpenBSD: fabs.S,v 1.3 2003/06/02 20:18:32 millert Exp $	*/
+/*	$OpenBSD: fabs.S,v 1.5 2008/12/09 20:54:02 martynas Exp $	*/
 /*	$NetBSD: fabs.S,v 1.2 2000/07/23 07:12:22 eeh Exp $	*/
 /*
  * Copyright (c) 1992, 1993

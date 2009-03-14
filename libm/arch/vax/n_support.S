@@ -1,4 +1,4 @@
-/*	$OpenBSD: n_support.S,v 1.11 2008/06/21 08:26:19 martynas Exp $	*/
+/*	$OpenBSD: n_support.S,v 1.16 2008/12/12 19:30:17 martynas Exp $	*/
 /*	$NetBSD: n_support.S,v 1.1 1995/10/10 23:40:30 ragge Exp $	*/
 /*
  * Copyright (c) 1985, 1993
@@ -36,14 +36,14 @@
 
 /*
  * copysign(x,y),
+ * copysignf(x,y),
  * logb(x),
+ * logbf(x),
  * scalbn(x,N),
- * finite(x),
  * remainder(x,y),
- * isinff(x),
- * isnanf(x),
  * Coded in vax assembly language by K.C. Ng,  3/14/85.
  * Revised by K.C. Ng on 4/9/85.
+ * Float versions by M.V. on 11/19/08.
  */
 
 /*
@@ -51,6 +51,7 @@
  * copysign(double x, double y)
  */
 
+WEAK_ALIAS(copysignl,copysign)
 ENTRY(copysign, R2)
 	movq	4(ap),r0		# load x into r0
 	bicw3	$0x807f,r0,r2		# mask off the exponent of x
@@ -61,10 +62,25 @@ ENTRY(copysign, R2)
 Lz:	ret
 
 /*
+ * float
+ * copysignf(float x, float y)
+ */
+
+ENTRY(copysignf, R2)
+	movl	4(ap),r0		# load x into r0
+	bicw3	$0x807f,r0,r2		# mask off the exponent of x
+	beql	Fz			# if zero or reserved op then return x
+	bicw3	$0x7fff,8(ap),r2	# copy the sign bit of y into r2
+	bicw2	$0x8000,r0		# replace x by |x|
+	bisw2	r2,r0			# copy the sign bit of y to x
+Fz:	ret
+
+/*
  * double
  * logb(double x)
  */
 
+WEAK_ALIAS(logbl,logb)
 ENTRY(logb, 0)
 	bicl3	$0xffff807f,4(ap),r0	# mask off the exponent of x
 	beql    Ln
@@ -78,24 +94,28 @@ Ln:	movq	4(ap),r0		# r0:1 = x (zero or reserved op)
 1:	ret
 
 /*
- * long
- * finite(double x)
+ * float
+ * logbf(float x)
  */
 
-ENTRY(finite, 0)
-	bicw3	$0x7f,4(ap),r0		# mask off the mantissa
-	cmpw	r0,$0x8000		# to see if x is the reserved op
-	beql	1f			# if so, return FALSE (0)
-	movl	$1,r0			# else return TRUE (1)
+ENTRY(logbf, 0)
+	bicl3	$0xffff807f,4(ap),r0	# mask off the exponent of x
+	beql    Fn
+	ashl	$-7,r0,r0		# get the bias exponent
+	subl2	$129,r0			# get the unbias exponent
+	cvtlf	r0,r0			# return the answer in float
 	ret
-1:	clrl	r0
-	ret
+Fn:	movl	4(ap),r0		# r0:1 = x (zero or reserved op)
+	bneq	1f			# simply return if reserved op
+	movl 	$0x0000d000,r0		# -2147483647.0
+1:	ret
 
 /*
  * double
  * scalbn(double x, int N)
  */
 
+WEAK_ALIAS(scalbnl,scalbn)
 ENTRY(scalbn, R2|R3)
 	movq	4(ap),r0
 	bicl3	$0xffff807f,r0,r3
@@ -209,34 +229,3 @@ Rop:					#Reserved operand
 Ret:
 	movq	$0x8000,r0		#propagate reserved op
 	ret
-
-/*
- * int
- * isinff(float x)
- */
-
-ENTRY(isinff, 0)
-	clrl	r0
-	ret
-
-/*
- * int
- * isnanf(float x)
- */
-        
-ENTRY(isnanf, 0)
-	clrl	r0
-	ret
-
-/*
- * signbit(x), signbitl(x), signbitf(x) -- returns zero if x is
- *    non-negative.
- */
-	_ALIGN_TEXT
-ALTENTRY(__signbitf)
-ALTENTRY(__signbitl)
-ENTRY(__signbit, 0)
-        movw 4(ap), r0
-        bicl2 $-32769,r0
-        ret
-

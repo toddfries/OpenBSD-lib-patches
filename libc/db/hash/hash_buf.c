@@ -1,4 +1,4 @@
-/*	$OpenBSD: hash_buf.c,v 1.16 2005/08/05 13:03:00 espie Exp $	*/
+/*	$OpenBSD: hash_buf.c,v 1.18 2008/10/01 20:22:47 millert Exp $	*/
 
 /*-
  * Copyright (c) 1990, 1993, 1994
@@ -168,6 +168,18 @@ newbuf(HTAB *hashp, u_int32_t addr, BUFHEAD *prev_bp)
                 MRU_INSERT(bp);
                 bp = LRU;
         }
+
+	/* If prev_bp is part of bp overflow, create a new buffer. */
+	if (hashp->nbufs == 0 && prev_bp && bp->ovfl) {
+		BUFHEAD *ovfl;
+
+		for (ovfl = bp->ovfl; ovfl ; ovfl = ovfl->ovfl) {
+			if (ovfl == prev_bp) {
+				hashp->nbufs++;
+				break;
+			}
+		}
+	}
 
 	/*
 	 * If LRU buffer is pinned, the buffer pool is too small. We need to

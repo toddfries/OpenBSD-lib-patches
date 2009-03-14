@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile,v 1.10 2008/06/05 21:06:11 kurt Exp $
+#	$OpenBSD: Makefile,v 1.12 2009/02/20 01:31:46 tedu Exp $
 
 LIB=rthread
 WANTLINT=

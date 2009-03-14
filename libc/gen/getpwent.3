@@ -1,4 +1,4 @@
-.\"	$OpenBSD: getpwent.3,v 1.21 2007/05/31 19:19:28 jmc Exp $
+.\"	$OpenBSD: getpwent.3,v 1.23 2008/10/22 20:31:20 jmc Exp $
 .\"
 .\" Copyright (c) 1988, 1991, 1993
 .\"	The Regents of the University of California.  All rights reserved.
@@ -27,13 +27,15 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: May 31 2007 $
+.Dd $Mdocdate: October 22 2008 $
 .Dt GETPWENT 3
 .Os
 .Sh NAME
 .Nm getpwent ,
 .Nm getpwnam ,
 .Nm getpwuid ,
+.Nm getpwnam_r ,
+.Nm getpwuid_r ,
 .Nm setpassent ,
 .Nm setpwent ,
 .Nm endpwent
@@ -47,6 +49,10 @@
 .Fn getpwnam "const char *login"
 .Ft struct passwd *
 .Fn getpwuid "uid_t uid"
+.Ft int
+.Fn getpwnam_r "const char *login" "struct passwd *pwstore" "char *buf" "size_t buflen" "struct passwd **result"
+.Ft int
+.Fn getpwuid_r "uid_t uid" "struct passwd *pwstore" "char *buf" "size_t buflen" "struct passwd **result"
 .Ft int
 .Fn setpassent "int stayopen"
 .Ft void
@@ -81,6 +87,18 @@ and
 .Fn getpwuid
 search the password database for the given login name or user ID,
 respectively, always returning the first one encountered.
+.Pp
+The re-entrant functions
+.Fn getpwnam_r
+and
+.Fn getpwuid_r
+search the password database for the given login name or user ID,
+respectively, always returning the first one encountered.
+The various strings associated with the result are stored in
+.Va buf ,
+and
+.Va pwstore
+is updated to point at those strings.
 .Pp
 .Fn getpwent
 sequentially reads the password database and is intended for programs
@@ -123,6 +141,28 @@ If the process which calls them has an effective UID of 0 or has the
 group in its group vector, the encrypted password will be returned, otherwise,
 the password field of the returned structure will point to the string
 .Ql * .
+.Sh YP SUPPORT
+If YP is active, the functions
+.Fn getpwent ,
+.Fn getpwnam ,
+and
+.Fn getpwnam_r
+also use the
+.Pa master.passwd.byname
+YP map (if available) or the
+.Pa passwd.byname
+YP map; and the functions
+.Fn getpwuid
+and
+.Fn getpwuid_r
+also use the
+.Pa master.passwd.byuid
+YP map (if available) or the
+.Pa passwd.byuid
+YP map.
+This is in addition to the passwd file,
+and respects the order of both normal and YP
+entries in the passwd file.
 .Sh RETURN VALUES
 The functions
 .Fn getpwent ,
@@ -131,6 +171,17 @@ and
 .Fn getpwuid
 return a valid pointer to a passwd structure on success
 or a null pointer if end-of-file is reached or an error occurs.
+.Pp
+The functions
+.Fn getpwnam_r
+and
+.Fn getpwuid_r
+update
+.Va result
+to point to
+.Va pwstore
+and then return 0 on success.
+.Pp
 The
 .Fn setpassent
 function returns 0 on failure or 1 on success.
@@ -153,10 +204,13 @@ a Version 7 format password file
 .Sh SEE ALSO
 .Xr getlogin 2 ,
 .Xr getgrent 3 ,
+.Xr getgrouplist 3 ,
 .Xr pw_dup 3 ,
 .Xr passwd 5 ,
+.Xr Makefile.yp 8 ,
 .Xr pwd_mkdb 8 ,
-.Xr vipw 8
+.Xr vipw 8 ,
+.Xr yp 8
 .Sh HISTORY
 The
 .Fn getpwent ,

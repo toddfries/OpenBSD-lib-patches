@@ -1,4 +1,4 @@
-/* $OpenBSD: fabs.S,v 1.5 2005/08/07 16:40:14 espie Exp $ */
+/* $OpenBSD: fabs.S,v 1.7 2008/12/09 20:54:02 martynas Exp $ */
 /*-
  * Copyright (c) 1996 Nivas Madhur
  * All rights reserved.

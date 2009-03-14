@@ -1,4 +1,4 @@
-/*	$OpenBSD: n_sincos.c,v 1.5 2008/06/21 08:26:19 martynas Exp $	*/
+/*	$OpenBSD: n_sincos.c,v 1.8 2008/12/10 01:08:24 martynas Exp $	*/
 /*	$NetBSD: n_sincos.c,v 1.1 1995/10/10 23:37:04 ragge Exp $	*/
 /*
  * Copyright (c) 1987, 1993
@@ -33,7 +33,9 @@
 static char sccsid[] = "@(#)sincos.c	8.1 (Berkeley) 6/4/93";
 #endif /* not lint */
 
-#include "math.h"
+#include <sys/cdefs.h>
+#include <math.h>
+
 #include "mathimpl.h"
 
 double
@@ -43,7 +45,7 @@ sin(double x)
 
         if(!finite(x))		/* sin(NaN) and sin(INF) must be NaN */
 		return x-x;
-	x=drem(x,PI2);		/* reduce x into [-PI,PI] */
+	x=remainder(x,PI2);	/* reduce x into [-PI,PI] */
 	a=copysign(x,one);
 	if (a >= PIo4) {
 		if(a >= PI3o4)		/* ... in [3PI/4,PI] */
@@ -65,6 +67,10 @@ sin(double x)
 	return x+x*sin__S(x*x);
 }
 
+#ifdef __weak_alias
+__weak_alias(sinl, sin);
+#endif /* __weak_alias */
+
 double
 cos(double x)
 {
@@ -72,7 +78,7 @@ cos(double x)
 
 	if(!finite(x))		/* cos(NaN) and cos(INF) must be NaN */
 		return x-x;
-	x=drem(x,PI2);		/* reduce x into [-PI,PI] */
+	x=remainder(x,PI2);	/* reduce x into [-PI,PI] */
 	a=copysign(x,one);
 	if (a >= PIo4) {
 		if (a >= PI3o4) {	/* ... in [3PI/4,PI] */
@@ -94,3 +100,7 @@ cos(double x)
 	a = (z >= thresh ? half-((z-half)-c) : one-(z-c));
 	return copysign(a,s);
 }
+
+#ifdef __weak_alias
+__weak_alias(cosl, cos);
+#endif /* __weak_alias */

@@ -1,4 +1,4 @@
-.\" $OpenBSD: pthread_create.3,v 1.10 2007/05/31 19:19:36 jmc Exp $
+.\" $OpenBSD: pthread_create.3,v 1.13 2008/12/18 09:30:32 guenther Exp $
 .\"
 .\" Copyright (c) 1996 John Birrell <jb@cimlogic.com.au>.
 .\" All rights reserved.
@@ -32,7 +32,7 @@
 .\"
 .\" $FreeBSD: pthread_create.3,v 1.8 1999/08/28 00:03:04 peter Exp $
 .\"
-.Dd $Mdocdate: May 31 2007 $
+.Dd $Mdocdate: December 18 2008 $
 .Dt PTHREAD_CREATE 3
 .Os
 .Sh NAME
@@ -50,7 +50,8 @@ function is used to create a new thread, with attributes specified by
 within a process.
 If
 .Fa attr
-is NULL, the default attributes are used. If the attributes specified by
+is NULL, the default attributes are used.
+If the attributes specified by
 .Fa attr
 are modified later, the thread's attributes are not affected.
 Upon successful completion
@@ -110,6 +111,8 @@ is invalid.
 .Xr fork 2 ,
 .Xr pthread_attr_init 3 ,
 .Xr pthread_attr_setdetachstate 3 ,
+.Xr pthread_attr_setguardsize 3 ,
+.Xr pthread_attr_setstack 3 ,
 .Xr pthread_attr_setstackaddr 3 ,
 .Xr pthread_attr_setstacksize 3 ,
 .Xr pthread_cleanup_pop 3 ,

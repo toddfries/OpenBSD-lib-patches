@@ -1,4 +1,4 @@
-/*	$OpenBSD: rthread.c,v 1.35 2008/06/05 21:06:11 kurt Exp $ */
+/*	$OpenBSD: rthread.c,v 1.40 2009/02/20 01:24:05 tedu Exp $ */
 /*
  * Copyright (c) 2004,2005 Ted Unangst <tedu@openbsd.org>
  * All Rights Reserved.
@@ -146,9 +146,11 @@ static void
 _rthread_free(pthread_t thread)
 {
 	/* catch wrongdoers for the moment */
-	memset(thread, 0xd0, sizeof(*thread));
-	if (thread != &_initial_thread)
+	if (thread != &_initial_thread) {
+		/* initial_thread.tid must remain valid */
+		memset(thread, 0xd0, sizeof(*thread));
 		free(thread);
+	}
 }
 
 static void
@@ -207,19 +209,20 @@ pthread_exit(void *retval)
 	LIST_REMOVE(thread, threads);
 	_spinunlock(&_thread_lock);
 
-	_sem_post(&thread->donesem);
-
 	stack = thread->stack;
 	tid = thread->tid;
 	if (thread->flags & THREAD_DETACHED)
 		_rthread_free(thread);
-	else
+	else {
 		_rthread_setflag(thread, THREAD_DONE);
+		_sem_post(&thread->donesem);
+	}
 
+	/* reap before adding self, we don't want to disappear too soon */
+	_rthread_reaper();
 	if (tid != _initial_thread.tid)
 		_rthread_add_to_reaper(tid, stack);
 
-	_rthread_reaper();
 	threxit(0);
 	for(;;);
 }
@@ -229,7 +232,9 @@ pthread_join(pthread_t thread, void **retval)
 {
 	int e;
 
-	if (thread->tid == getthrid())
+	if (thread == NULL)
+		e = EINVAL;
+	else if (thread->tid == getthrid())
 		e = EDEADLK;
 	else if (thread->flags & THREAD_DETACHED)
 		e = EINVAL;
@@ -281,10 +286,9 @@ pthread_create(pthread_t *threadp, const pthread_attr_t *attr,
 		if ((rc = _rthread_init()))
 		    return (rc);
 
-	thread = malloc(sizeof(*thread));
+	thread = calloc(1, sizeof(*thread));
 	if (!thread)
 		return (errno);
-	memset(thread, 0, sizeof(*thread));
 	thread->donesem.lock = _SPINLOCK_UNLOCKED;
 	thread->flags_lock = _SPINLOCK_UNLOCKED;
 	thread->fn = start_routine;
@@ -419,10 +423,9 @@ pthread_cleanup_push(void (*fn)(void *), void *arg)
 	struct rthread_cleanup_fn *clfn;
 	pthread_t self = pthread_self();
 
-	clfn = malloc(sizeof(*clfn));
+	clfn = calloc(1, sizeof(*clfn));
 	if (!clfn)
 		return;
-	memset(clfn, 0, sizeof(*clfn));
 	clfn->fn = fn;
 	clfn->arg = arg;
 	clfn->next = self->cleanup_fns;

@@ -1,4 +1,4 @@
-/*	$OpenBSD: n_atan2.c,v 1.8 2008/06/21 08:26:19 martynas Exp $	*/
+/*	$OpenBSD: n_atan2.c,v 1.11 2008/12/10 01:08:24 martynas Exp $	*/
 /*	$NetBSD: n_atan2.c,v 1.1 1995/10/10 23:36:37 ragge Exp $	*/
 /*
  * Copyright (c) 1985, 1993
@@ -107,7 +107,9 @@ static char sccsid[] = "@(#)atan2.c	8.1 (Berkeley) 6/4/93";
  * shown.
  */
 
-#include "math.h"
+#include <sys/cdefs.h>
+#include <math.h>
+
 #include "mathimpl.h"
 
 vc(athfhi, 4.6364760900080611433E-1  ,6338,3fed,da7b,2b0d,  -1, .ED63382B0DDA7B)
@@ -225,9 +227,10 @@ begin:
 	    /* t is in [0,7/16] */
 	    case 0:
 	    case 1:
-		if (t < small)
-		    { big + small ;  /* raise inexact flag */
-		      return (copysign((signx>zero)?t:PI-t,signy)); }
+		if (t < small) {
+			if (big + small > 0.0)	/* raise inexact flag */
+				return (copysign((signx>zero)?t:PI-t,signy));
+		}
 
 		hi = zero;  lo = zero;  break;
 
@@ -260,9 +263,10 @@ begin:
 	    if (t <= big)  t = - x / y;
 
 	    /* t is in [big, INF] */
-	    else
-	      { big+small;	/* raise inexact flag */
-		t = zero; }
+	    else {
+		if (big + small > 0.0)	/* raise inexact flag */
+			t = zero;
+	    }
 	}
     /* end of argument reduction */
 
@@ -279,3 +283,7 @@ begin:
 
 	return(copysign((signx>zero)?z:PI-z,signy));
 }
+
+#ifdef __weak_alias
+__weak_alias(atan2l, atan2);
+#endif /* __weak_alias */

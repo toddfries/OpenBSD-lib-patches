@@ -1,6 +1,6 @@
-.\" $OpenBSD: pthreads.3,v 1.27 2007/05/31 19:19:37 jmc Exp $
+.\" $OpenBSD: pthreads.3,v 1.29 2008/12/18 09:30:32 guenther Exp $
 .\" David Leonard <d@openbsd.org>, 1998. Public domain.
-.Dd $Mdocdate: May 31 2007 $
+.Dd $Mdocdate: December 18 2008 $
 .Dt PTHREADS 3
 .Os
 .Sh NAME
@@ -72,6 +72,10 @@ Destroy a threads attribute object.
 Get detachstate attribute.
 .It Fn pthread_attr_setdetachstate
 Set detachstate attribute.
+.It Fn pthread_attr_getstack
+Get stackaddr and stacksize attributes.
+.It Fn pthread_attr_setstack
+Set stackaddr and stacksize attributes.
 .It Fn pthread_attr_getstackaddr
 Get stackaddr attribute.
 .It Fn pthread_attr_setstackaddr
@@ -80,6 +84,10 @@ Set stackaddr attribute.
 Get stacksize attribute.
 .It Fn pthread_attr_setstacksize
 Set stacksize attribute.
+.It Fn pthread_attr_getguardsize
+Get guardsize attribute.
+.It Fn pthread_attr_setguardsize
+Set guardsize attribute.
 .El
 .Ss Cleanup Routines
 The functions available are as follows:
@@ -487,6 +495,8 @@ environment variable.
 .Xr pthread_atfork 3 ,
 .Xr pthread_attr_init 3 ,
 .Xr pthread_attr_setdetachstate 3 ,
+.Xr pthread_attr_setguardsize 3 ,
+.Xr pthread_attr_setstack 3 ,
 .Xr pthread_attr_setstackaddr 3 ,
 .Xr pthread_attr_setstacksize 3 ,
 .Xr pthread_cancel 3 ,

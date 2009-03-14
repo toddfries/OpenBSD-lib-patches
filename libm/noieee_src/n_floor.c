@@ -1,4 +1,4 @@
-/*	$OpenBSD: n_floor.c,v 1.7 2008/06/21 08:26:19 martynas Exp $	*/
+/*	$OpenBSD: n_floor.c,v 1.10 2008/12/10 01:08:24 martynas Exp $	*/
 /*	$NetBSD: n_floor.c,v 1.1 1995/10/10 23:36:48 ragge Exp $	*/
 /*
  * Copyright (c) 1985, 1993
@@ -33,7 +33,9 @@
 static char sccsid[] = "@(#)floor.c	8.1 (Berkeley) 6/4/93";
 #endif /* not lint */
 
-#include "math.h"
+#include <sys/cdefs.h>
+#include <math.h>
+
 #include "mathimpl.h"
 
 vc(L, 4503599627370496.0E0 ,0000,5c00,0000,0000, 55, 1.0) /* 2**55 */
@@ -94,7 +96,7 @@ ceil(double x)
  * 	  = 2**52; for IEEE 754 Double
  * real	s,t;
  * begin
- * 	if x != x then return x;		... NaN
+ * 	if isnan(x) then return x;		... NaN
  * 	if |x| >= L then return x;		... already an integer
  * 	s := copysign(L,x);
  * 	t := x + s;				... = (x+s) rounded to integer
@@ -121,3 +123,7 @@ rint(double x)
 	t = x + s;				/* x+s rounded to integer */
 	return (t - s);
 }
+
+#ifdef __weak_alias    
+__weak_alias(rintl, rint);
+#endif /* __weak_alias */

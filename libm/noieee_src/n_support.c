@@ -1,4 +1,4 @@
-/*	$OpenBSD: n_support.c,v 1.10 2008/06/21 08:26:19 martynas Exp $	*/
+/*	$OpenBSD: n_support.c,v 1.17 2008/12/10 01:08:24 martynas Exp $	*/
 /*	$NetBSD: n_support.c,v 1.1 1995/10/10 23:37:06 ragge Exp $	*/
 /*
  * Copyright (c) 1985, 1993
@@ -62,16 +62,15 @@ static char sccsid[] = "@(#)support.c	8.1 (Berkeley) 6/4/93";
  *              returns the unbiased exponent of x, a signed integer in
  *              double precision, except that logb(0) is -INF, logb(INF)
  *              is +INF, and logb(NAN) is that NAN.
- * (d) finite(x)
- *              returns the value TRUE if -INF < x < +INF and returns
- *              FALSE otherwise.
  *
  *
  * CODED IN C BY K.C. NG, 11/25/84;
  * REVISED BY K.C. NG on 1/22/85, 2/13/85, 3/24/85.
  */
 
-#include "math.h"
+#include <sys/cdefs.h>
+#include <math.h>
+
 #include "mathimpl.h"
 
 #if defined(__vax__)      /* VAX D format */
@@ -122,6 +121,9 @@ scalbn(double x, int N)
         return(x);
 }
 
+#ifdef __weak_alias    
+__weak_alias(scalbnl, scalbn);
+#endif /* __weak_alias */
 
 double
 copysign(double x, double y)
@@ -137,29 +139,9 @@ copysign(double x, double y)
         return(x);
 }
 
-int
-__signbitf(float x)
-{
-	unsigned short *px = (unsigned short *)&x;
-
-	return (*px & ~msign);
-}
-
-int
-__signbit(double x)
-{
-	unsigned short *px = (unsigned short *)&x;
-
-	return (*px & ~msign);
-}
-
-int
-__signbitl(long double x)
-{
-	unsigned short *px = (unsigned short *)&x;
-
-	return (*px & ~msign);
-}
+#ifdef __weak_alias    
+__weak_alias(copysignl, copysign);
+#endif /* __weak_alias */
 
 double
 logb(double x)
@@ -177,22 +159,16 @@ logb(double x)
                 return ( -1022.0 );
             else
                 return(-(1.0/zero));
-        else if(x != x)
+        else if(isnan(x))
             return(x);
         else
             {*px &= msign; return(x);}
 #endif	/* defined(__vax__) */
 }
 
-int
-finite(double x)
-{
-#if defined(__vax__)
-        return(1);
-#else	/* defined(__vax__) */
-        return( (*((short *) &x ) & mexp ) != mexp );
-#endif	/* defined(__vax__) */
-}
+#ifdef __weak_alias    
+__weak_alias(logbl, logb);
+#endif /* __weak_alias */
 
 double
 remainder(double x, double p)
@@ -287,7 +263,7 @@ sqrt(double x)
 #endif	/* defined(__vax__) */
 
     /* sqrt(NaN) is NaN, sqrt(+-0) = +-0 */
-        if(x!=x||x==zero) return(x);
+        if(isnan(x) || x == zero) return(x);
 
     /* sqrt(negative) is invalid */
         if(x<zero) {
@@ -314,14 +290,18 @@ sqrt(double x)
             for(i=1;i<=k;i++) {
                 t=s+1; x *= 4; r /= 2;
                 if(t<=x) {
-                    s=t+t+2, x -= t; q += r;}
+                    s = t+t+2;
+                    x -= t;
+                    q += r;
+                }
                 else
                     s *= 2;
                 }
 
     /* generate the last bit and determine the final rounding */
             r/=2; x *= 4;
-            if(x==zero) goto end; 100+r; /* trigger inexact flag */
+            if(x==zero) goto end;
+	    if (100+r >= 100) {			/* trigger inexact flag */
             if(s<x) {
                 q+=r; x -=s; s += 2; s *= 2; x *= 4;
                 t = (x-s)-5;
@@ -334,9 +314,14 @@ sqrt(double x)
                 b=1.0+3*r/4; if(b==1.0) goto end;
                 b=1.0+r/4;   if(b>1.0) t=1;
                 if(t>=0) q+=r; }
+	    }
 
 end:        return(scalbn(q,n));
 }
+
+#ifdef __weak_alias    
+__weak_alias(sqrtl, sqrt);
+#endif /* __weak_alias */
 
 #if 0
 /* REMAINDER(X,Y)
@@ -372,8 +357,8 @@ remainder(double x, double y)
 	sign = px[n0] &0x8000;	/* sign of x     */
 
 /* return NaN if x is NaN, or y is NaN, or x is INF, or y is zero */
-	if(x!=x) return(x); if(y!=y) return(y);	     /* x or y is NaN */
-	if( xexp == mexp )   return(zero/zero);      /* x is INF */
+	if(isnan(x)) return(x); if(isnan(y)) return(y);	/* x or y is NaN */
+	if( xexp == mexp )   return(zero/zero);		/* x is INF */
 	if(y==zero) return(y/y);
 
 /* save the inexact flag and inexact enable in i and e respectively
@@ -383,7 +368,12 @@ remainder(double x, double y)
 
 /* subnormal number */
 	nx=0;
-	if(yexp==0) {t=1.0,pt[n0]+=m57; y*=t; nx=m57;}
+	if (yexp == 0) {
+		t = 1.0;
+		pt[n0] += m57;
+		y *= t;
+		nx = m57;
+	}
 
 /* if y is tiny (biased exponent <= 57), scale up y to y*2**57 */
 	if( yexp <= m57 ) {py[n0]+=m57; nx+=m57; yexp+=m57;}
@@ -470,7 +460,8 @@ newsqrt(double x)
                                  */
 
 /* exceptions */
-	if(x!=x||x==0.0) return(x);  /* sqrt(NaN) is NaN, sqrt(+-0) = +-0 */
+	if(isnan(x) || x == 0.0) return(x);	/* sqrt(NaN) is NaN,
+						   sqrt(+-0) = +-0 */
 	if(x<0) return((x-x)/(x-x)); /* sqrt(negative) is invalid */
         if((mx=px[n0]&mexp)==mexp) return(x);  /* sqrt(+INF) is +INF */
 
@@ -506,7 +497,7 @@ newsqrt(double x)
         t=x/y;          /* ...chopped quotient, possibly inexact */
         j=swapINX(i);   /* ...read and restore inexact flag */
         if(j==0) { if(t==y) goto end; else t=subc(t); }  /* ...t=t-ulp */
-        b54+0.1;        /* ..trigger inexact flag, sqrt(x) is inexact */
+        x=b54+0.1;      /* ..trigger inexact flag, sqrt(x) is inexact */
         if(r==RN) t=addc(t);            /* ...t=t+ulp */
         else if(r==RP) { t=addc(t);y=addc(y);}/* ...t=t+ulp;y=y+ulp; */
         y=y+t;                          /* ...chopped sum */

@@ -1,4 +1,4 @@
-/*	$OpenBSD: n_lgamma.c,v 1.6 2008/06/21 08:26:19 martynas Exp $	*/
+/*	$OpenBSD: n_lgamma.c,v 1.8 2008/07/18 13:08:58 martynas Exp $	*/
 /*-
  * Copyright (c) 1992, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -156,8 +156,10 @@ lgamma(double x)
 	} else if (x > 1e-16)
 		return (small_lgam(x));
 	else if (x > -1e-16) {
-		if (x < 0)
-			signgam = -1, x = -x;
+		if (x < 0) {
+			signgam = -1;
+			x = -x;
+		}
 		return (-log(x));
 	} else
 		return (neg_lgam(x));
@@ -241,15 +243,15 @@ CONTINUE:
 		t = .5*t*t;
 		z = 1.0;
 		switch (x_int) {
-		case 6:	z  = (y + 5);
-		case 5:	z *= (y + 4);
-		case 4:	z *= (y + 3);
+		case 6:	z  = (y + 5);		/* FALLTHROUGH */
+		case 5:	z *= (y + 4);		/* FALLTHROUGH */
+		case 4:	z *= (y + 3);		/* FALLTHROUGH */
 		case 3:	z *= (y + 2);
 			rr = __log__D(z);
 			rr.b += a0_lo; rr.a += a0_hi;
 			return(((r+rr.b)+t+rr.a));
 		case 2: return(((r+a0_lo)+t)+a0_hi);
-		case 0: r -= log1p(x);
+		case 0: r -= log1p(x);	/* FALLTHROUGH */
 		default: rr = __log__D(x);
 			rr.a -= a0_hi; rr.b -= a0_lo;
 			return(((r - rr.b) + t) - rr.a);
@@ -266,10 +268,10 @@ CONTINUE:
 		q = hi*t;
 		z = 1.0;
 		switch (x_int) {
-		case 6:	z  = (y + 5);
-		case 5:	z *= (y + 4);
-		case 4:	z *= (y + 3);
-		case 3:	z *= (y + 2);
+		case 6:	z  = (y + 5);		/* FALLTHROUGH */
+		case 5:	z *= (y + 4);		/* FALLTHROUGH */
+		case 4:	z *= (y + 3);		/* FALLTHROUGH */
+		case 3:	z *= (y + 2);		/* FALLTHROUGH */
 			rr = __log__D(z);
 			r += rr.b; r += q;
 			return(rr.a + r);
@@ -301,8 +303,10 @@ neg_lgam(double x)
 			else
 				return(infnan(ERANGE));
 		y = tgamma(x);
-		if (y < 0)
-			y = -y, signgam = -1;
+		if (y < 0) {
+			y = -y;
+			signgam = -1;
+		}
 		return (log(y));
 	}
 	z = floor(x + .5);

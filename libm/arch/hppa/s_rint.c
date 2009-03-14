@@ -3,10 +3,12 @@
  */
 
 #if defined(LIBM_SCCS) && !defined(lint)
-static char rcsid[] = "$OpenBSD: s_rint.c,v 1.2 2002/09/11 15:16:52 mickey Exp $";
+static char rcsid[] = "$OpenBSD: s_rint.c,v 1.4 2008/12/10 01:08:24 martynas Exp $";
 #endif
 
-#include "math.h"
+#include <sys/cdefs.h>
+#include <float.h>
+#include <math.h>
 
 double
 rint(double x)
@@ -15,3 +17,9 @@ rint(double x)
 
 	return (x);
 }
+
+#if LDBL_MANT_DIG == 53
+#ifdef __weak_alias   
+__weak_alias(rintl, rint);
+#endif /* __weak_alias */
+#endif /* LDBL_MANT_DIG == 53 */

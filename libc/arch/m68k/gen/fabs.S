@@ -1,4 +1,4 @@
-/* $OpenBSD: fabs.S,v 1.4 2005/08/07 16:40:14 espie Exp $ */
+/* $OpenBSD: fabs.S,v 1.6 2008/12/09 20:54:02 martynas Exp $ */
 /*-
  * Copyright (c) 1990 The Regents of the University of California.
  * All rights reserved.

@@ -1,4 +1,4 @@
-/*	$OpenBSD: ldexp.c,v 1.3 2005/08/07 16:40:14 espie Exp $	*/
+/*	$OpenBSD: ldexp.c,v 1.5 2008/12/10 00:59:07 deraadt Exp $	*/
 /*
  * Copyright (c) 1992, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -138,3 +138,5 @@ ldexp(val, exp)
 	u.s.dbl_exp = newexp;
 	return (u.v);
 }
+
+__weak_alias(ldexpl, ldexp);

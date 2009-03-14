@@ -14,7 +14,7 @@
 static char rcsid[] = "$NetBSD: e_exp.c,v 1.8 1995/05/10 20:45:03 jtc Exp $";
 #endif
 
-/* __ieee754_exp(x)
+/* exp(x)
  * Returns the exponential of x.
  *
  * Method
@@ -31,7 +31,7 @@ static char rcsid[] = "$NetBSD: e_exp.c,v 1.8 1995/05/10 20:45:03 jtc Exp $";
  *	the interval [0,0.34658]:
  *	Write
  *	    R(r**2) = r*(exp(r)+1)/(exp(r)-1) = 2 + r*r/6 - r**4/360 + ...
- *      We use a special Reme algorithm on [0,0.34658] to generate 
+ *      We use a special Remes algorithm on [0,0.34658] to generate 
  * 	a polynomial of degree 5 to approximate R. The maximum error 
  *	of this polynomial approximation is bounded by 2**-59. In
  *	other words,
@@ -100,7 +100,7 @@ P5   =  4.13813679705723846039e-08; /* 0x3E663769, 0x72BEA4D0 */
 
 
 double
-__ieee754_exp(double x)	/* default IEEE double exp */
+exp(double x)	/* default IEEE double exp */
 {
 	double y,hi,lo,c,t;
 	int32_t k,xsb;

@@ -1,4 +1,4 @@
-/*	$OpenBSD: n_tan.c,v 1.5 2008/06/21 08:26:19 martynas Exp $	*/
+/*	$OpenBSD: n_tan.c,v 1.8 2008/12/10 01:08:24 martynas Exp $	*/
 /*	$NetBSD: n_tan.c,v 1.1 1995/10/10 23:37:07 ragge Exp $	*/
 /*
  * Copyright (c) 1987, 1993
@@ -33,7 +33,9 @@
 static char sccsid[] = "@(#)tan.c	8.1 (Berkeley) 6/4/93";
 #endif /* not lint */
 
-#include "math.h"
+#include <sys/cdefs.h>
+#include <math.h>
+
 #include "mathimpl.h"
 
 double
@@ -44,8 +46,8 @@ tan(double x)
 
 	if(!finite(x))		/* tan(NaN) and tan(INF) must be NaN */
 		return x-x;
-	x = drem(x,PI);			/* reduce x into [-PI/2, PI/2] */
-	a = copysign(x,one);		/* ... = abs(x) */
+	x = remainder(x,PI);	/* reduce x into [-PI/2, PI/2] */
+	a = copysign(x,one);	/* ... = abs(x) */
 	if (a >= PIo4) {
 		k = 1;
 		x = copysign(PIo2-a,x);
@@ -67,3 +69,7 @@ tan(double x)
 	else
 		return c/(x+x*ss);		/* ... cos/sin */
 }
+
+#ifdef __weak_alias
+__weak_alias(tanl, tan);
+#endif /* __weak_alias */
