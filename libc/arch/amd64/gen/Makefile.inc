@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile.inc,v 1.6 2008/12/09 19:52:33 martynas Exp $
+#	$OpenBSD: Makefile.inc,v 1.8 2009/04/21 09:34:50 martynas Exp $
 
 SRCS+=	_setjmp.S fabs.S infinity.c ldexp.c modf.S nan.c setjmp.S \
 	sigsetjmp.S
