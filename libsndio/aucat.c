@@ -1,4 +1,4 @@
-/*	$OpenBSD: aucat.c,v 1.15 2009/02/25 23:31:59 ratchov Exp $	*/
+/*	$OpenBSD: aucat.c,v 1.17 2009/05/15 13:10:39 ratchov Exp $	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -29,7 +29,7 @@
 #include "sndio_priv.h"
 
 struct aucat_hdl {
-	struct sio_hdl sa;
+	struct sio_hdl sio;
 	int fd;				/* socket */
 	struct amsg rmsg, wmsg;		/* temporary messages */
 	size_t wtodo, rtodo;		/* bytes to complete the packet */
@@ -93,7 +93,7 @@ sio_open_aucat(char *path, unsigned mode, int nbio)
 	hdl = malloc(sizeof(struct aucat_hdl));
 	if (hdl == NULL)
 		return NULL;
-	sio_create(&hdl->sa, &aucat_ops, mode, nbio);	
+	sio_create(&hdl->sio, &aucat_ops, mode, nbio);	
 
 	s = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (s < 0)
@@ -104,7 +104,7 @@ sio_open_aucat(char *path, unsigned mode, int nbio)
 		goto bad_connect;
 	}
 	if (fcntl(s, F_SETFD, FD_CLOEXEC) < 0) {
-		DPERROR(&hdl->sa, "FD_CLOEXEC");
+		DPERROR("FD_CLOEXEC");
 		goto bad_connect;
 	}
 	hdl->fd = s;
@@ -114,7 +114,7 @@ sio_open_aucat(char *path, unsigned mode, int nbio)
 	hdl->wtodo = 0xdeadbeef;
 	hdl->curvol = SIO_MAXVOL;
 	hdl->reqvol = SIO_MAXVOL;
-	if (!sio_getcap(&hdl->sa, &cap))
+	if (!sio_getcap(&hdl->sio, &cap))
 		goto bad_connect;
 	if (((mode & SIO_PLAY) && cap.confs[0].pchan == 0) ||
 	    ((mode & SIO_REC)  && cap.confs[0].rchan == 0))
@@ -144,14 +144,14 @@ aucat_rmsg(struct aucat_hdl *hdl)
 			if (errno == EINTR)
 				continue;
 			if (errno != EAGAIN) {
-				hdl->sa.eof = 1;
-				DPERROR(&hdl->sa, "aucat_rmsg: read");
+				hdl->sio.eof = 1;
+				DPERROR("aucat_rmsg: read");
 			}
 			return 0;
 		}
 		if (n == 0) {
-			DPRINTF(&hdl->sa, "aucat_rmsg: eof\n");
-			hdl->sa.eof = 1;
+			DPRINTF("aucat_rmsg: eof\n");
+			hdl->sio.eof = 1;
 			return 0;
 		}
 		hdl->rtodo -= n;
@@ -175,8 +175,8 @@ aucat_wmsg(struct aucat_hdl *hdl)
 			if (errno == EINTR)
 				continue;
 			if (errno != EAGAIN) {
-				hdl->sa.eof = 1;
-				DPERROR(&hdl->sa, "aucat_wmsg: write");
+				hdl->sio.eof = 1;
+				DPERROR("aucat_wmsg: write");
 			}
 			return 0;
 		}
@@ -197,8 +197,8 @@ aucat_runmsg(struct aucat_hdl *hdl)
 	case AMSG_DATA:
 		if (hdl->rmsg.u.data.size == 0 ||
 		    hdl->rmsg.u.data.size % hdl->rbpf) {
-			DPRINTF(&hdl->sa, "aucat_runmsg: bad data message\n");
-			hdl->sa.eof = 1;
+			DPRINTF("aucat_runmsg: bad data message\n");
+			hdl->sio.eof = 1;
 			return 0;
 		}
 		hdl->rstate = STATE_DATA;
@@ -206,7 +206,7 @@ aucat_runmsg(struct aucat_hdl *hdl)
 		break;
 	case AMSG_MOVE:
 		hdl->maxwrite += hdl->rmsg.u.ts.delta * (int)hdl->wbpf;
-		sio_onmove_cb(&hdl->sa, hdl->rmsg.u.ts.delta);
+		sio_onmove_cb(&hdl->sio, hdl->rmsg.u.ts.delta);
 		hdl->rstate = STATE_MSG;
 		hdl->rtodo = sizeof(struct amsg);
 		break;
@@ -216,8 +216,8 @@ aucat_runmsg(struct aucat_hdl *hdl)
 		hdl->rtodo = 0xdeadbeef;
 		break;
 	default:
-		DPRINTF(&hdl->sa, "aucat_runmsg: unknown message\n");
-		hdl->sa.eof = 1;
+		DPRINTF("aucat_runmsg: unknown message\n");
+		hdl->sio.eof = 1;
 		return 0;
 	}
 	return 1;
@@ -242,7 +242,7 @@ aucat_start(struct sio_hdl *sh)
 	/*
 	 * save bpf
 	 */
-	if (!sio_getpar(&hdl->sa, &par))
+	if (!sio_getpar(&hdl->sio, &par))
 		return 0;
 	hdl->wbpf = par.bps * par.pchan;
 	hdl->rbpf = par.bps * par.rchan;
@@ -256,8 +256,8 @@ aucat_start(struct sio_hdl *sh)
 	hdl->rstate = STATE_MSG;
 	hdl->rtodo = sizeof(struct amsg);
 	if (fcntl(hdl->fd, F_SETFL, O_NONBLOCK) < 0) {
-		DPERROR(&hdl->sa, "aucat_start: fcntl(0)");
-		hdl->sa.eof = 1;
+		DPERROR("aucat_start: fcntl(0)");
+		hdl->sio.eof = 1;
 		return 0;
 	}
 	return 1;
@@ -272,8 +272,8 @@ aucat_stop(struct sio_hdl *sh)
 	unsigned n, count, todo;
 
 	if (fcntl(hdl->fd, F_SETFL, 0) < 0) {
-		DPERROR(&hdl->sa, "aucat_stop: fcntl(0)");
-		hdl->sa.eof = 1;
+		DPERROR("aucat_stop: fcntl(0)");
+		hdl->sio.eof = 1;
 		return 0;
 	}
 
@@ -289,7 +289,7 @@ aucat_stop(struct sio_hdl *sh)
 			count = todo;
 			if (count > ZERO_MAX)
 				count = ZERO_MAX;
-			n = aucat_write(&hdl->sa, zero, count);
+			n = aucat_write(&hdl->sio, zero, count);
 			if (n == 0)
 				return 0;
 			todo -= n;
@@ -319,7 +319,7 @@ aucat_stop(struct sio_hdl *sh)
 				return 0;
 			break;
 		case STATE_DATA:
-			if (!aucat_read(&hdl->sa, zero, ZERO_MAX))
+			if (!aucat_read(&hdl->sio, zero, ZERO_MAX))
 				return 0;
 			break;
 		}
@@ -342,10 +342,10 @@ aucat_setpar(struct sio_hdl *sh, struct sio_par *par)
 	hdl->wmsg.u.par.rate = par->rate;
 	hdl->wmsg.u.par.appbufsz = par->appbufsz;
 	hdl->wmsg.u.par.xrun = par->xrun;
-	hdl->wmsg.u.par.mode = hdl->sa.mode;
-	if (hdl->sa.mode & SIO_REC)
+	hdl->wmsg.u.par.mode = hdl->sio.mode;
+	if (hdl->sio.mode & SIO_REC)
 		hdl->wmsg.u.par.rchan = par->rchan;
-	if (hdl->sa.mode & SIO_PLAY)
+	if (hdl->sio.mode & SIO_PLAY)
 		hdl->wmsg.u.par.pchan = par->pchan;
 	hdl->wtodo = sizeof(struct amsg);
 	if (!aucat_wmsg(hdl))
@@ -367,8 +367,8 @@ aucat_getpar(struct sio_hdl *sh, struct sio_par *par)
 	if (!aucat_rmsg(hdl))
 		return 0;
 	if (hdl->rmsg.cmd != AMSG_GETPAR) {
-		DPRINTF(&hdl->sa, "aucat_getpar: protocol err\n");
-		hdl->sa.eof = 1;
+		DPRINTF("aucat_getpar: protocol err\n");
+		hdl->sio.eof = 1;
 		return 0;
 	}
 	par->bits = hdl->rmsg.u.par.bits;
@@ -381,9 +381,9 @@ aucat_getpar(struct sio_hdl *sh, struct sio_par *par)
 	par->appbufsz = hdl->rmsg.u.par.appbufsz;
 	par->xrun = hdl->rmsg.u.par.xrun;
 	par->round = hdl->rmsg.u.par.round;
-	if (hdl->sa.mode & SIO_PLAY)
+	if (hdl->sio.mode & SIO_PLAY)
 		par->pchan = hdl->rmsg.u.par.pchan;
-	if (hdl->sa.mode & SIO_REC)
+	if (hdl->sio.mode & SIO_REC)
 		par->rchan = hdl->rmsg.u.par.rchan;
 	return 1;
 }
@@ -402,8 +402,8 @@ aucat_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 	if (!aucat_rmsg(hdl))
 		return 0;
 	if (hdl->rmsg.cmd != AMSG_GETCAP) {
-		DPRINTF(&hdl->sa, "aucat_getcap: protocol err\n");
-		hdl->sa.eof = 1;
+		DPRINTF("aucat_getcap: protocol err\n");
+		hdl->sio.eof = 1;
 		return 0;
 	}
 	cap->enc[0].bits = hdl->rmsg.u.cap.bits;
@@ -435,7 +435,7 @@ aucat_read(struct sio_hdl *sh, void *buf, size_t len)
 				return 0;
 			break;
 		case STATE_IDLE:
-			DPRINTF(&hdl->sa, "aucat_read: unexpected idle\n");
+			DPRINTF("aucat_read: unexpected idle\n");
 			break;
 		}
 	}
@@ -445,14 +445,14 @@ aucat_read(struct sio_hdl *sh, void *buf, size_t len)
 		if (errno == EINTR)
 			continue;
 		if (errno != EAGAIN) {
-			hdl->sa.eof = 1;
-			DPERROR(&hdl->sa, "aucat_read: read");
+			hdl->sio.eof = 1;
+			DPERROR("aucat_read: read");
 		}
 		return 0;
 	}
 	if (n == 0) {
-		DPRINTF(&hdl->sa, "aucat_read: eof\n");
-		hdl->sa.eof = 1;
+		DPRINTF("aucat_read: eof\n");
+		hdl->sio.eof = 1;
 		return 0;
 	}
 	hdl->rtodo -= n;
@@ -511,7 +511,7 @@ aucat_write(struct sio_hdl *sh, void *buf, size_t len)
 				hdl->wstate = STATE_IDLE;
 			break;
 		default:
-			DPRINTF(&hdl->sa, "aucat_write: bad state\n");
+			DPRINTF("aucat_write: bad state\n");
 			abort();
 		}
 	}
@@ -522,15 +522,15 @@ aucat_write(struct sio_hdl *sh, void *buf, size_t len)
 	if (len > hdl->wtodo)
 		len = hdl->wtodo;
 	if (len == 0) {
-		DPRINTF(&hdl->sa, "aucat_write: len == 0\n");
+		DPRINTF("aucat_write: len == 0\n");
 		abort();
 	}
 	while ((n = write(hdl->fd, buf, len)) < 0) {
 		if (errno == EINTR)
 			continue;
 		if (errno != EAGAIN) {
-			hdl->sa.eof = 1;
-			DPERROR(&hdl->sa, "aucat_write: write");
+			hdl->sio.eof = 1;
+			DPERROR("aucat_write: write");
 		}
 		return 0;
 	}
@@ -576,7 +576,7 @@ aucat_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		if (hdl->maxwrite <= 0)
 			revents &= ~POLLOUT;
 	}
-	if (hdl->sa.eof)
+	if (hdl->sio.eof)
 		return POLLHUP;
 	return revents & (hdl->events | POLLHUP);
 }
@@ -595,6 +595,6 @@ aucat_getvol(struct sio_hdl *sh)
 {
 	struct aucat_hdl *hdl = (struct aucat_hdl *)sh;
 
-	sio_onvol_cb(&hdl->sa, hdl->reqvol);
+	sio_onvol_cb(&hdl->sio, hdl->reqvol);
 	return;
 }
