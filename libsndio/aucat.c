@@ -1,4 +1,4 @@
-/*	$OpenBSD: aucat.c,v 1.17 2009/05/15 13:10:39 ratchov Exp $	*/
+/*	$OpenBSD: aucat.c,v 1.21 2009/05/16 12:10:52 ratchov Exp $	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -70,63 +70,6 @@ static struct sio_ops aucat_ops = {
 	aucat_setvol,
 	aucat_getvol
 };
-
-struct sio_hdl *
-sio_open_aucat(char *path, unsigned mode, int nbio)
-{
-	int s;
-	struct sio_cap cap;
-	struct aucat_hdl *hdl;
-	struct sockaddr_un ca;	
-	socklen_t len = sizeof(struct sockaddr_un);
-	uid_t uid;
-
-	if (path == NULL)
-		path = SIO_AUCAT_PATH;
-	uid = geteuid();
-	if (strchr(path, '/') != NULL)
-		return NULL;
-	snprintf(ca.sun_path, sizeof(ca.sun_path),
-	    "/tmp/aucat-%u/%s", uid, path);
-	ca.sun_family = AF_UNIX;
-
-	hdl = malloc(sizeof(struct aucat_hdl));
-	if (hdl == NULL)
-		return NULL;
-	sio_create(&hdl->sio, &aucat_ops, mode, nbio);	
-
-	s = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (s < 0)
-		goto bad_free;
-	while (connect(s, (struct sockaddr *)&ca, len) < 0) {
-		if (errno == EINTR)
-			continue;
-		goto bad_connect;
-	}
-	if (fcntl(s, F_SETFD, FD_CLOEXEC) < 0) {
-		DPERROR("FD_CLOEXEC");
-		goto bad_connect;
-	}
-	hdl->fd = s;
-	hdl->rstate = STATE_IDLE;
-	hdl->rtodo = 0xdeadbeef;
-	hdl->wstate = STATE_IDLE;
-	hdl->wtodo = 0xdeadbeef;
-	hdl->curvol = SIO_MAXVOL;
-	hdl->reqvol = SIO_MAXVOL;
-	if (!sio_getcap(&hdl->sio, &cap))
-		goto bad_connect;
-	if (((mode & SIO_PLAY) && cap.confs[0].pchan == 0) ||
-	    ((mode & SIO_REC)  && cap.confs[0].rchan == 0))
-		goto bad_connect;
-	return (struct sio_hdl *)hdl;
- bad_connect:
-	while (close(s) < 0 && errno == EINTR)
-		; /* retry */
- bad_free:
-	free(hdl);
-	return NULL;
-}
 
 /*
  * read a message, return 0 if blocked
@@ -221,6 +164,83 @@ aucat_runmsg(struct aucat_hdl *hdl)
 		return 0;
 	}
 	return 1;
+}
+
+struct sio_hdl *
+sio_open_aucat(char *path, unsigned mode, int nbio)
+{
+	extern char *__progname;
+	int s;
+	struct aucat_hdl *hdl;
+	struct sockaddr_un ca;	
+	socklen_t len = sizeof(struct sockaddr_un);
+	uid_t uid;
+
+	if (path == NULL)
+		path = SIO_AUCAT_PATH;
+	uid = geteuid();
+	if (strchr(path, '/') != NULL)
+		return NULL;
+	snprintf(ca.sun_path, sizeof(ca.sun_path),
+	    "/tmp/aucat-%u/%s", uid, path);
+	ca.sun_family = AF_UNIX;
+
+	hdl = malloc(sizeof(struct aucat_hdl));
+	if (hdl == NULL)
+		return NULL;
+	sio_create(&hdl->sio, &aucat_ops, mode, nbio);	
+
+	s = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (s < 0)
+		goto bad_free;
+	while (connect(s, (struct sockaddr *)&ca, len) < 0) {
+		if (errno == EINTR)
+			continue;
+		goto bad_connect;
+	}
+	if (fcntl(s, F_SETFD, FD_CLOEXEC) < 0) {
+		DPERROR("FD_CLOEXEC");
+		goto bad_connect;
+	}
+	hdl->fd = s;
+	hdl->rstate = STATE_IDLE;
+	hdl->rtodo = 0xdeadbeef;
+	hdl->wstate = STATE_IDLE;
+	hdl->wtodo = 0xdeadbeef;
+	hdl->curvol = SIO_MAXVOL;
+	hdl->reqvol = SIO_MAXVOL;
+
+	/*
+	 * say hello to server
+	 */
+	AMSG_INIT(&hdl->wmsg);
+	hdl->wmsg.cmd = AMSG_HELLO;
+	hdl->wmsg.u.hello.proto = 0;
+	if (mode & SIO_PLAY)
+		hdl->wmsg.u.hello.proto |= AMSG_PLAY;
+	if (mode & SIO_REC)
+		hdl->wmsg.u.hello.proto |= AMSG_REC;
+	strlcpy(hdl->wmsg.u.hello.who, __progname,
+	    sizeof(hdl->wmsg.u.hello.who));
+	hdl->wtodo = sizeof(struct amsg);
+	if (!aucat_wmsg(hdl))
+		goto bad_connect;
+	hdl->rtodo = sizeof(struct amsg);
+	if (!aucat_rmsg(hdl)) {
+		DPRINTF("sio_open_aucat: mode refused\n");
+		goto bad_connect;
+	}
+	if (hdl->rmsg.cmd != AMSG_ACK) {
+		DPRINTF("sio_open_aucat: protocol err\n");
+		goto bad_connect;
+	}
+	return (struct sio_hdl *)hdl;
+ bad_connect:
+	while (close(s) < 0 && errno == EINTR)
+		; /* retry */
+ bad_free:
+	free(hdl);
+	return NULL;
 }
 
 static void
@@ -342,7 +362,6 @@ aucat_setpar(struct sio_hdl *sh, struct sio_par *par)
 	hdl->wmsg.u.par.rate = par->rate;
 	hdl->wmsg.u.par.appbufsz = par->appbufsz;
 	hdl->wmsg.u.par.xrun = par->xrun;
-	hdl->wmsg.u.par.mode = hdl->sio.mode;
 	if (hdl->sio.mode & SIO_REC)
 		hdl->wmsg.u.par.rchan = par->rchan;
 	if (hdl->sio.mode & SIO_PLAY)
@@ -358,7 +377,7 @@ aucat_getpar(struct sio_hdl *sh, struct sio_par *par)
 {
 	struct aucat_hdl *hdl = (struct aucat_hdl *)sh;
 
-	AMSG_INIT(&hdl->rmsg);
+	AMSG_INIT(&hdl->wmsg);
 	hdl->wmsg.cmd = AMSG_GETPAR;
 	hdl->wtodo = sizeof(struct amsg);
 	if (!aucat_wmsg(hdl))
@@ -393,7 +412,7 @@ aucat_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 {
 	struct aucat_hdl *hdl = (struct aucat_hdl *)sh;
 
-	AMSG_INIT(&hdl->rmsg);
+	AMSG_INIT(&hdl->wmsg);
 	hdl->wmsg.cmd = AMSG_GETCAP;
 	hdl->wtodo = sizeof(struct amsg);
 	if (!aucat_wmsg(hdl))
