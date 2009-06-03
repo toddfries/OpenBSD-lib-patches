@@ -1,7 +1,7 @@
-/*	$OpenBSD: putenv.c,v 1.5 2005/08/08 08:05:37 espie Exp $ */
-/*-
- * Copyright (c) 1988, 1993
- *     The Regents of the University of California.  All rights reserved.
+/*	$OpenBSD: ypexclude.c,v 1.1 2009/06/03 16:02:44 schwarze Exp $ */
+/*
+ * Copyright (c) 2008 Theo de Raadt
+ * Copyright (c) 1995, 1996, Jason Downs.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,9 +11,9 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ * 3. Neither the name of the University of California nor the names of its
+ *    contributors may be used to endorse or promote products derived from
+ *    this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -30,21 +30,51 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "ypexclude.h"
 
 int
-putenv(const char *str)
+__ypexclude_add(struct _ypexclude **headp, const char *name)
 {
-	char *p, *equal;
-	int rval;
+	struct _ypexclude *new;
 
-	if ((p = strdup(str)) == NULL)
-		return (-1);
-	if ((equal = strchr(p, '=')) == NULL) {
-		(void)free(p);
-		return (-1);
+	if (name[0] == '\0')    /* skip */
+		return (0);
+
+	new = (struct _ypexclude *)malloc(sizeof(struct _ypexclude));
+	if (new == NULL)
+		return (1);
+	new->name = strdup(name);
+	if (new->name == NULL) {
+		free(new);
+		return (1);
 	}
-	*equal = '\0';
-	rval = setenv(p, equal + 1, 1);
-	(void)free(p);
-	return (rval);
+
+	new->next = *headp;
+	*headp = new;
+	return (0);
+}
+
+int
+__ypexclude_is(struct _ypexclude **headp, const char *name)
+{
+	struct _ypexclude *curr;
+
+	for (curr = *headp; curr; curr = curr->next) {
+		if (strcmp(curr->name, name) == 0)
+			return (1);     /* excluded */
+	}
+	return (0);
+}
+
+void
+__ypexclude_free(struct _ypexclude **headp)
+{
+	struct _ypexclude *curr, *next;
+
+	for (curr = *headp; curr; curr = next) {
+		next = curr->next;
+		free((void *)curr->name);
+		free(curr);
+	}
+	*headp = NULL;
 }
