@@ -1,4 +1,4 @@
-/*	$OpenBSD: res_init.c,v 1.37 2008/08/15 14:57:20 djm Exp $	*/
+/*	$OpenBSD: res_init.c,v 1.40 2009/06/05 09:52:26 pyr Exp $	*/
 
 /*
  * ++Copyright++ 1985, 1989, 1993
@@ -165,6 +165,7 @@ _res_init(int usercall)
 	FILE *fp;
 	char *cp, **pp;
 	int n;
+	int findex;
 	char buf[BUFSIZ];
 	int nserv = 0;    /* number of nameserver records read from file */
 	int haveenv = 0;
@@ -280,6 +281,9 @@ _res_init(int usercall)
 	(line[sizeof(name) - 1] == ' ' || \
 	 line[sizeof(name) - 1] == '\t'))
 
+	/* initialize family lookup preference: inet4 first */
+	_resp->family[0] = AF_INET;
+	_resp->family[1] = AF_INET6;
 	if ((fp = fopen(_PATH_RESCONF, "r")) != NULL) {
 	    strlcpy(_resp->lookups, "bf", sizeof _resp->lookups);
 
@@ -296,6 +300,41 @@ _res_init(int usercall)
 			*cp = '\0';
 		if (buf[0] == '\0')
 			continue;
+		/* set family lookup order */
+		if (MATCH(buf, "family")) {
+			cp = buf + sizeof("family") - 1;
+			cp += strspn(cp, " \t");
+			cp[strcspn(cp, "\n")] = '\0';
+			findex = 0;
+			_resp->family[0] = _resp->family[1] = -1;
+#define INETLEN (sizeof("inetX") - 1)
+			while (*cp != '\0' && findex < 2) {
+				if (!strncmp(cp, "inet6", INETLEN)) {
+					_resp->family[findex] = AF_INET6;
+					cp += INETLEN;
+				} else if (!strncmp(cp, "inet4", INETLEN)) {
+					_resp->family[findex] = AF_INET;
+					cp += INETLEN;
+				} else {
+					_resp->family[0] = -1;
+					break;
+				}
+				if (*cp != ' ' && *cp != '\t' && *cp != '\0') {
+					_resp->family[findex] = -1;
+					break;
+				}
+				findex++;
+				cp += strspn(cp, " \t");
+			}
+
+			if (_resp->family[0] == -1) {
+				/* line contains errors, reset to defaults */
+				_resp->family[0] = AF_INET;
+				_resp->family[1] = AF_INET6;
+			}
+			if (_resp->family[0] == _resp->family[1])
+				_resp->family[1] = -1;
+		}
 		/* read default domain name */
 		if (MATCH(buf, "domain")) {
 		    if (haveenv)	/* skip if have from environ */
