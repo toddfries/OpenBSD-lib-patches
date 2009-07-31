@@ -1,4 +1,4 @@
-/*	$OpenBSD: sun.c,v 1.17 2009/05/15 13:16:58 ratchov Exp $	*/
+/*	$OpenBSD: sun.c,v 1.21 2009/07/26 15:50:04 ratchov Exp $	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -30,9 +30,10 @@
 #include <sys/ioctl.h>
 #include <sys/audioio.h>
 #include <sys/stat.h>
-#include <limits.h>
+
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -60,7 +61,7 @@ static int sun_setpar(struct sio_hdl *, struct sio_par *);
 static int sun_getpar(struct sio_hdl *, struct sio_par *);
 static int sun_getcap(struct sio_hdl *, struct sio_cap *);
 static size_t sun_read(struct sio_hdl *, void *, size_t);
-static size_t sun_write(struct sio_hdl *, void *, size_t);
+static size_t sun_write(struct sio_hdl *, const void *, size_t);
 static int sun_pollfd(struct sio_hdl *, struct pollfd *, int);
 static int sun_revents(struct sio_hdl *, struct pollfd *);
 static int sun_setvol(struct sio_hdl *, unsigned);
@@ -342,20 +343,20 @@ sun_setvol(struct sio_hdl *sh, unsigned vol)
 }
 
 struct sio_hdl *
-sio_open_sun(char *path, unsigned mode, int nbio)
+sio_open_sun(const char *str, unsigned mode, int nbio)
 {
 	int fd, flags, fullduplex;
 	struct sun_hdl *hdl;
 	struct audio_info aui;
 	struct sio_par par;
+	char path[PATH_MAX];
 
 	hdl = malloc(sizeof(struct sun_hdl));
 	if (hdl == NULL)
 		return NULL;
 	sio_create(&hdl->sio, &sun_ops, mode, nbio);
 
-	if (path == NULL)
-		path = SIO_SUN_PATH;
+	snprintf(path, sizeof(path), "/dev/audio%s", str);
 	if (mode == (SIO_PLAY | SIO_REC))
 		flags = O_RDWR;
 	else 
@@ -546,11 +547,11 @@ sun_setpar(struct sio_hdl *sh, struct sio_par *par)
 	 */ 
 	bufsz = par->appbufsz;
 	round = par->round;
-	if (bufsz != (unsigned)~0) {
-		if (round == (unsigned)~0)
+	if (bufsz != ~0U) {
+		if (round == ~0U)
 			round = (bufsz + 1) / 2;
-	} else if (round != (unsigned)~0) {
-		if (bufsz == (unsigned)~0)
+	} else if (round != ~0U) {
+		if (bufsz == ~0U)
 			bufsz = round * 2;
 	} else
 		return 1;
@@ -734,12 +735,12 @@ sun_autostart(struct sun_hdl *hdl)
 }
 
 static size_t
-sun_write(struct sio_hdl *sh, void *buf, size_t len)
+sun_write(struct sio_hdl *sh, const void *buf, size_t len)
 {
 #define ZERO_NMAX 0x1000
 	static char zero[ZERO_NMAX];
 	struct sun_hdl *hdl = (struct sun_hdl *)sh;
-	unsigned char *data = buf;
+	const unsigned char *data = buf;
 	ssize_t n, todo;
 
 	while (hdl->offset < 0) {

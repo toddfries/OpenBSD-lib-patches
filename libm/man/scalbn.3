@@ -1,4 +1,4 @@
-.\"	$OpenBSD: logb.3,v 1.5 2009/07/29 18:10:52 martynas Exp $
+.\"	$OpenBSD: scalbn.3,v 1.2 2009/07/29 19:07:56 martynas Exp $
 .\" Copyright (c) 1985, 1991 Regents of the University of California.
 .\" All rights reserved.
 .\"
@@ -29,81 +29,75 @@
 .\"     from: @(#)ieee.3	6.4 (Berkeley) 5/6/91
 .\"
 .Dd $Mdocdate: July 29 2009 $
-.Dt LOGB 3
+.Dt SCALBN 3
 .Os
 .Sh NAME
-.Nm logb ,
-.Nm logbf ,
-.Nm logbl ,
-.Nm scalb ,
-.Nm scalbf ,
-.Nm significand ,
-.Nm significandf
-.Nd IEEE test functions
+.Nm scalbln ,
+.Nm scalblnf ,
+.Nm scalblnl ,
+.Nm scalbn ,
+.Nm scalbnf ,
+.Nm scalbnl
+.Nd adjust exponent by radix
 .Sh SYNOPSIS
 .Fd #include <math.h>
 .Ft double
-.Fn logb "double x"
+.Fn scalbln "double x" "long n"
 .Ft float
-.Fn logbf "float x"
+.Fn scalblnf "float x" "long n"
 .Ft long double
-.Fn logbl "long double x"
+.Fn scalblnl "long double x" "long n"
 .Ft double
-.Fn scalb "double x" "double n"
+.Fn scalbn "double x" "int n"
 .Ft float
-.Fn scalbf "float x" "float n"
-.Ft double
-.Fn significand "double x"
-.Ft float
-.Fn significandf "float x"
+.Fn scalbnf "float x" "int n"
+.Ft long double
+.Fn scalbnl "long double x" "int n"
 .Sh DESCRIPTION
-These functions allow users to test conformance to
-.St -ieee754 .
-Their use is not otherwise recommended.
-.Pp
-.Fn logb x
-returns
-.Fa x Ns 's exponent
-.Fa n ,
-a signed integer converted to double\-precision floating\-point.
-.Fn logb \*(Pm\*(If
-= +\*(If;
-.Fn logb 0
-= -\*(If with a division by zero exception.
-.Fn logbf
-is the single precision form of
-.Fn logb .
-.Fn logbl
-is the extended precision form of
-.Fn logb .
-.Pp
-.Fn scalb x n
-returns
+.Fn scalbln
+and
+.Fn scalbn
+return
 .Fa x Ns \(**(2** Ns Fa n )
 computed by exponent manipulation.
-.Fn scalbf
-is the single precision form of
-.Fn scalb .
-.Pp
-.Fn significand x
-returns
-.Fa sig ,
-where
-.Fa x
-:=
-.Fa sig No \(** 2** Ns Fa n
-with 1 \(<=
-.Fa sig
-< 2.
-.Fn significand x
-is not defined when
-.Fa x
-is 0, \*(Pm\*(If, or \*(Na.
-.Fn significandf
-is the single precision for of
-.Fn significand .
+The
+.Fn scalblnf
+and
+.Fn scalbnf
+functions are single precision versions of
+.Fn scalbln
+and
+.Fn scalbn ,
+respectively.
+The
+.Fn scalblnl
+and
+.Fn scalbnl
+functions are extended precision versions of
+.Fn scalbln
+and
+.Fn scalbn ,
+respectively.
 .Sh SEE ALSO
-.Xr ieee 3 ,
 .Xr math 3
 .Sh STANDARDS
 .St -ieee754
+.Sh HISTORY
+The
+.Nm scalbln ,
+.Nm scalblnf
+and
+.Nm scalblnl
+functions appeared in
+.Ox 4.7 .
+The
+.Nm scalbn ,
+.Nm scalbnf ,
+and
+.Nm scalbnl ,
+functions appeared in
+.Bx 4.3 ,
+.Nx 1.1
+and
+.Ox 4.5 ,
+respectively.

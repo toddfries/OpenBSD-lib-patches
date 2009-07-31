@@ -1,4 +1,4 @@
-#  $OpenBSD: Makefile,v 1.67 2009/07/15 20:08:43 martynas Exp $
+#  $OpenBSD: Makefile,v 1.70 2009/07/29 18:43:28 martynas Exp $
 #  $NetBSD: Makefile,v 1.28 1995/11/20 22:06:19 jtc Exp $
 #
 #  @(#)Makefile 5.1beta 93/09/24 
@@ -100,7 +100,8 @@ COMMON_SRCS = b_exp__D.c b_log__D.c b_tgamma.c \
 	s_lrintf.c s_modff.c s_nan.c \
 	s_nextafter.c s_nextafterf.c s_remquo.c s_remquof.c s_rint.c \
 	s_rintf.c s_round.c s_roundf.c \
-	s_scalbn.c s_scalbnf.c s_signgam.c s_significand.c s_significandf.c \
+	s_scalbln.c s_scalbn.c s_scalbnf.c s_signgam.c s_significand.c \
+	s_significandf.c \
 	s_sin.c s_sinf.c s_tan.c s_tanf.c s_tanh.c s_tanhf.c s_trunc.c \
 	s_truncf.c w_drem.c w_dremf.c w_gamma.c w_gamma_r.c w_gammaf.c \
 	w_gammaf_r.c w_lgamma.c w_lgammaf.c
@@ -122,8 +123,9 @@ NOIEEE_SRCS = n_acosh.c n_argred.c n_asincos.c n_asinh.c n_atan.c \
 	n_erf.c n_exp.c n_exp__E.c n_expm1.c n_fdim.c n_floor.c \
 	n_fmax.c n_fmaxf.c n_fmin.c n_fminf.c n_fmod.c n_hypot.c \
 	n_infnan.c n_j0.c n_j1.c n_jn.c n_lgamma.c n_log.c n_log10.c \
-	n_log1p.c n_log__L.c n_nan.c n_pow.c n_round.c n_sincos.c n_sinh.c \
-	n_sqrt.c n_support.c n_tan.c n_tanh.c n_tgamma.c
+	n_log1p.c n_log__L.c n_nan.c n_pow.c n_round.c n_scalbln.c \
+	n_sincos.c n_sinh.c n_sqrt.c n_support.c n_tan.c n_tanh.c \
+	n_tgamma.c
 
 # OpenBSD's C library supplies these functions:
 #COMMON_SRCS+=	s_fabs.c s_frexp.c s_modf.c
@@ -161,15 +163,16 @@ SRCS+=		${LONG_SRCS}
 .endif
 
 MAN+=	acos.3 acosh.3 asin.3 asinh.3 atan.3 atan2.3 atanh.3 ceil.3 \
-	cos.3 cosh.3 erf.3 exp.3 fabs.3 floor.3 fmod.3 hypot.3 ieee.3 \
+	cos.3 cosh.3 erf.3 exp.3 fabs.3 floor.3 fmod.3 hypot.3 \
 	logb.3 j0.3 lgamma.3 lrint.3 lround.3 math.3 nan.3 remainder.3 \
-	rint.3 round.3 sin.3 sinh.3 sqrt.3 tan.3 tanh.3 trunc.3
+	rint.3 round.3 sin.3 sinh.3 sqrt.3 tan.3 tanh.3 trunc.3 \
+	copysign.3 ilogb.3 nextafter.3 scalbn.3
 
 MLINKS+=erf.3 erfc.3
 MLINKS+=exp.3 exp2.3 exp.3 expm1.3 exp.3 log.3 exp.3 log10.3 exp.3 log1p.3 \
 	exp.3 pow.3
 MLINKS+=hypot.3 cabs.3
-MLINKS+=ieee.3 copysign.3 ieee.3 ilogb.3 ieee.3 nextafter.3 ieee.3 scalbn.3
+MLINKS+=scalbn.3 scalbln.3
 MLINKS+=logb.3 scalb.3
 MLINKS+=logb.3 significand.3
 MLINKS+=j0.3 j1.3 j0.3 jn.3 j0.3 y0.3 j0.3 y1.3 j0.3 yn.3
@@ -204,11 +207,11 @@ MLINKS+=floor.3 floorf.3
 MLINKS+=fmod.3 fmodf.3
 MLINKS+=hypot.3 cabsf.3
 MLINKS+=hypot.3 hypotf.3
-MLINKS+=ieee.3 copysignf.3
-MLINKS+=ieee.3 ieeef.3
-MLINKS+=ieee.3 ilogbf.3
-MLINKS+=ieee.3 nextafterf.3
-MLINKS+=ieee.3 scalbnf.3
+MLINKS+=copysign.3 copysignf.3
+MLINKS+=ilogb.3 ilogbf.3
+MLINKS+=nextafter.3 nextafterf.3
+MLINKS+=scalbn.3 scalbnf.3
+MLINKS+=scalbln.3 scalblnf.3
 MLINKS+=j0.3 j0f.3
 MLINKS+=j0.3 j1f.3
 MLINKS+=j0.3 jnf.3
@@ -248,9 +251,10 @@ MLINKS+=atan2.3 atan2l.3
 MLINKS+=cos.3 cosl.3
 MLINKS+=exp.3 exp2l.3
 MLINKS+=fabs.3 fabsl.3
-MLINKS+=ieee.3 copysignl.3
-MLINKS+=ieee.3 ilogbl.3
-MLINKS+=ieee.3 scalbnl.3
+MLINKS+=copysign.3 copysignl.3
+MLINKS+=ilogb.3 ilogbl.3
+MLINKS+=scalbn.3 scalbnl.3
+MLINKS+=scalbln.3 scalblnl.3
 MLINKS+=logb.3 logbl.3
 MLINKS+=nan.3 nanl.3
 MLINKS+=rint.3 rintl.3
