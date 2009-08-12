@@ -1,40 +1,24 @@
 # On branch master
 # Changed but not updated:
-#   (use "git add/rm <file>..." to update what will be committed)
+#   (use "git add <file>..." to update what will be committed)
 #   (use "git checkout -- <file>..." to discard changes in working directory)
 #
-#	modified:   libkvm/kvm_file2.c
-#	modified:   libkvm/kvm_hppa.c
-#	modified:   libm/Makefile
-#	deleted:    libm/man/ieee.3
+#	modified:   libc/gdtoa/gdtoa.h
+#	modified:   libdes/des_locl.h
+#	modified:   libm/man/ceil.3
+#	modified:   libm/man/fabs.3
+#	modified:   libm/man/floor.3
+#	modified:   libm/man/ilogb.3
 #	modified:   libm/man/logb.3
-#	modified:   libm/shlib_version
-#	modified:   libpthread/shlib_version
-#	modified:   libpthread/uthread/uthread_create.c
-#	modified:   libsndio/Makefile
-#	modified:   libsndio/aucat.c
-#	modified:   libsndio/shlib_version
-#	modified:   libsndio/sio_open.3
-#	modified:   libsndio/sndio.c
-#	modified:   libsndio/sndio_priv.h
-#	modified:   libsndio/sun.c
-#	modified:   libusbhid/parse.c
+#	modified:   libm/man/nan.3
+#	modified:   libm/man/remainder.3
+#	modified:   libm/man/rint.3
+#	modified:   libm/man/round.3
+#	modified:   libsndio/mio_rmidi.c
+#	modified:   libssl/cert.pem
+#	modified:   libssl/src/crypto/acss/acss_skey.c
+#	modified:   libutil/login_tty.c
+#	modified:   status.log
+#	modified:   up.log
 #
-# Untracked files:
-#   (use "git add <file>..." to include in what will be committed)
-#
-#	libm/man/copysign.3
-#	libm/man/ilogb.3
-#	libm/man/nextafter.3
-#	libm/man/scalbn.3
-#	libm/noieee_src/n_scalbln.c
-#	libm/src/s_scalbln.c
-#	libsndio/mio.c
-#	libsndio/mio_open.3
-#	libsndio/mio_priv.h
-#	libsndio/mio_rmidi.c
-#	libsndio/mio_thru.c
-#	libsndio/sndio.7
-#	status.log
-#	up.log
 no changes added to commit (use "git add" and/or "git commit -a")
