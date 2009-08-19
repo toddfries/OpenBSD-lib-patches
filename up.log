@@ -2,18 +2,11 @@
 ? .gitignore
 ? status.log
 ? up.log
-P libc/gdtoa/gdtoa.h
-P libdes/des_locl.h
-P libm/man/ceil.3
-P libm/man/fabs.3
-P libm/man/floor.3
-P libm/man/ilogb.3
-P libm/man/logb.3
-P libm/man/nan.3
-P libm/man/remainder.3
-P libm/man/rint.3
-P libm/man/round.3
-P libsndio/mio_rmidi.c
-P libssl/cert.pem
-P libssl/src/crypto/acss/acss_skey.c
-P libutil/login_tty.c
+cvs server: libarch/amd64/amd64_vm86.2 is no longer in the repository
+cvs server: libarch/amd64/amd64_vm86.c is no longer in the repository
+P libc/net/Makefile.inc
+P libc/sys/Makefile.inc
+P libcurses/Makefile
+P libdes/des_crypt.3
+P libkrb5/Makefile.krb5.inc
+P libpcap/Makefile
