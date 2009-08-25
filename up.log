@@ -2,11 +2,8 @@
 ? .gitignore
 ? status.log
 ? up.log
-cvs server: libarch/amd64/amd64_vm86.2 is no longer in the repository
-cvs server: libarch/amd64/amd64_vm86.c is no longer in the repository
-P libc/net/Makefile.inc
-P libc/sys/Makefile.inc
-P libcurses/Makefile
-P libdes/des_crypt.3
-P libkrb5/Makefile.krb5.inc
-P libpcap/Makefile
+P libc/sys/chflags.2
+P libsndio/mio.c
+P libsndio/mio_priv.h
+P libsndio/mio_thru.c
+P libsndio/sndio.7

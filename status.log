@@ -1,16 +1,13 @@
 # On branch master
 # Changed but not updated:
-#   (use "git add/rm <file>..." to update what will be committed)
+#   (use "git add <file>..." to update what will be committed)
 #   (use "git checkout -- <file>..." to discard changes in working directory)
 #
-#	deleted:    libarch/amd64/amd64_vm86.2
-#	deleted:    libarch/amd64/amd64_vm86.c
-#	modified:   libc/net/Makefile.inc
-#	modified:   libc/sys/Makefile.inc
-#	modified:   libcurses/Makefile
-#	modified:   libdes/des_crypt.3
-#	modified:   libkrb5/Makefile.krb5.inc
-#	modified:   libpcap/Makefile
+#	modified:   libc/sys/chflags.2
+#	modified:   libsndio/mio.c
+#	modified:   libsndio/mio_priv.h
+#	modified:   libsndio/mio_thru.c
+#	modified:   libsndio/sndio.7
 #	modified:   status.log
 #	modified:   up.log
 #
