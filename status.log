@@ -3,11 +3,12 @@
 #   (use "git add <file>..." to update what will be committed)
 #   (use "git checkout -- <file>..." to discard changes in working directory)
 #
-#	modified:   libc/sys/chflags.2
-#	modified:   libsndio/mio.c
-#	modified:   libsndio/mio_priv.h
-#	modified:   libsndio/mio_thru.c
-#	modified:   libsndio/sndio.7
+#	modified:   .gitignore
+#	modified:   libc/gen/fts.3
+#	modified:   libc/gen/fts.c
+#	modified:   libcurses/tinfo/read_bsd_terminfo.c
+#	modified:   libsndio/aucat.c
+#	modified:   libsndio/sndio.c
 #	modified:   status.log
 #	modified:   up.log
 #

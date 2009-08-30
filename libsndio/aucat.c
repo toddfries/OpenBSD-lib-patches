@@ -1,4 +1,4 @@
-/*	$OpenBSD: aucat.c,v 1.24 2009/07/26 12:38:20 ratchov Exp $	*/
+/*	$OpenBSD: aucat.c,v 1.28 2009/08/28 10:52:14 ratchov Exp $	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -155,6 +155,12 @@ aucat_runmsg(struct aucat_hdl *hdl)
 		hdl->rstate = STATE_MSG;
 		hdl->rtodo = sizeof(struct amsg);
 		break;
+	case AMSG_SETVOL:
+		hdl->curvol = hdl->reqvol = hdl->rmsg.u.vol.ctl;
+		sio_onvol_cb(&hdl->sio, hdl->curvol);
+		hdl->rstate = STATE_MSG;
+		hdl->rtodo = sizeof(struct amsg);
+		break;
 	case AMSG_GETPAR:
 	case AMSG_ACK:
 		hdl->rstate = STATE_IDLE;
@@ -264,7 +270,20 @@ static void
 aucat_close(struct sio_hdl *sh)
 {
 	struct aucat_hdl *hdl = (struct aucat_hdl *)sh;
+	char dummy[1];
 
+	if (!hdl->sio.eof && hdl->sio.started)
+		(void)aucat_stop(&hdl->sio);
+	if (!hdl->sio.eof) {
+		AMSG_INIT(&hdl->wmsg);
+		hdl->wmsg.cmd = AMSG_BYE;
+		hdl->wtodo = sizeof(struct amsg);
+		if (!aucat_wmsg(hdl))
+			goto bad_close;
+		while (read(hdl->fd, dummy, 1) < 0 && errno == EINTR)
+			; /* nothing */
+	}
+ bad_close:
 	while (close(hdl->fd) < 0 && errno == EINTR)
 		; /* nothing */
 	free(hdl);

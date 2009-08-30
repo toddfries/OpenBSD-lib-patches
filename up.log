@@ -2,8 +2,8 @@
 ? .gitignore
 ? status.log
 ? up.log
-P libc/sys/chflags.2
-P libsndio/mio.c
-P libsndio/mio_priv.h
-P libsndio/mio_thru.c
-P libsndio/sndio.7
+P libc/gen/fts.3
+P libc/gen/fts.c
+P libcurses/tinfo/read_bsd_terminfo.c
+P libsndio/aucat.c
+P libsndio/sndio.c
