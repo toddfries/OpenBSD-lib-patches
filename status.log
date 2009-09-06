@@ -4,11 +4,7 @@
 #   (use "git checkout -- <file>..." to discard changes in working directory)
 #
 #	modified:   .gitignore
-#	modified:   libc/gen/fts.3
-#	modified:   libc/gen/fts.c
-#	modified:   libcurses/tinfo/read_bsd_terminfo.c
-#	modified:   libsndio/aucat.c
-#	modified:   libsndio/sndio.c
+#	modified:   libc/net/getaddrinfo.c
 #	modified:   status.log
 #	modified:   up.log
 #
