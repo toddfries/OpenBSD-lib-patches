@@ -3,8 +3,10 @@
 #   (use "git add <file>..." to update what will be committed)
 #   (use "git checkout -- <file>..." to discard changes in working directory)
 #
-#	modified:   .gitignore
-#	modified:   libc/net/getaddrinfo.c
+#	modified:   libarch/arm/Makefile
+#	modified:   libc/gen/sysctl.3
+#	modified:   libc/stdio/fopen.3
+#	modified:   libc/time/strftime.3
 #	modified:   status.log
 #	modified:   up.log
 #
