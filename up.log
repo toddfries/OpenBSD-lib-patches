@@ -1,16 +1,2 @@
-? .git
-? .gitignore
-? status.log
-? up.log
-P libarch/Makefile
-P libarch/alpha/io.c
-P libarch/arm/Makefile
-U libarch/mips64/Makefile
-U libarch/mips64/cacheflush.3
-P libc/shlib_version
-P libc/arch/mips64/gen/Makefile.inc
-U libc/arch/mips64/gen/cacheflush.c
-P libpcap/gencode.c
-P librthread/arch/amd64/rfork_thread.S
-P librthread/arch/i386/rfork_thread.S
-P libutil/opendisk.3
+ssh: connect to host cvs.openbsd.org port 22: Connection timed out
+cvs [update aborted]: end of file from server (consult above messages if any)
