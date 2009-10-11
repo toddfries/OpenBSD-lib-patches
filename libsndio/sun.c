@@ -1,4 +1,4 @@
-/*	$OpenBSD: sun.c,v 1.21 2009/07/26 15:50:04 ratchov Exp $	*/
+/*	$OpenBSD: sun.c,v 1.24 2009/10/10 11:27:39 ratchov Exp $	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -128,18 +128,21 @@ sun_infotoenc(struct sun_hdl *hdl, struct audio_prinfo *ai, struct sio_par *par)
  * convert sio_par encoding to sun encoding
  */
 static void
-sun_enctoinfo(struct sun_hdl *hdl, struct audio_prinfo *ai, struct sio_par *par)
+sun_enctoinfo(struct sun_hdl *hdl, unsigned *renc, struct sio_par *par)
 {
-	if (par->le && par->sig) {
-		ai->encoding = AUDIO_ENCODING_SLINEAR_LE;
+	if (par->le == ~0U && par->sig == ~0U) {
+		*renc = ~0U;
+	} else if (par->le == ~0U || par->sig == ~0U) {
+		*renc = AUDIO_ENCODING_SLINEAR;
+	} else if (par->le && par->sig) {
+		*renc = AUDIO_ENCODING_SLINEAR_LE;
 	} else if (!par->le && par->sig) {
-		ai->encoding = AUDIO_ENCODING_SLINEAR_BE;
+		*renc = AUDIO_ENCODING_SLINEAR_BE;
 	} else if (par->le && !par->sig) {
-		ai->encoding = AUDIO_ENCODING_ULINEAR_LE;
+		*renc = AUDIO_ENCODING_ULINEAR_LE;
 	} else {
-		ai->encoding = AUDIO_ENCODING_ULINEAR_BE;
+		*renc = AUDIO_ENCODING_ULINEAR_BE;
 	}
-	ai->precision = par->bits;
 }
 
 /*
@@ -347,7 +350,6 @@ sio_open_sun(const char *str, unsigned mode, int nbio)
 {
 	int fd, flags, fullduplex;
 	struct sun_hdl *hdl;
-	struct audio_info aui;
 	struct sio_par par;
 	char path[PATH_MAX];
 
@@ -386,17 +388,17 @@ sio_open_sun(const char *str, unsigned mode, int nbio)
 		}
 	}
 	hdl->fd = fd;
-	AUDIO_INITINFO(&aui);
-	if (hdl->sio.mode & SIO_PLAY)
-		aui.play.encoding = AUDIO_ENCODING_SLINEAR;
-	if (hdl->sio.mode & SIO_REC)
-		aui.record.encoding = AUDIO_ENCODING_SLINEAR;
-	if (ioctl(hdl->fd, AUDIO_SETINFO, &aui) < 0) {
-		DPERROR("sio_open_sun: setinfo");
-		goto bad_close;
-	}
+
+	/*
+	 * Default parameters may not be compatible with libsndio (eg. mulaw
+	 * encodings, different playback and recording parameters, etc...), so
+	 * set parameters to a random value. If the requested parameters are
+	 * not supported by the device, then sio_setpar() will pick supported
+	 * ones.
+	 */
 	sio_initpar(&par);
 	par.rate = 48000;
+	par.le = SIO_LE_NATIVE;
 	par.sig = 1;
 	par.bits = 16;
 	par.appbufsz = 1200;
@@ -520,25 +522,76 @@ sun_setpar(struct sio_hdl *sh, struct sio_par *par)
 	struct audio_info aui;
 	unsigned i, infr, ibpf, onfr, obpf;
 	unsigned bufsz, round;
+	unsigned rate, prec, enc;
 
 	/*
-	 * first, set encoding, rate and channels
+	 * try to set parameters until the device accepts
+	 * a common encoding and rate for play and record
 	 */
-	AUDIO_INITINFO(&aui);
-	if (hdl->sio.mode & SIO_PLAY) {
-		aui.play.sample_rate = par->rate;
-		aui.play.channels = par->pchan;
-		sun_enctoinfo(hdl, &aui.play, par);
-	}
-	if (hdl->sio.mode & SIO_REC) {
-		aui.record.sample_rate = par->rate;
-		aui.record.channels = par->rchan;
-		sun_enctoinfo(hdl, &aui.record, par);
-	}
-	if (ioctl(hdl->fd, AUDIO_SETINFO, &aui) < 0 && errno != EINVAL) {
-		DPERROR("sun_setpar: setinfo");
-		hdl->sio.eof = 1;
-		return 0;
+	rate = par->rate;
+	prec = par->bits;
+	sun_enctoinfo(hdl, &enc, par);
+	for (i = 0;; i++) {
+		if (i == NRETRIES) {
+			DPRINTF("sun_setpar: couldn't set parameters\n");
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		AUDIO_INITINFO(&aui);
+		if (hdl->sio.mode & SIO_PLAY) {
+			aui.play.sample_rate = rate;
+			aui.play.precision = prec;
+			aui.play.encoding = enc;
+			aui.play.channels = par->pchan;
+		}
+		if (hdl->sio.mode & SIO_REC) {
+			aui.record.sample_rate = rate;
+			aui.record.precision = prec;
+			aui.record.encoding = enc;
+			aui.record.channels = par->rchan;
+		}
+		DPRINTF("sun_setpar: %i: trying pars = %u/%u/%u\n",
+		    i, rate, prec, enc);
+		if (ioctl(hdl->fd, AUDIO_SETINFO, &aui) < 0 && errno != EINVAL) {
+			DPERROR("sun_setpar: setinfo(pars)");
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		if (ioctl(hdl->fd, AUDIO_GETINFO, &aui) < 0) {
+			DPERROR("sun_setpar: getinfo(pars)");
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		enc = (hdl->sio.mode & SIO_REC) ?
+		    aui.record.encoding : aui.play.encoding;
+		switch (enc) {
+		case AUDIO_ENCODING_SLINEAR_LE:
+		case AUDIO_ENCODING_SLINEAR_BE:
+		case AUDIO_ENCODING_ULINEAR_LE:
+		case AUDIO_ENCODING_ULINEAR_BE:
+		case AUDIO_ENCODING_SLINEAR:
+		case AUDIO_ENCODING_ULINEAR:
+			break;
+		default:
+			DPRINTF("sun_setpar: couldn't set linear encoding\n");
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		if (hdl->sio.mode != (SIO_REC | SIO_PLAY))
+			break;
+		if (aui.play.sample_rate == aui.record.sample_rate &&
+		    aui.play.precision == aui.record.precision &&
+		    aui.play.encoding == aui.record.encoding)
+			break;
+		if (i < NRETRIES / 2) {
+			rate = aui.play.sample_rate;
+			prec = aui.play.precision;
+			enc = aui.play.encoding;
+		} else {
+			rate = aui.record.sample_rate;
+			prec = aui.record.precision;
+			enc = aui.record.encoding;
+		}
 	}
 
 	/*
@@ -595,7 +648,7 @@ sun_setpar(struct sio_hdl *sh, struct sio_par *par)
 		}
 		infr = aui.record.block_size / ibpf;
 		onfr = aui.play.block_size / obpf;
-		DPRINTF("sun_setpar: %i: trying rond = %u -> (%u, %u)\n",
+		DPRINTF("sun_setpar: %i: trying round = %u -> (%u, %u)\n",
 		    i, round, infr, onfr);
 
 		/*

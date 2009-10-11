@@ -2,4 +2,5 @@
 ? .gitignore
 ? status.log
 ? up.log
-P libc/gen/sysctl.3
+P libc/stdlib/malloc.3
+P libsndio/sun.c
