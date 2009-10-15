@@ -3,8 +3,8 @@
 #   (use "git add <file>..." to update what will be committed)
 #   (use "git checkout -- <file>..." to discard changes in working directory)
 #
-#	modified:   libc/stdlib/malloc.3
-#	modified:   libsndio/sun.c
+#	modified:   libevent/buffer.c
+#	modified:   libssl/cert.pem
 #	modified:   status.log
 #	modified:   up.log
 #

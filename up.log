@@ -2,5 +2,5 @@
 ? .gitignore
 ? status.log
 ? up.log
-P libc/stdlib/malloc.3
-P libsndio/sun.c
+P libevent/buffer.c
+P libssl/cert.pem
