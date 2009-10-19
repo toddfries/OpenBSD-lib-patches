@@ -2,5 +2,51 @@
 ? .gitignore
 ? status.log
 ? up.log
-P libevent/buffer.c
-P libssl/cert.pem
+P libc/arch/vax/gdtoa/strtof.c
+cvs server: libc/gdtoa/arithchk.c is no longer in the repository
+P libc/gdtoa/dmisc.c
+P libc/gdtoa/dtoa.c
+cvs server: libc/gdtoa/g_Qfmt.c is no longer in the repository
+cvs server: libc/gdtoa/g__fmt.c is no longer in the repository
+cvs server: libc/gdtoa/g_ddfmt.c is no longer in the repository
+cvs server: libc/gdtoa/g_dfmt.c is no longer in the repository
+cvs server: libc/gdtoa/g_ffmt.c is no longer in the repository
+cvs server: libc/gdtoa/g_xLfmt.c is no longer in the repository
+cvs server: libc/gdtoa/g_xfmt.c is no longer in the repository
+P libc/gdtoa/gdtoa.c
+P libc/gdtoa/gdtoa.h
+P libc/gdtoa/gethex.c
+P libc/gdtoa/hdtoa.c
+P libc/gdtoa/misc.c
+cvs server: libc/gdtoa/qnan.c is no longer in the repository
+P libc/gdtoa/smisc.c
+cvs server: libc/gdtoa/strtoIQ.c is no longer in the repository
+cvs server: libc/gdtoa/strtoId.c is no longer in the repository
+cvs server: libc/gdtoa/strtoIdd.c is no longer in the repository
+cvs server: libc/gdtoa/strtoIf.c is no longer in the repository
+cvs server: libc/gdtoa/strtoIg.c is no longer in the repository
+cvs server: libc/gdtoa/strtoIx.c is no longer in the repository
+cvs server: libc/gdtoa/strtoIxL.c is no longer in the repository
+P libc/gdtoa/strtod.c
+cvs server: libc/gdtoa/strtodI.c is no longer in the repository
+P libc/gdtoa/strtodg.c
+cvs server: libc/gdtoa/strtodnrp.c is no longer in the repository
+P libc/gdtoa/strtof.c
+cvs server: libc/gdtoa/strtopQ.c is no longer in the repository
+cvs server: libc/gdtoa/strtopd.c is no longer in the repository
+cvs server: libc/gdtoa/strtopdd.c is no longer in the repository
+cvs server: libc/gdtoa/strtopf.c is no longer in the repository
+cvs server: libc/gdtoa/strtopx.c is no longer in the repository
+cvs server: libc/gdtoa/strtopxL.c is no longer in the repository
+P libc/gdtoa/strtorQ.c
+P libc/gdtoa/strtord.c
+cvs server: libc/gdtoa/strtordd.c is no longer in the repository
+cvs server: libc/gdtoa/strtorf.c is no longer in the repository
+P libc/gdtoa/strtorx.c
+cvs server: libc/gdtoa/strtorxL.c is no longer in the repository
+P libc/gdtoa/sum.c
+P libc/stdio/vfprintf.c
+P libc/stdlib/ecvt.c
+P libc/stdlib/gcvt.c
+P libcurses/tinfo/read_bsd_terminfo.c
+P libsndio/aucat.c
