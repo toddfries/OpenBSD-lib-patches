@@ -1,56 +1,9 @@
 # On branch master
 # Changed but not updated:
-#   (use "git add/rm <file>..." to update what will be committed)
+#   (use "git add <file>..." to update what will be committed)
 #   (use "git checkout -- <file>..." to discard changes in working directory)
 #
-#	modified:   libc/arch/vax/gdtoa/strtof.c
-#	deleted:    libc/gdtoa/arithchk.c
-#	modified:   libc/gdtoa/dmisc.c
-#	modified:   libc/gdtoa/dtoa.c
-#	deleted:    libc/gdtoa/g_Qfmt.c
-#	deleted:    libc/gdtoa/g__fmt.c
-#	deleted:    libc/gdtoa/g_ddfmt.c
-#	deleted:    libc/gdtoa/g_dfmt.c
-#	deleted:    libc/gdtoa/g_ffmt.c
-#	deleted:    libc/gdtoa/g_xLfmt.c
-#	deleted:    libc/gdtoa/g_xfmt.c
-#	modified:   libc/gdtoa/gdtoa.c
-#	modified:   libc/gdtoa/gdtoa.h
-#	modified:   libc/gdtoa/gethex.c
-#	modified:   libc/gdtoa/hdtoa.c
-#	modified:   libc/gdtoa/misc.c
-#	deleted:    libc/gdtoa/qnan.c
-#	modified:   libc/gdtoa/smisc.c
-#	deleted:    libc/gdtoa/strtoIQ.c
-#	deleted:    libc/gdtoa/strtoId.c
-#	deleted:    libc/gdtoa/strtoIdd.c
-#	deleted:    libc/gdtoa/strtoIf.c
-#	deleted:    libc/gdtoa/strtoIg.c
-#	deleted:    libc/gdtoa/strtoIx.c
-#	deleted:    libc/gdtoa/strtoIxL.c
-#	modified:   libc/gdtoa/strtod.c
-#	deleted:    libc/gdtoa/strtodI.c
-#	modified:   libc/gdtoa/strtodg.c
-#	deleted:    libc/gdtoa/strtodnrp.c
-#	modified:   libc/gdtoa/strtof.c
-#	deleted:    libc/gdtoa/strtopQ.c
-#	deleted:    libc/gdtoa/strtopd.c
-#	deleted:    libc/gdtoa/strtopdd.c
-#	deleted:    libc/gdtoa/strtopf.c
-#	deleted:    libc/gdtoa/strtopx.c
-#	deleted:    libc/gdtoa/strtopxL.c
-#	modified:   libc/gdtoa/strtorQ.c
-#	modified:   libc/gdtoa/strtord.c
-#	deleted:    libc/gdtoa/strtordd.c
-#	deleted:    libc/gdtoa/strtorf.c
-#	modified:   libc/gdtoa/strtorx.c
-#	deleted:    libc/gdtoa/strtorxL.c
-#	modified:   libc/gdtoa/sum.c
-#	modified:   libc/stdio/vfprintf.c
-#	modified:   libc/stdlib/ecvt.c
-#	modified:   libc/stdlib/gcvt.c
-#	modified:   libcurses/tinfo/read_bsd_terminfo.c
-#	modified:   libsndio/aucat.c
+#	modified:   libc/stdlib/malloc.c
 #	modified:   status.log
 #	modified:   up.log
 #
