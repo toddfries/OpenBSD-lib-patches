@@ -1,4 +1,4 @@
-/*	$OpenBSD: fgets.c,v 1.11 2009/06/02 22:28:18 ray Exp $ */
+/*	$OpenBSD: fgets.c,v 1.13 2009/10/22 01:23:16 guenther Exp $ */
 /*-
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.

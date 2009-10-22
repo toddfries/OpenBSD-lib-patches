@@ -1,4 +1,4 @@
-/*	$OpenBSD: ungetwc.c,v 1.1 2005/06/17 20:40:32 espie Exp $	*/
+/*	$OpenBSD: ungetwc.c,v 1.3 2009/10/22 01:23:16 guenther Exp $	*/
 /* $NetBSD: ungetwc.c,v 1.2 2003/01/18 11:29:59 thorpej Exp $ */
 
 /*-

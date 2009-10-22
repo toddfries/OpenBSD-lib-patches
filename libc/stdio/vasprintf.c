@@ -1,4 +1,4 @@
-/*	$OpenBSD: vasprintf.c,v 1.13 2006/01/06 18:53:04 millert Exp $	*/
+/*	$OpenBSD: vasprintf.c,v 1.15 2009/10/22 01:23:16 guenther Exp $	*/
 
 /*
  * Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>

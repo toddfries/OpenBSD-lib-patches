@@ -1,4 +1,4 @@
-/*	$OpenBSD: asprintf.c,v 1.15 2005/10/10 12:00:52 espie Exp $	*/
+/*	$OpenBSD: asprintf.c,v 1.17 2009/10/22 01:23:16 guenther Exp $	*/
 
 /*
  * Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>

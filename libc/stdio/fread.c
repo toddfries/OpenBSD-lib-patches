@@ -1,4 +1,4 @@
-/*	$OpenBSD: fread.c,v 1.7 2009/07/12 18:45:21 millert Exp $ */
+/*	$OpenBSD: fread.c,v 1.9 2009/10/22 01:23:16 guenther Exp $ */
 /*-
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.

@@ -1,4 +1,4 @@
-/*	$OpenBSD: uthread_file.c,v 1.16 2009/10/22 01:23:16 guenther Exp $	*/
+/*	$OpenBSD: rthread_file.c,v 1.1 2009/10/21 16:05:48 guenther Exp $	*/
 /*
  * Copyright (c) 1995 John Birrell <jb@cimlogic.com.au>.
  * All rights reserved.
@@ -42,9 +42,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/queue.h>
-#ifdef _THREAD_SAFE
 #include <pthread.h>
-#include "pthread_private.h"
+#include <machine/spinlock.h>
+#include "rthread.h"
 
 /*
  * The FILE lock structure. The FILE *fp is locked if the owner is
@@ -53,12 +53,10 @@
  */
 struct	file_lock {
 	LIST_ENTRY(file_lock)	entry;	/* Entry if file list.       */
-	V_TAILQ_HEAD(lock_head, pthread)
-				l_head;	/* Head of queue for threads */
-					/* waiting on this lock.     */
-	FILE		*fp;		/* The target file.          */
-	pthread_t	owner;		/* Thread that owns lock.    */
-	int		count;		/* Lock count for owner.     */
+	FILE			*fp;	/* The target file.          */
+	struct pthread_queue	lockers;
+	pthread_t		owner;
+	int			count;
 };
 
 /*
@@ -84,16 +82,13 @@ struct	file_lock {
  * allocated statically in the hope that there won't be too many
  * collisions that require a malloc and an element added to the list.
  */
-struct static_file_lock {
+static struct static_file_lock {
 	LIST_HEAD(file_list_head, file_lock) head;
 	struct	file_lock	fl;
 } flh[NUM_HEADS];
 
-/* Set to non-zero when initialisation is complete: */
-static	int	init_done	= 0;
-
 /* Lock for accesses to the hash table: */
-static	spinlock_t	hash_lock	= _SPINLOCK_INITIALIZER;
+static	_spinlock_lock_t	hash_lock	= _SPINLOCK_UNLOCKED;
 
 /*
  * Find a lock structure for a FILE, return NULL if the file is
@@ -166,197 +161,145 @@ do_lock(int idx, FILE *fp)
 	if (p != NULL) {
 		/* Acquire the lock for the running thread: */
 		p->fp		= fp;
-		p->owner	= _thread_run;
+		p->owner	= pthread_self();
 		p->count	= 1;
-		TAILQ_INIT(&p->l_head);
+		TAILQ_INIT(&p->lockers);
 	}
 	return(p);
 }
 
 void
-flockfile(FILE * fp)
+(flockfile)(FILE * fp)
 {
 	int	idx = file_idx(fp);
 	struct	file_lock	*p;
+	pthread_t	self = pthread_self();
 
-	/* Check if this is a real file: */
-	if (fileno(fp) >= 0) {
-		/* Lock the hash table: */
-		_SPINLOCK(&hash_lock);
+	/* Lock the hash table: */
+	_spinlock(&hash_lock);
 
-		/* Check if the static array has not been initialised: */
-		if (!init_done) {
-			/* Initialise the global array: */
-			memset(flh,0,sizeof(flh));
-
-			/* Flag the initialisation as complete: */
-			init_done = 1;
-		}
-
-		/* Get a pointer to any existing lock for the file: */
-		if ((p = find_lock(idx, fp)) == NULL) {
-			/*
-			 * The file is not locked, so this thread can
-			 * grab the lock:
-			 */
-			p = do_lock(idx, fp);
-
-			/* Unlock the hash table: */
-			_SPINUNLOCK(&hash_lock);
-
+	/* Get a pointer to any existing lock for the file: */
+	if ((p = find_lock(idx, fp)) == NULL) {
 		/*
-		 * The file is already locked, so check if the
-		 * running thread is the owner:
+		 * The file is not locked, so this thread can
+		 * grab the lock:
 		 */
-		} else if (p->owner == _thread_run) {
-			/*
-			 * The running thread is already the
-			 * owner, so increment the count of
-			 * the number of times it has locked
-			 * the file:
-			 */
-			p->count++;
+		p = do_lock(idx, fp);
 
-			/* Unlock the hash table: */
-			_SPINUNLOCK(&hash_lock);
-		} else {
-			/*
-			 * The file is locked for another thread.
-			 * Append this thread to the queue of
-			 * threads waiting on the lock.
-			 */
-			TAILQ_INSERT_TAIL(&p->l_head,_thread_run,qe);
-
-			/* Unlock the hash table: */
-			_SPINUNLOCK(&hash_lock);
-
-			/* Wait on the FILE lock: */
-			_thread_kern_sched_state(PS_FILE_WAIT, "", 0);
+	/*
+	 * The file is already locked, so check if the
+	 * running thread is the owner:
+	 */
+	} else if (p->owner == self) {
+		/*
+		 * The running thread is already the
+		 * owner, so increment the count of
+		 * the number of times it has locked
+		 * the file:
+		 */
+		p->count++;
+	} else {
+		/*
+		 * The file is locked for another thread.
+		 * Append this thread to the queue of
+		 * threads waiting on the lock.
+		 */
+		TAILQ_INSERT_TAIL(&p->lockers,self,waiting);
+		while (p->owner != self) {
+			thrsleep(self, 0, &hash_lock);
+			_spinlock(&hash_lock);
 		}
 	}
-	return;
+
+	/* Unlock the hash table: */
+	_spinunlock(&hash_lock);
 }
 
 int
-ftrylockfile(FILE * fp)
+(ftrylockfile)(FILE * fp)
 {
 	int	ret = -1;
 	int	idx = file_idx(fp);
 	struct	file_lock	*p;
 
-	/* Check if this is a real file: */
-	if (fileno(fp) >= 0) {
-		/* Lock the hash table: */
-		_SPINLOCK(&hash_lock);
+	/* Lock the hash table: */
+	_spinlock(&hash_lock);
 
-		/* Get a pointer to any existing lock for the file: */
-		if ((p = find_lock(idx, fp)) == NULL) {
-			/*
-			 * The file is not locked, so this thread can
-			 * grab the lock:
-			 */
-			p = do_lock(idx, fp);
-
+	/* Get a pointer to any existing lock for the file: */
+	if ((p = find_lock(idx, fp)) == NULL) {
 		/*
-		 * The file is already locked, so check if the
-		 * running thread is the owner:
+		 * The file is not locked, so this thread can
+		 * grab the lock:
 		 */
-		} else if (p->owner == _thread_run) {
-			/*
-			 * The running thread is already the
-			 * owner, so increment the count of
-			 * the number of times it has locked
-			 * the file:
-			 */
-			p->count++;
-		} else {
-			/*
-			 * The file is locked for another thread,
-			 * so this try fails.
-			 */
-			p = NULL;
-		}
+		p = do_lock(idx, fp);
 
-		/* Check if the lock was obtained: */
-		if (p != NULL)
-			/* Return success: */
-			ret = 0;
-
-		/* Unlock the hash table: */
-		_SPINUNLOCK(&hash_lock);
-
+	/*
+	 * The file is already locked, so check if the
+	 * running thread is the owner:
+	 */
+	} else if (p->owner == pthread_self()) {
+		/*
+		 * The running thread is already the
+		 * owner, so increment the count of
+		 * the number of times it has locked
+		 * the file:
+		 */
+		p->count++;
+	} else {
+		/*
+		 * The file is locked for another thread,
+		 * so this try fails.
+		 */
+		p = NULL;
 	}
+
+	/* Unlock the hash table: */
+	_spinunlock(&hash_lock);
+
+	/* Check if the lock was obtained: */
+	if (p != NULL)
+		/* Return success: */
+		ret = 0;
+
 	return (ret);
 }
 
 void 
-funlockfile(FILE * fp)
+(funlockfile)(FILE * fp)
 {
 	int	idx = file_idx(fp);
 	struct	file_lock	*p;
 
-	/* Check if this is a real file: */
-	if (fileno(fp) >= 0) {
+	/* Lock the hash table: */
+	_spinlock(&hash_lock);
+
+	/*
+	 * Get a pointer to the lock for the file and check that
+	 * the running thread is the one with the lock:
+	 */
+	if ((p = find_lock(idx, fp)) != NULL && p->owner == pthread_self()) {
 		/*
-		 * Defer signals to protect the scheduling queues from
-		 * access by the signal handler:
+		 * Check if this thread has locked the FILE
+		 * more than once:
 		 */
-		_thread_kern_sig_defer();
+		if (--p->count == 0) {
+			/* Get the new owner of the lock: */
+			if ((p->owner = TAILQ_FIRST(&p->lockers)) != NULL) {
+				/* Pop the thread off the queue: */
+				TAILQ_REMOVE(&p->lockers,p->owner,waiting);
 
-		/* Lock the hash table: */
-		_SPINLOCK(&hash_lock);
-
-		/*
-		 * Get a pointer to the lock for the file and check that
-		 * the running thread is the one with the lock:
-		 */
-		if ((p = find_lock(idx, fp)) != NULL &&
-		    p->owner == _thread_run) {
-			/*
-			 * Check if this thread has locked the FILE
-			 * more than once:
-			 */
-			if (p->count > 1)
 				/*
-				 * Decrement the count of the number of
-				 * times the running thread has locked this
-				 * file:
+				 * This is the first lock for the new
+				 * owner:
 				 */
-				p->count--;
-			else {
-				/*
-				 * The running thread will release the
-				 * lock now:
-				 */
-				p->count = 0;
+				p->count = 1;
 
-				/* Get the new owner of the lock: */
-				if ((p->owner = TAILQ_FIRST(&p->l_head)) != NULL) {
-					/* Pop the thread off the queue: */
-					TAILQ_REMOVE(&p->l_head,p->owner,qe);
-
-					/*
-					 * This is the first lock for the new
-					 * owner:
-					 */
-					p->count = 1;
-
-					/* Allow the new owner to run: */
-					PTHREAD_NEW_STATE(p->owner,PS_RUNNING);
-				}
+				thrwakeup(p->owner, 1);
 			}
 		}
-
-		/* Unlock the hash table: */
-		_SPINUNLOCK(&hash_lock);
-
-		/*
-		 * Undefer and handle pending signals, yielding if
-		 * necessary:
-		 */
-		_thread_kern_sig_undefer();
 	}
-	return;
+
+	/* Unlock the hash table: */
+	_spinunlock(&hash_lock);
 }
 
-#endif

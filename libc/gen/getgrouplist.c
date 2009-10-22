@@ -1,4 +1,4 @@
-/*	$OpenBSD: getgrouplist.c,v 1.18 2009/06/23 18:52:43 schwarze Exp $ */
+/*	$OpenBSD: getgrouplist.c,v 1.20 2009/10/22 01:23:16 guenther Exp $ */
 /*
  * Copyright (c) 2008 Ingo Schwarze <schwarze@usta.de>
  * Copyright (c) 1991, 1993

@@ -1,4 +1,4 @@
-/*	$OpenBSD: freopen.c,v 1.10 2008/04/21 12:28:35 otto Exp $ */
+/*	$OpenBSD: freopen.c,v 1.12 2009/10/22 01:23:16 guenther Exp $ */
 /*-
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.

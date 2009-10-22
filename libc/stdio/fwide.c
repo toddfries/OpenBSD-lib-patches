@@ -1,4 +1,4 @@
-/*	$OpenBSD: fwide.c,v 1.1 2005/06/17 20:40:32 espie Exp $	*/
+/*	$OpenBSD: fwide.c,v 1.3 2009/10/22 01:23:16 guenther Exp $	*/
 /* $NetBSD: fwide.c,v 1.2 2003/01/18 11:29:54 thorpej Exp $ */
 
 /*-

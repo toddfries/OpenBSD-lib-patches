@@ -1,4 +1,4 @@
-/*	$OpenBSD: vfscanf.c,v 1.22 2009/04/05 19:29:28 martynas Exp $ */
+/*	$OpenBSD: vfscanf.c,v 1.24 2009/10/22 01:23:16 guenther Exp $ */
 /*-
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.

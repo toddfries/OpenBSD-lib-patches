@@ -1,4 +1,4 @@
-/*	$OpenBSD: fgetwc.c,v 1.1 2005/06/17 20:40:32 espie Exp $	*/
+/*	$OpenBSD: fgetwc.c,v 1.3 2009/10/22 01:23:16 guenther Exp $	*/
 /* $NetBSD: fgetwc.c,v 1.3 2003/03/07 07:11:36 tshiozak Exp $ */
 
 /*-

@@ -1,4 +1,4 @@
-/*	$OpenBSD: fputws.c,v 1.2 2005/08/08 08:05:36 espie Exp $	*/
+/*	$OpenBSD: fputws.c,v 1.4 2009/10/22 01:23:16 guenther Exp $	*/
 /* $NetBSD: fputws.c,v 1.1 2003/03/07 07:11:37 tshiozak Exp $ */
 
 /*-

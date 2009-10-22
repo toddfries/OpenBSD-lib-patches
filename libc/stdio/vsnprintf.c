@@ -1,4 +1,4 @@
-/*	$OpenBSD: vsnprintf.c,v 1.12 2006/01/06 18:53:04 millert Exp $ */
+/*	$OpenBSD: vsnprintf.c,v 1.14 2009/10/22 01:23:16 guenther Exp $ */
 /*-
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
