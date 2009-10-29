@@ -1,4 +1,4 @@
-/*	$OpenBSD: aucat.c,v 1.30 2009/10/22 21:41:30 ratchov Exp $	*/
+/*	$OpenBSD: aucat.c,v 1.32 2009/10/26 19:06:28 ratchov Exp $	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -506,8 +506,9 @@ aucat_read(struct sio_hdl *sh, void *buf, size_t len)
 				return 0;
 			break;
 		case STATE_IDLE:
-			DPRINTF("aucat_read: unexpected idle\n");
-			break;
+			DPRINTF("aucat_read: unexpected idle state\n");
+			hdl->sio.eof = 1;
+			return 0;
 		}
 	}
 	if (len > hdl->rtodo)
@@ -546,8 +547,12 @@ aucat_buildmsg(struct aucat_hdl *hdl, size_t len)
 		hdl->wmsg.u.vol.ctl = hdl->reqvol;
 		hdl->curvol = hdl->reqvol;
 		return 1;
-	} else if (len > 0) {
-		sz = (len < AMSG_DATAMAX) ? len : AMSG_DATAMAX;
+	} else if (len > 0 && hdl->maxwrite > 0) {
+		sz = len;
+		if (sz > AMSG_DATAMAX)
+			sz = AMSG_DATAMAX;
+		if (sz > hdl->maxwrite)
+			sz = hdl->maxwrite;
 		sz -= sz % hdl->wbpf;
 		if (sz == 0)
 			sz = hdl->wbpf;
