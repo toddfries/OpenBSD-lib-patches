@@ -2,9 +2,4 @@
 ? .gitignore
 ? status.log
 ? up.log
-P libc/arch/mips64/string/index.S
-P libc/crypt/md5crypt.c
-P libc/yp/ypmatch_cache.c
-P libevent/event.c
-P libssl/src/crypto/des/times/aix.cc
-P libssl/src/times/aix.t
+P libsndio/sun.c
