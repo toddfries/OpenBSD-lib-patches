@@ -3,6 +3,13 @@
 #   (use "git add <file>..." to update what will be committed)
 #   (use "git checkout -- <file>..." to discard changes in working directory)
 #
+#	modified:   libc/arch/mips64/string/index.S
+#	modified:   libc/crypt/md5crypt.c
+#	modified:   libc/stdlib/malloc.c
+#	modified:   libc/yp/ypmatch_cache.c
+#	modified:   libevent/event.c
+#	modified:   libssl/src/crypto/des/times/aix.cc
+#	modified:   libssl/src/times/aix.t
 #	modified:   status.log
 #	modified:   up.log
 #
