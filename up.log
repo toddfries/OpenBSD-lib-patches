@@ -2,4 +2,3 @@
 ? .gitignore
 ? status.log
 ? up.log
-P libsndio/sun.c
