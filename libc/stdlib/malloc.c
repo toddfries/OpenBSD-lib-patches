@@ -1371,7 +1371,7 @@ orealloc(void *p, size_t newsz)
 
 		if (rnewsz > roldsz) {
 			if (!mopts.malloc_guard) {
-				STATS_INC(g_pool.cheap_realloc_tries);
+				STATS_INC(g_pool->cheap_realloc_tries);
 				zapcacheregion(g_pool, p + roldsz);
 				q = MMAPA(p + roldsz, rnewsz - roldsz);
 				if (q == p + roldsz) {
