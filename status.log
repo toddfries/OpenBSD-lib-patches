@@ -3,61 +3,18 @@
 #   (use "git add <file>..." to update what will be committed)
 #   (use "git checkout -- <file>..." to discard changes in working directory)
 #
-#	modified:   libc/gen/getgrent.c
-#	modified:   libc/gen/getgrouplist.c
-#	modified:   libc/gen/getttyent.c
-#	modified:   libc/quad/quad.h
-#	modified:   libc/stdio/asprintf.c
-#	modified:   libc/stdio/clrerr.c
-#	modified:   libc/stdio/fclose.c
-#	modified:   libc/stdio/feof.c
-#	modified:   libc/stdio/ferror.c
-#	modified:   libc/stdio/fflush.c
-#	modified:   libc/stdio/fgetc.c
-#	modified:   libc/stdio/fgetln.c
-#	modified:   libc/stdio/fgets.c
-#	modified:   libc/stdio/fgetwc.c
-#	modified:   libc/stdio/fgetws.c
-#	modified:   libc/stdio/fileno.c
-#	modified:   libc/stdio/findfp.c
-#	modified:   libc/stdio/fpurge.c
-#	modified:   libc/stdio/fputc.c
-#	modified:   libc/stdio/fputs.c
-#	modified:   libc/stdio/fputwc.c
-#	modified:   libc/stdio/fputws.c
-#	modified:   libc/stdio/fread.c
-#	modified:   libc/stdio/freopen.c
-#	modified:   libc/stdio/fseek.c
-#	modified:   libc/stdio/ftell.c
-#	modified:   libc/stdio/fvwrite.c
-#	modified:   libc/stdio/fwalk.c
-#	modified:   libc/stdio/fwide.c
-#	modified:   libc/stdio/fwrite.c
-#	modified:   libc/stdio/getc.c
-#	modified:   libc/stdio/gets.c
-#	modified:   libc/stdio/local.h
-#	modified:   libc/stdio/putc.c
-#	modified:   libc/stdio/puts.c
-#	modified:   libc/stdio/putw.c
-#	modified:   libc/stdio/refill.c
-#	modified:   libc/stdio/setvbuf.c
-#	modified:   libc/stdio/snprintf.c
-#	modified:   libc/stdio/sprintf.c
-#	modified:   libc/stdio/ungetc.c
-#	modified:   libc/stdio/ungetwc.c
-#	modified:   libc/stdio/vasprintf.c
-#	modified:   libc/stdio/vfprintf.c
-#	modified:   libc/stdio/vfscanf.c
-#	modified:   libc/stdio/vsnprintf.c
-#	modified:   libc/stdio/vsprintf.c
-#	modified:   libc/stdio/wbuf.c
-#	modified:   libm/Makefile
-#	modified:   libpthread/uthread/uthread_file.c
+#	modified:   libc/locale/mbrlen.3
+#	modified:   libc/sys/stat.2
+#	modified:   libssl/src/ssl/s3_lib.c
+#	modified:   libssl/src/ssl/s3_pkt.c
+#	modified:   libssl/src/ssl/s3_srvr.c
+#	modified:   libssl/src/ssl/ssl3.h
+#	modified:   libssl/ssl/shlib_version
 #	modified:   status.log
 #	modified:   up.log
 #
 # Untracked files:
 #   (use "git add <file>..." to include in what will be committed)
 #
-#	libm/arch/amd64/e_sqrtl.S
+#	libssl/src/ssl/.#s3_srvr.c.1.23
 no changes added to commit (use "git add" and/or "git commit -a")
