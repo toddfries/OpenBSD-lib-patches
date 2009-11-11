@@ -2,18 +2,3 @@
 ? .gitignore
 ? status.log
 ? up.log
-P libc/locale/mbrlen.3
-P libc/sys/stat.2
-P libssl/src/ssl/s3_lib.c
-P libssl/src/ssl/s3_pkt.c
-RCS file: /cvs/src/lib/libssl/src/ssl/s3_srvr.c,v
-retrieving revision 1.23
-retrieving revision 1.24
-Merging differences between 1.23 and 1.24 into s3_srvr.c
-rcsmerge: warning: conflicts during merge
-cvs server: conflicts found in libssl/src/ssl/s3_srvr.c
-C libssl/src/ssl/s3_srvr.c
-M libssl/src/ssl/ssl.h
-P libssl/src/ssl/ssl3.h
-M libssl/src/ssl/ssl_err.c
-U libssl/ssl/shlib_version
