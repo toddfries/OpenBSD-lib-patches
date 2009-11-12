@@ -3,9 +3,7 @@
 #   (use "git add <file>..." to update what will be committed)
 #   (use "git checkout -- <file>..." to discard changes in working directory)
 #
-#	modified:   libc/gen/getnetgrent.c
-#	modified:   libcurses/base/lib_newwin.c
-#	modified:   libocurses/newwin.c
+#	modified:   libevent/event.c
 #	modified:   status.log
 #	modified:   up.log
 #

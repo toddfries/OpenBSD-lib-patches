@@ -2,6 +2,4 @@
 ? .gitignore
 ? status.log
 ? up.log
-P libc/gen/getnetgrent.c
-P libcurses/base/lib_newwin.c
-P libocurses/newwin.c
+P libevent/event.c
