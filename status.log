@@ -3,7 +3,7 @@
 #   (use "git add <file>..." to update what will be committed)
 #   (use "git checkout -- <file>..." to discard changes in working directory)
 #
-#	modified:   libevent/event.c
+#	modified:   libc/gen/getpwent.c
 #	modified:   status.log
 #	modified:   up.log
 #
