@@ -2,4 +2,3 @@
 ? .gitignore
 ? status.log
 ? up.log
-P libc/gen/getpwent.c
