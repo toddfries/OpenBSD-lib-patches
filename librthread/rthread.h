@@ -1,4 +1,4 @@
-/*	$OpenBSD: rthread.h,v 1.22 2009/10/21 16:05:48 guenther Exp $ */
+/*	$OpenBSD: rthread.h,v 1.25 2009/11/27 19:45:54 guenther Exp $ */
 /*
  * Copyright (c) 2004,2005 Ted Unangst <tedu@openbsd.org>
  * All Rights Reserved.
@@ -138,12 +138,11 @@ extern int _threads_ready;
 extern LIST_HEAD(listhead, pthread) _thread_list;
 extern struct pthread _initial_thread;
 extern _spinlock_lock_t _thread_lock;
-extern int _rthread_kq;
 
 void	_spinlock(_spinlock_lock_t *);
 void	_spinunlock(_spinlock_lock_t *);
-int	_sem_wait(sem_t, int, int);
-int	_sem_waitl(sem_t, int, int);
+int	_sem_wait(sem_t, int);
+int	_sem_waitl(sem_t, int, clockid_t, const struct timespec *);
 int	_sem_post(sem_t);
 int	_sem_wakeup(sem_t);
 int	_sem_wakeall(sem_t);
@@ -154,9 +153,6 @@ void	_rthread_tls_destructors(pthread_t);
 void	_rthread_debug(int, const char *, ...)
 		__attribute__((__format__ (printf, 2, 3)));
 void	_rthread_debug_init(void);
-void	_rthread_add_to_reaper(pid_t, struct stack *);
-void 	_rthread_reaper(void);
-int	_rthread_open_kqueue(void);
 #if defined(__ELF__) && defined(PIC)
 void	_rthread_dl_lock(int what);
 void	_rthread_bind_lock(int);
@@ -169,8 +165,9 @@ int	_atomic_lock(register volatile _spinlock_lock_t *);
 
 /* syscalls */
 int getthrid(void);
-void threxit(int);
-int thrsleep(void *, int, void *);
+void threxit(pid_t *);
+int thrsleep(const volatile void *, clockid_t, const struct timespec *,
+    volatile void *);
 int thrwakeup(void *, int n);
 int sched_yield(void);
-int thrsigdivert(sigset_t);
+int thrsigdivert(sigset_t, siginfo_t *, const struct timespec *);
