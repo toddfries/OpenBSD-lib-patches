@@ -1,4 +1,4 @@
-/*	$OpenBSD: opendev.c,v 1.12 2010/12/17 19:35:34 millert Exp $	*/
+/*	$OpenBSD: opendev.c,v 1.14 2010/12/22 17:24:32 millert Exp $	*/
 
 /*
  * Copyright (c) 2000, Todd C. Miller.  All rights reserved.
@@ -54,8 +54,6 @@ opendev(const char *path, int oflags, int dflags, char **realpath)
 	int fd;
 
 	/* Initial state */
-	if (realpath)
-		*realpath = (char *)path;
 	fd = -1;
 	errno = ENOENT;
 
@@ -64,12 +62,13 @@ opendev(const char *path, int oflags, int dflags, char **realpath)
 	else
 		prefix = "r";			/* character device */
 
-	if ((slash = strchr(path, '/')))
-		fd = open(path, oflags);
-	else if (isduid(path, dflags)) {
+	if ((slash = strchr(path, '/'))) {
+		strlcpy(namebuf, path, sizeof(namebuf));
+		fd = open(namebuf, oflags);
+	} else if (isduid(path, dflags)) {
+		strlcpy(namebuf, path, sizeof(namebuf));
 		if ((fd = open("/dev/diskmap", oflags)) != -1) {
 			bzero(&dm, sizeof(struct dk_diskmap));
-			strlcpy(namebuf, path, sizeof(namebuf));
 			dm.device = namebuf;
 			dm.fd = fd;
 			if (dflags & OPENDEV_PART)
@@ -81,34 +80,34 @@ opendev(const char *path, int oflags, int dflags, char **realpath)
 				close(fd);
 				fd = -1;
 				errno = ENOENT;
-			} else if (realpath)
-				*realpath = namebuf;
+			}
 		} else if (errno != ENOENT) {
 			errno = ENXIO;
 			return -1;
 		}
 	}
-	if (fd == -1 && errno == ENOENT && (dflags & OPENDEV_PART)) {
-		/*
-		 * First try raw partition (for removable drives)
-		 */
-		if (snprintf(namebuf, sizeof(namebuf), "%s%s%s%c",
-		    _PATH_DEV, prefix, path, 'a' + getrawpartition())
-		    < sizeof(namebuf)) {
-			fd = open(namebuf, oflags);
-			if (realpath)
-				*realpath = namebuf;
-		} else
-			errno = ENAMETOOLONG;
-	}
 	if (!slash && fd == -1 && errno == ENOENT) {
-		if (snprintf(namebuf, sizeof(namebuf), "%s%s%s",
-		    _PATH_DEV, prefix, path) < sizeof(namebuf)) {
-			fd = open(namebuf, oflags);
-			if (realpath)
-				*realpath = namebuf;
-		} else
-			errno = ENAMETOOLONG;
+		if (dflags & OPENDEV_PART) {
+			/*
+			 * First try raw partition (for removable drives)
+			 */
+			if (snprintf(namebuf, sizeof(namebuf), "%s%s%s%c",
+			    _PATH_DEV, prefix, path, 'a' + getrawpartition())
+			    < sizeof(namebuf)) {
+				fd = open(namebuf, oflags);
+			} else
+				errno = ENAMETOOLONG;
+		}
+		if (fd == -1 && errno == ENOENT) {
+			if (snprintf(namebuf, sizeof(namebuf), "%s%s%s",
+			    _PATH_DEV, prefix, path) < sizeof(namebuf)) {
+				fd = open(namebuf, oflags);
+			} else
+				errno = ENAMETOOLONG;
+		}
 	}
+	if (realpath)
+		*realpath = namebuf;
+
 	return (fd);
 }
