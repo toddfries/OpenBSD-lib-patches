@@ -1,4 +1,4 @@
-/*	$OpenBSD: s_lrintf.c,v 1.1 2006/09/25 20:25:41 kettenis Exp $	*/
+/*	$OpenBSD: s_lrintf.c,v 1.4 2011/04/17 13:59:54 martynas Exp $	*/
 /* $NetBSD: lrintf.c,v 1.3 2004/10/13 15:18:32 drochner Exp $ */
 
 /*-
@@ -61,9 +61,6 @@ LRINTNAME(float x)
 	s = e >> SNG_EXPBITS;
 	e = (e & 0xff) - SNG_EXP_BIAS;
 
-	/* 1.0 x 2^-1 is the smallest number which can be rounded to 1 */
-	if (e < -1)
-		return (0);
 	/* 1.0 x 2^31 (or 2^63) is already too large */
 	if (e >= (int)RESTYPE_BITS - 1)
 		return (s ? RESTYPE_MIN : RESTYPE_MAX); /* ??? unspecified */
@@ -82,11 +79,14 @@ LRINTNAME(float x)
 	i0 &= 0x7fffff;
 	i0 |= (1 << SNG_FRACBITS);
 
+	if (e < 0)
+		return (0);
+
 	shift = e - SNG_FRACBITS;
 	if (shift >=0)
-		res = (shift < 32 ? (RESTYPE)i0 << shift : 0);
+		res = (shift < RESTYPE_BITS ? (RESTYPE)i0 << shift : 0);
 	else
-		res = (shift > -32 ? i0 >> -shift : 0);
+		res = (shift > -RESTYPE_BITS ? (RESTYPE)i0 >> -shift : 0);
 
 	return (s ? -res : res);
 }

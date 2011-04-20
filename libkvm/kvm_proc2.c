@@ -1,4 +1,4 @@
-/*	$OpenBSD: kvm_proc2.c,v 1.4 2011/03/12 04:54:28 guenther Exp $	*/
+/*	$OpenBSD: kvm_proc2.c,v 1.7 2011/04/18 21:44:55 guenther Exp $	*/
 /*	$NetBSD: kvm_proc.c,v 1.30 1999/03/24 05:50:50 mrg Exp $	*/
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.

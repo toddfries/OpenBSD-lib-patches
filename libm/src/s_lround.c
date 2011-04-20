@@ -1,4 +1,4 @@
-/*	$OpenBSD: s_lround.c,v 1.1 2008/07/21 20:29:14 martynas Exp $	*/
+/*	$OpenBSD: s_lround.c,v 1.3 2011/04/17 13:59:54 martynas Exp $	*/
 /* $NetBSD: lround.c,v 1.2 2004/10/13 15:18:32 drochner Exp $ */
 
 /*-
@@ -51,7 +51,7 @@ LROUNDNAME(double x)
 	RESTYPE res;
 
 	GET_HIGH_WORD(i0, x);
-	e = i0 >> 20;
+	e = i0 >> DBL_FRACHBITS;
 	s = e >> DBL_EXPBITS;
 	e = (e & 0x7ff) - DBL_EXP_BIAS;
 
@@ -69,20 +69,20 @@ LROUNDNAME(double x)
 	}
 
 	EXTRACT_WORDS(i0, i1, x);
-	e = ((i0 >> 20) & 0x7ff) - DBL_EXP_BIAS;
+	e = ((i0 >> DBL_FRACHBITS) & 0x7ff) - DBL_EXP_BIAS;
 	i0 &= 0xfffff;
-	i0 |= (1 << 20);
+	i0 |= (1 << DBL_FRACHBITS);
 
 	shift = e - DBL_FRACBITS;
 	if (shift >=0)
-		res = (shift < 32 ? (RESTYPE)i1 << shift : 0);
+		res = (shift < RESTYPE_BITS ? (RESTYPE)i1 << shift : 0);
 	else
-		res = (shift > -32 ? i1 >> -shift : 0);
+		res = (shift > -RESTYPE_BITS ? (RESTYPE)i1 >> -shift : 0);
 	shift += 32;
 	if (shift >=0)
-		res |= (shift < 32 ? (RESTYPE)i0 << shift : 0);
+		res |= (shift < RESTYPE_BITS ? (RESTYPE)i0 << shift : 0);
 	else
-		res |= (shift > -32 ? i0 >> -shift : 0);
+		res |= (shift > -RESTYPE_BITS ? (RESTYPE)i0 >> -shift : 0);
 
 	return (s ? -res : res);
 }

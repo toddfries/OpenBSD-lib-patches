@@ -1,4 +1,4 @@
-/*	$OpenBSD: mio.c,v 1.8 2010/04/24 06:15:54 ratchov Exp $	*/
+/*	$OpenBSD: mio.c,v 1.10 2011/04/16 10:52:22 ratchov Exp $	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -28,14 +28,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "debug.h"
 #include "mio_priv.h"
-
-#ifdef DEBUG
-/*
- * debug level, -1 means uninitialized
- */
-int mio_debug = -1;
-#endif
 
 struct mio_hdl *
 mio_open(const char *str, unsigned mode, int nbio)
@@ -47,24 +41,19 @@ mio_open(const char *str, unsigned mode, int nbio)
 	struct stat sb;
 	char *sep, buf[4];
 	int len;
-#ifdef DEBUG
-	char *dbg;
 
-	if (mio_debug < 0) {
-		dbg = issetugid() ? NULL : getenv("MIO_DEBUG");
-		if (!dbg || sscanf(dbg, "%u", &mio_debug) != 1)
-			mio_debug = 0;
-	}
+#ifdef DEBUG
+	sndio_debug_init();
 #endif
 	if ((mode & (MIO_OUT | MIO_IN)) == 0)
 		return NULL;
 	if (str == NULL && !issetugid())
 		str = getenv("MIDIDEVICE");
 	if (str == NULL) {
-		hdl = mio_open_thru("0", mode, nbio);
+		hdl = mio_midithru_open("0", mode, nbio);
 		if (hdl != NULL)
 			return hdl;
-		return mio_open_rmidi("0", mode, nbio);
+		return mio_rmidi_open("0", mode, nbio);
 	}
 	sep = strchr(str, ':');
 	if (sep == NULL) {
@@ -76,19 +65,19 @@ mio_open(const char *str, unsigned mode, int nbio)
 			return NULL;
 		}
 		snprintf(buf, sizeof(buf), "%u", minor(sb.st_rdev));
-		return mio_open_rmidi(buf, mode, nbio);
+		return mio_rmidi_open(buf, mode, nbio);
 	}
 
 	len = sep - str;
 	if (len == (sizeof(prefix_midithru) - 1) &&
 	    memcmp(str, prefix_midithru, len) == 0)
-		return mio_open_thru(sep + 1, mode, nbio);
+		return mio_midithru_open(sep + 1, mode, nbio);
 	if (len == (sizeof(prefix_aucat) - 1) &&
 	    memcmp(str, prefix_aucat, len) == 0)
-		return mio_open_aucat(sep + 1, mode, nbio);
+		return mio_aucat_open(sep + 1, mode, nbio);
 	if (len == (sizeof(prefix_rmidi) - 1) &&
 	    memcmp(str, prefix_rmidi, len) == 0)
-		return mio_open_rmidi(sep + 1, mode, nbio);
+		return mio_rmidi_open(sep + 1, mode, nbio);
 	DPRINTF("mio_open: %s: unknown device type\n", str);
 	return NULL;
 }

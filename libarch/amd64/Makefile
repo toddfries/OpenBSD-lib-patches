@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile,v 1.8 2011/04/05 21:14:00 guenther Exp $
+#	$OpenBSD: Makefile,v 1.10 2011/04/13 02:49:12 guenther Exp $
 #	$NetBSD: Makefile,v 1.1 1996/02/21 02:45:47 jtk Exp $
 
 MANSUBDIR=amd64
