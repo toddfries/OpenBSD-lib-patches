@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile.inc,v 1.13 2005/06/17 20:40:32 espie Exp $
+#	$OpenBSD: Makefile.inc,v 1.15 2011/04/24 08:54:06 stsp Exp $
 
 # stdio sources
 .PATH: ${LIBCSRCDIR}/stdio

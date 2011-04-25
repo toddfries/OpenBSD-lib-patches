@@ -1,4 +1,4 @@
-/*	$OpenBSD: local.h,v 1.15 2009/11/09 00:18:27 kurt Exp $	*/
+/*	$OpenBSD: local.h,v 1.17 2011/04/24 08:54:06 stsp Exp $	*/
 
 /*-
  * Copyright (c) 1990, 1993
