@@ -29,10 +29,7 @@
  * that manage the floating-point environment, namely fesetenv() and
  * feupdateenv().
  */
-fenv_t __fe_dfl_env = {
-	0x00000000,				/* Control register */
-	0x00000000				/* Status register */
-};
+fenv_t __fe_dfl_env = 0;
 
 /*
  * The feclearexcept() function clears the supported floating-point exceptions
@@ -41,18 +38,18 @@ fenv_t __fe_dfl_env = {
 int
 feclearexcept(int excepts)
 {
-	unsigned int fpsr;
+	unsigned int fcsr;
 
 	excepts &= FE_ALL_EXCEPT;
 
-	/* Store the current floating-point status register */
-	__asm__ __volatile__ ("fmovel fpsr, %0" : "=dm" (fpsr));
+	/* Store the current floating-point control and status register */
+	__asm__ __volatile__ ("cfc1 %0, $31" : "=r" (fcsr));
 
 	/* Clear the requested floating-point exceptions */
-	fpsr &= ~excepts;
+	fcsr &= ~excepts;
 
-	/* Load the floating-point status register */
-	__asm__ __volatile__ ("fmovel %0, fpsr" : : "dm" (fpsr));
+	/* Load the floating-point control and status register */
+	__asm__ __volatile__ ("ctc1 %0, $31" : : "r" (fcsr));
 
 	return (0);
 }
@@ -65,15 +62,15 @@ feclearexcept(int excepts)
 int
 fegetexceptflag(fexcept_t *flagp, int excepts)
 {
-	unsigned int fpsr;
+	unsigned int fcsr;
 
 	excepts &= FE_ALL_EXCEPT;
 
-	/* Store the current floating-point status register */
-	__asm__ __volatile__ ("fmovel fpsr, %0" : "=dm" (fpsr));
+	/* Store the current floating-point control and status register */
+	__asm__ __volatile__ ("cfc1 %0, $31" : "=r" (fcsr));
 
 	/* Store the results in flagp */
-	*flagp = fpsr & excepts;
+	*flagp = fcsr & excepts;
 
 	return (0);
 }
@@ -85,38 +82,17 @@ fegetexceptflag(fexcept_t *flagp, int excepts)
 int
 feraiseexcept(int excepts)
 {
-	volatile double d;
+	unsigned int fcsr;
 
 	excepts &= FE_ALL_EXCEPT;
 
-	/*
-	 * With a compiler that supports the FENV_ACCESS pragma
-	 * properly, simple expressions like '0.0 / 0.0' should
-	 * be sufficient to generate traps.  Unfortunately, we
-	 * need to bring a volatile variable into the equation
-	 * to prevent incorrect optimizations.
-	 */
-	if (excepts & FE_INVALID) {
-		d = 0.0;
-		d = 0.0 / d;
-	}
-	if (excepts & FE_DIVBYZERO) {
-		d = 0.0;
-		d = 1.0 / d;
-	}
-	if (excepts & FE_OVERFLOW) {
-		d = 0x1.ffp1023;
-		d *= 2.0;
-	}
-	if (excepts & FE_UNDERFLOW) {
-		d = 0x1p-1022;
-		d /= 0x1p1023;
-	}
-	if (excepts & FE_INEXACT) {
-		d = 0x1p-1022;
-		d += 1.0;
-	}
-	__asm__ __volatile__ ("fnop");
+	/* Store the current floating-point control and status register */
+	__asm__ __volatile__ ("cfc1 %0, $31" : "=r" (fcsr));
+
+	fcsr |= excepts | (excepts << 10);
+
+	/* Load the floating-point control and status register */
+	__asm__ __volatile__ ("ctc1 %0, $31" : : "r" (fcsr));
 
 	return (0);
 }
@@ -129,19 +105,19 @@ feraiseexcept(int excepts)
 int
 fesetexceptflag(const fexcept_t *flagp, int excepts)
 {
-	unsigned int fpsr;
+	unsigned int fcsr;
 
 	excepts &= FE_ALL_EXCEPT;
 
-	/* Store the current floating-point status register */
-	__asm__ __volatile__ ("fmovel fpsr, %0" : "=dm" (fpsr));
+	/* Store the current floating-point control and status register */
+	__asm__ __volatile__ ("cfc1 %0, $31" : "=r" (fcsr));
 
 	/* Set the requested status flags */
-	fpsr &= ~excepts;
-	fpsr |= *flagp & excepts;
+	fcsr &= ~excepts;
+	fcsr |= *flagp & excepts;
 
-	/* Load the floating-point status register */
-	__asm__ __volatile__ ("fmovel %0, fpsr" : : "dm" (fpsr));
+	/* Load the floating-point control and status register */
+	__asm__ __volatile__ ("ctc1 %0, $31" : : "r" (fcsr));
 
 	return (0);
 }
@@ -154,14 +130,14 @@ fesetexceptflag(const fexcept_t *flagp, int excepts)
 int
 fetestexcept(int excepts)
 {
-	unsigned int fpsr;
+	unsigned int fcsr;
 
 	excepts &= FE_ALL_EXCEPT;
 
-	/* Store the current floating-point status register */
-	__asm__ __volatile__ ("fmovel fpsr, %0" : "=dm" (fpsr));
+	/* Store the current floating-point control and status register */
+	__asm__ __volatile__ ("cfc1 %0, $31" : "=r" (fcsr));
 
-	return (fpsr & excepts);
+	return (fcsr & excepts);
 }
 
 /*
@@ -170,12 +146,12 @@ fetestexcept(int excepts)
 int
 fegetround(void)
 {
-	unsigned int fpcr;
+	unsigned int fcsr;
 
-	/* Store the current floating-point control register */
-	__asm__ __volatile__ ("fmovel fpcr, %0" : "=dm" (fpcr));
+	/* Store the current floating-point control and status register */
+	__asm__ __volatile__ ("cfc1 %0, $31" : "=r" (fcsr));
 
-	return (fpcr & _ROUND_MASK);
+	return (fcsr & _ROUND_MASK);
 }
 
 /*
@@ -186,21 +162,21 @@ fegetround(void)
 int
 fesetround(int round)
 {
-	unsigned int fpcr;
+	unsigned int fcsr;
 
 	/* Check whether requested rounding direction is supported */
 	if (round & ~_ROUND_MASK)
 		return (-1);
 
-	/* Store the current floating-point control register */
-	__asm__ __volatile__ ("fmovel fpcr, %0" : "=dm" (fpcr));
+	/* Store the current floating-point control and status register */
+	__asm__ __volatile__ ("cfc1 %0, $31" : "=r" (fcsr));
 
 	/* Set the rounding direction */
-	fpcr &= ~_ROUND_MASK;
-	fpcr |= round;
+	fcsr &= ~_ROUND_MASK;
+	fcsr |= round;
 
-	/* Load the floating-point control register */
-	__asm__ __volatile__ ("fmovel %0, fpcr" : : "dm" (fpcr));
+	/* Load the floating-point control and status register */
+	__asm__ __volatile__ ("ctc1 %0, $31" : : "r" (fcsr));
 
 	return (0);
 }
@@ -212,9 +188,8 @@ fesetround(int round)
 int
 fegetenv(fenv_t *envp)
 {
-	/* Store the current floating-point control and status registers */
-	__asm__ __volatile__ ("fmovel fpcr, %0" : "=dm" (envp->__control));
-	__asm__ __volatile__ ("fmovel fpsr, %0" : "=dm" (envp->__status));
+	/* Store the current floating-point control and status register */
+	__asm__ __volatile__ ("cfc1 %0, $31" : "=r" (*envp));
 
 	return (0);
 }
@@ -228,21 +203,18 @@ fegetenv(fenv_t *envp)
 int
 feholdexcept(fenv_t *envp)
 {
-	unsigned int fpsr, fpcr;
+	unsigned int fcsr;
 
-	/* Store the current floating-point control and status registers */
-	__asm__ __volatile__ ("fmovel fpcr, %0" : "=dm" (envp->__control));
-	__asm__ __volatile__ ("fmovel fpsr, %0" : "=dm" (envp->__status));
+	/* Store the current floating-point control and status register */
+	__asm__ __volatile__ ("cfc1 %0, $31" : "=r" (*envp));
 
-	/* Clear exception flags in FPSR */
-	fpsr = envp->__status;
-	fpsr &= ~FE_ALL_EXCEPT;
-	__asm__ __volatile__ ("fmovel %0, fpsr" : : "dm" (fpsr));
+	/* Clear exception flags in FCSR */
+	fcsr = *envp;
+	fcsr &= ~FE_ALL_EXCEPT;
 
 	/* Mask all exceptions */
-	fpcr = envp->__control;
-	fpcr &= ~(FE_ALL_EXCEPT << _MASK_SHIFT);
-	__asm__ __volatile__ ("fmovel %0, fpcr" : : "dm" (fpcr));
+	fcsr &= ~(FE_ALL_EXCEPT << _MASK_SHIFT);
+	__asm__ __volatile__ ("ctc1 %0, $31" : : "r" (fcsr));
 
 	return (0);
 }
@@ -258,24 +230,8 @@ feholdexcept(fenv_t *envp)
 int
 fesetenv(const fenv_t *envp)
 {
-	fenv_t fenv;
-
-	/* Store the current floating-point control and status registers */
-	__asm__ __volatile__ ("fmovel fpcr, %0" : "=dm" (fenv.__control));
-	__asm__ __volatile__ ("fmovel fpsr, %0" : "=dm" (fenv.__status));
-
-	/* Set the requested control flags */
-	fenv.__control &= ~((FE_ALL_EXCEPT << _MASK_SHIFT) | _ROUND_MASK);
-	fenv.__control |= envp->__control & ((FE_ALL_EXCEPT << _MASK_SHIFT) |
-	    _ROUND_MASK);
-
-	/* Set the requested status flags */
-	fenv.__status &= ~FE_ALL_EXCEPT;
-	fenv.__status |= envp->__status & FE_ALL_EXCEPT;
-
-	/* Load the floating-point control and status registers */
-	__asm__ __volatile__ ("fmovel %0, fpcr" : : "dm" (fenv.__control));
-	__asm__ __volatile__ ("fmovel %0, fpsr" : : "dm" (fenv.__status));
+	/* Load the floating-point control and status register */
+	__asm__ __volatile__ ("ctc1 %0, $31" : : "r" (*envp));
 
 	return (0);
 }
@@ -291,16 +247,16 @@ fesetenv(const fenv_t *envp)
 int
 feupdateenv(const fenv_t *envp)
 {
-	unsigned int fpsr;
+	unsigned int fcsr;
 
-	/* Store the current floating-point status register */
-	__asm__ __volatile__ ("fmovel fpsr, %0" : "=dm" (fpsr));
+	/* Store the current floating-point control and status register */
+	__asm__ __volatile__ ("cfc1 %0, $31" : "=r" (fcsr));
 
 	/* Install new floating-point environment */
 	fesetenv(envp);
 
 	/* Raise any previously accumulated exceptions */
-	feraiseexcept(fpsr);
+	feraiseexcept(fcsr);
 
 	return (0);
 }
@@ -311,18 +267,18 @@ feupdateenv(const fenv_t *envp)
 int
 feenableexcept(int mask)
 {
-	unsigned int fpcr, omask;
+	unsigned int fcsr, omask;
 
 	mask &= FE_ALL_EXCEPT;
 
-	/* Store the current floating-point control register */
-	__asm__ __volatile__ ("fmovel fpcr, %0" : "=dm" (fpcr));
+	/* Store the current floating-point control and status register */
+	__asm__ __volatile__ ("cfc1 %0, $31" : "=r" (fcsr));
 
-	omask = (fpcr >> _MASK_SHIFT) & FE_ALL_EXCEPT;
-	fpcr |= mask << _MASK_SHIFT;
+	omask = (fcsr >> _MASK_SHIFT) & FE_ALL_EXCEPT;
+	fcsr |= mask << _MASK_SHIFT;
 
-	/* Load the floating-point control register */
-	__asm__ __volatile__ ("fmovel %0, fpcr" : : "dm" (fpcr));
+	/* Load the floating-point control and status register */
+	__asm__ __volatile__ ("ctc1 %0, $31" : : "r" (fcsr));
 
 	return (omask);
 
@@ -331,18 +287,18 @@ feenableexcept(int mask)
 int
 fedisableexcept(int mask)
 {
-	unsigned int fpcr, omask;
+	unsigned int fcsr, omask;
 
 	mask &= FE_ALL_EXCEPT;
 
-	/* Store the current floating-point control register */
-	__asm__ __volatile__ ("fmovel fpcr, %0" : "=dm" (fpcr));
+	/* Store the current floating-point control and status register */
+	__asm__ __volatile__ ("cfc1 %0, $31" : "=r" (fcsr));
 
-	omask = (fpcr >> _MASK_SHIFT) & FE_ALL_EXCEPT;
-	fpcr &= ~(mask << _MASK_SHIFT);
+	omask = (fcsr >> _MASK_SHIFT) & FE_ALL_EXCEPT;
+	fcsr &= ~(mask << _MASK_SHIFT);
 
-	/* Load the floating-point control register */
-	__asm__ __volatile__ ("fmovel %0, fpcr" : : "dm" (fpcr));
+	/* Load the floating-point control and status register */
+	__asm__ __volatile__ ("ctc1 %0, $31" : : "r" (fcsr));
 
 	return (omask);
 }
@@ -350,10 +306,10 @@ fedisableexcept(int mask)
 int
 fegetexcept(void)
 {
-	unsigned int fpcr;
+	unsigned int fcsr;
 
-	/* Store the current floating-point control register */
-	__asm__ __volatile__ ("fmovel fpcr, %0" : "=dm" (fpcr));
+	/* Store the current floating-point control and status register */
+	__asm__ __volatile__ ("cfc1 %0, $31" : "=r" (fcsr));
 
-	return ((fpcr >> _MASK_SHIFT) & FE_ALL_EXCEPT);
+	return ((fcsr >> _MASK_SHIFT) & FE_ALL_EXCEPT);
 }

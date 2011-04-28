@@ -1,4 +1,4 @@
-/*	$OpenBSD: fenv.c,v 1.3 2011/04/28 17:34:23 martynas Exp $	*/
+/*	$OpenBSD: fenv.c,v 1.2 2011/04/28 17:34:23 martynas Exp $	*/
 /*	$NetBSD: fenv.c,v 1.1 2011/01/31 00:19:33 christos Exp $	*/
 
 /*-
@@ -51,12 +51,12 @@ feclearexcept(int excepts)
 	excepts &= FE_ALL_EXCEPT;
 
 	/* Save floating-point state register */
-	__asm__ __volatile__ ("stx %%fsr, %0" : "=m" (r));
+	__asm__ __volatile__ ("st %%fsr, %0" : "=m" (r));
 
 	r &= ~excepts;
 
 	/* Load floating-point state register */
-	__asm__ __volatile__ ("ldx %0, %%fsr" : : "m" (r));
+	__asm__ __volatile__ ("ld %0, %%fsr" : : "m" (r));
 
 	return 0;
 }
@@ -74,7 +74,7 @@ fegetexceptflag(fexcept_t *flagp, int excepts)
 	excepts &= FE_ALL_EXCEPT;
 
 	/* Save floating-point state register */
-	__asm__ __volatile__ ("stx %%fsr, %0" : "=m" (r));
+	__asm__ __volatile__ ("st %%fsr, %0" : "=m" (r));
 
 	*flagp = r & excepts;
 
@@ -95,13 +95,13 @@ fesetexceptflag(const fexcept_t *flagp, int excepts)
 	excepts &= FE_ALL_EXCEPT;
 
 	/* Save floating-point state register */
-	__asm__ __volatile__ ("stx %%fsr, %0" : "=m" (r));
+	__asm__ __volatile__ ("st %%fsr, %0" : "=m" (r));
 
 	r &= ~excepts;
 	r |= *flagp & excepts;
 
 	/* Load floating-point state register */
-	__asm__ __volatile__ ("ldx %0, %%fsr" : : "m" (r));
+	__asm__ __volatile__ ("ld %0, %%fsr" : : "m" (r));
 
 	return 0;
 }
@@ -163,7 +163,7 @@ fetestexcept(int excepts)
 	excepts &= FE_ALL_EXCEPT;
 
 	/* Save floating-point state register */
-	__asm__ __volatile__ ("stx %%fsr, %0" : "=m" (r));
+	__asm__ __volatile__ ("st %%fsr, %0" : "=m" (r));
 
 	return r & excepts;
 }
@@ -177,7 +177,7 @@ fegetround(void)
 	fenv_t r;
 
 	/* Save floating-point state register */
-	__asm__ __volatile__ ("stx %%fsr, %0" : "=m" (r));
+	__asm__ __volatile__ ("st %%fsr, %0" : "=m" (r));
 
 	return (r >> _ROUND_SHIFT) & _ROUND_MASK;
 }
@@ -196,13 +196,13 @@ fesetround(int round)
 		return -1;
 
 	/* Save floating-point state register */
-	__asm__ __volatile__ ("stx %%fsr, %0" : "=m" (r));
+	__asm__ __volatile__ ("st %%fsr, %0" : "=m" (r));
 
 	r &= ~(_ROUND_MASK << _ROUND_SHIFT);
 	r |= round << _ROUND_SHIFT;
 
 	/* Load floating-point state register */
-	__asm__ __volatile__ ("ldx %0, %%fsr" : : "m" (r));
+	__asm__ __volatile__ ("ld %0, %%fsr" : : "m" (r));
 
 	return 0;
 }
@@ -215,7 +215,7 @@ int
 fegetenv(fenv_t *envp)
 {
 	/* Save floating-point state register */
-	__asm__ __volatile__ ("stx %%fsr, %0" : "=m" (*envp));
+	__asm__ __volatile__ ("st %%fsr, %0" : "=m" (*envp));
 
 	return 0;
 }
@@ -233,13 +233,13 @@ feholdexcept(fenv_t *envp)
 	fenv_t r;
 
 	/* Save floating-point state register */
-	__asm__ __volatile__ ("stx %%fsr, %0" : "=m" (r));
+	__asm__ __volatile__ ("st %%fsr, %0" : "=m" (r));
 
 	*envp = r;
 	r &= ~(FE_ALL_EXCEPT | (FE_ALL_EXCEPT << _MASK_SHIFT));
 
 	/* Load floating-point state register */
-	__asm__ __volatile__ ("ldx %0, %%fsr" : : "m" (r));
+	__asm__ __volatile__ ("ld %0, %%fsr" : : "m" (r));
 
 	return 0;
 }
@@ -256,7 +256,7 @@ int
 fesetenv(const fenv_t *envp)
 {
 	/* Load floating-point state register */
-	__asm__ __volatile__ ("ldx %0, %%fsr" : : "m" (*envp));
+	__asm__ __volatile__ ("ld %0, %%fsr" : : "m" (*envp));
 
 	return 0;
 }
@@ -276,10 +276,10 @@ feupdateenv(const fenv_t *envp)
 	fexcept_t r;
 
 	/* Save floating-point state register */
-	__asm__ __volatile__ ("stx %%fsr, %0" : "=m" (r));
+	__asm__ __volatile__ ("st %%fsr, %0" : "=m" (r));
 
 	/* Load floating-point state register */
-	__asm__ __volatile__ ("ldx %0, %%fsr" : : "m" (*envp));
+	__asm__ __volatile__ ("ld %0, %%fsr" : : "m" (*envp));
 
 	feraiseexcept(r & FE_ALL_EXCEPT);
 
@@ -297,12 +297,12 @@ feenableexcept(int mask)
 	mask &= FE_ALL_EXCEPT;
 
 	/* Save floating-point state register */
-	__asm__ __volatile__ ("stx %%fsr, %0" : "=m" (old_r));
+	__asm__ __volatile__ ("st %%fsr, %0" : "=m" (old_r));
 
 	new_r = old_r | (mask << _MASK_SHIFT);
 
 	/* Load floating-point state register */
-	__asm__ __volatile__ ("ldx %0, %%fsr" : : "m" (new_r));
+	__asm__ __volatile__ ("ld %0, %%fsr" : : "m" (new_r));
 
 	return (old_r >> _MASK_SHIFT) & FE_ALL_EXCEPT;
 }
@@ -315,12 +315,12 @@ fedisableexcept(int mask)
 	mask &= FE_ALL_EXCEPT;
 
 	/* Save floating-point state register */
-	__asm__ __volatile__ ("stx %%fsr, %0" : "=m" (old_r));
+	__asm__ __volatile__ ("st %%fsr, %0" : "=m" (old_r));
 
 	new_r = old_r & ~(mask << _MASK_SHIFT);
 
 	/* Load floating-point state register */
-	__asm__ __volatile__ ("ldx %0, %%fsr" : : "m" (new_r));
+	__asm__ __volatile__ ("ld %0, %%fsr" : : "m" (new_r));
 
 	return (old_r >> _MASK_SHIFT) & FE_ALL_EXCEPT;
 }
@@ -331,7 +331,7 @@ fegetexcept(void)
 	fenv_t r;
 
 	/* Save floating-point state register */
-	__asm__ __volatile__ ("stx %%fsr, %0" : "=m" (r));
+	__asm__ __volatile__ ("st %%fsr, %0" : "=m" (r));
 
 	return (r & (FE_ALL_EXCEPT << _MASK_SHIFT)) >> _MASK_SHIFT;
 }
