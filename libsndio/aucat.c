@@ -1,4 +1,4 @@
-/*	$OpenBSD: aucat.c,v 1.46 2011/04/28 06:19:57 ratchov Exp $	*/
+/*	$OpenBSD: aucat.c,v 1.48 2011/05/02 22:32:29 ratchov Exp $	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -21,6 +21,7 @@
 #include <sys/un.h>
 
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <netdb.h>
 
 #include <errno.h>
@@ -68,8 +69,8 @@ aucat_rmsg(struct aucat *hdl, int *eof)
 		}
 		hdl->rtodo -= n;
 	}
-	if (hdl->rmsg.cmd == AMSG_DATA) {
-		hdl->rtodo = hdl->rmsg.u.data.size;
+	if (ntohl(hdl->rmsg.cmd) == AMSG_DATA) {
+		hdl->rtodo = ntohl(hdl->rmsg.u.data.size);
 		hdl->rstate = RSTATE_DATA;
 	} else {
 		hdl->rtodo = sizeof(struct amsg);
@@ -108,8 +109,8 @@ aucat_wmsg(struct aucat *hdl, int *eof)
 		}
 		hdl->wtodo -= n;
 	}
-	if (hdl->wmsg.cmd == AMSG_DATA) {
-		hdl->wtodo = hdl->wmsg.u.data.size;
+	if (ntohl(hdl->wmsg.cmd) == AMSG_DATA) {
+		hdl->wtodo = ntohl(hdl->wmsg.u.data.size);
 		hdl->wstate = WSTATE_DATA;
 	} else {
 		hdl->wtodo = 0xdeadbeef;
@@ -164,8 +165,8 @@ aucat_wdata(struct aucat *hdl, const void *buf, size_t len, unsigned wbpf, int *
 		len -= len % wbpf;
 		if (len == 0)
 			len = wbpf;
-		hdl->wmsg.cmd = AMSG_DATA;
-		hdl->wmsg.u.data.size = len;
+		hdl->wmsg.cmd = htonl(AMSG_DATA);
+		hdl->wmsg.u.data.size = htonl(len);
 		hdl->wtodo = sizeof(struct amsg);
 		hdl->wstate = WSTATE_MSG;
 		/* FALLTHROUGH */
@@ -281,7 +282,7 @@ bad_gen:
 int
 aucat_connect_tcp(struct aucat *hdl, char *host, char *unit, int isaudio)
 {
-	int s, error;
+	int s, error, opt;
 	struct addrinfo *ailist, *ai, aihints;
 	unsigned port;
 	char serv[NI_MAXSERV];
@@ -321,6 +322,12 @@ aucat_connect_tcp(struct aucat *hdl, char *host, char *unit, int isaudio)
 	freeaddrinfo(ailist);
 	if (s < 0)
 		return 0;
+	opt = 1;
+	if (setsockopt(s, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(int)) < 0) {
+		DPERROR("setsockopt");
+		close(s);
+		return 0;
+	}
 	hdl->fd = s;
 	return 1;
 }
@@ -416,16 +423,16 @@ aucat_open(struct aucat *hdl, const char *str, unsigned mode, int isaudio)
 	 * say hello to server
 	 */
 	AMSG_INIT(&hdl->wmsg);
-	hdl->wmsg.cmd = AMSG_AUTH;
+	hdl->wmsg.cmd = htonl(AMSG_AUTH);
 	if (!aucat_mkcookie(hdl->wmsg.u.auth.cookie))
 		goto bad_connect;
 	hdl->wtodo = sizeof(struct amsg);
 	if (!aucat_wmsg(hdl, &eof))
 		goto bad_connect;
 	AMSG_INIT(&hdl->wmsg);
-	hdl->wmsg.cmd = AMSG_HELLO;
+	hdl->wmsg.cmd = htonl(AMSG_HELLO);
 	hdl->wmsg.u.hello.version = AMSG_VERSION;
-	hdl->wmsg.u.hello.mode = mode;
+	hdl->wmsg.u.hello.mode = htons(mode);
 	strlcpy(hdl->wmsg.u.hello.who, __progname,
 	    sizeof(hdl->wmsg.u.hello.who));
 	strlcpy(hdl->wmsg.u.hello.opt, opt,
@@ -438,7 +445,7 @@ aucat_open(struct aucat *hdl, const char *str, unsigned mode, int isaudio)
 		DPRINTF("aucat_init: mode refused\n");
 		goto bad_connect;
 	}
-	if (hdl->rmsg.cmd != AMSG_ACK) {
+	if (ntohl(hdl->rmsg.cmd) != AMSG_ACK) {
 		DPRINTF("aucat_init: protocol err\n");
 		goto bad_connect;
 	}
@@ -456,7 +463,7 @@ aucat_close(struct aucat *hdl, int eof)
 
 	if (!eof) {
 		AMSG_INIT(&hdl->wmsg);
-		hdl->wmsg.cmd = AMSG_BYE;
+		hdl->wmsg.cmd = htonl(AMSG_BYE);
 		hdl->wtodo = sizeof(struct amsg);
 		if (!aucat_wmsg(hdl, &eof))
 			goto bad_close;

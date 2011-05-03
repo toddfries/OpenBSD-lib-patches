@@ -1,4 +1,4 @@
-/*	$OpenBSD: malloc.c,v 1.127 2010/12/16 18:47:01 dhill Exp $	*/
+/*	$OpenBSD: malloc.c,v 1.129 2011/04/30 15:46:46 otto Exp $	*/
 /*
  * Copyright (c) 2008 Otto Moerbeek <otto@drijf.net>
  *
@@ -138,7 +138,7 @@ struct dir_info {
  *
  * How many bits per u_long in the bitmap
  */
-#define MALLOC_BITS		(NBBY * sizeof(u_long))
+#define MALLOC_BITS		(NBBY * sizeof(u_short))
 struct chunk_info {
 	LIST_ENTRY(chunk_info) entries;
 	void *page;			/* pointer to the page */
@@ -148,7 +148,7 @@ struct chunk_info {
 	u_short free;			/* how many free chunks */
 	u_short total;			/* how many chunk */
 					/* which chunks are free */
-	u_long bits[(MALLOC_PAGESIZE / MALLOC_MINSIZE) / MALLOC_BITS];
+	u_short bits[(MALLOC_PAGESIZE / MALLOC_MINSIZE) / MALLOC_BITS];
 };
 
 struct malloc_readonly {
@@ -946,7 +946,7 @@ omalloc_make_chunks(struct dir_info *d, int bits)
 			return NULL;
 		}
 	} else {
-		bp->size = (1UL << bits);
+		bp->size = 1U << bits;
 		bp->shift = bits;
 		bp->total = bp->free = MALLOC_PAGESIZE >> bits;
 		bp->page = pp;
@@ -958,10 +958,10 @@ omalloc_make_chunks(struct dir_info *d, int bits)
 
 	/* Do a bunch at a time */
 	for (; (k - i) >= MALLOC_BITS; i += MALLOC_BITS)
-		bp->bits[i / MALLOC_BITS] = ~0UL;
+		bp->bits[i / MALLOC_BITS] = (u_short)~0U;
 
 	for (; i < k; i++)
-		bp->bits[i / MALLOC_BITS] |= 1UL << (i % MALLOC_BITS);
+		bp->bits[i / MALLOC_BITS] |= (u_short)1U << (i % MALLOC_BITS);
 
 	LIST_INSERT_HEAD(&d->chunk_dir[bits], bp, entries);
 
@@ -982,7 +982,7 @@ malloc_bytes(struct dir_info *d, size_t size)
 {
 	int		i, j;
 	size_t		k;
-	u_long		u, *lp;
+	u_short		u, *lp;
 	struct chunk_info *bp;
 
 	if (mopts.malloc_canary != (d->canary1 ^ (u_int32_t)(uintptr_t)d) ||
@@ -1026,22 +1026,26 @@ malloc_bytes(struct dir_info *d, size_t size)
 	}
 
 	/* advance a random # of positions */
-	i = getrnibble() % bp->free;
-	while (i > 0) {
-		u += u;
-		k++;
-		if (k >= MALLOC_BITS) {
-			lp++;
-			u = 1;
-			k = 0;
+	if (bp->free > 1) {
+		i = getrnibble() % bp->free;
+		while (i > 0) {
+			u += u;
+			k++;
+			if (k >= MALLOC_BITS) {
+				while (!*++lp)
+					/* EMPTY */;
+				u = 1;
+				k = 0;
+				if (lp - bp->bits > (bp->total - 1) /
+				    MALLOC_BITS) {
+					wrterror("chunk overflow", NULL);
+					errno = EFAULT;
+					return (NULL);
+				}
+			}
+			if (*lp & u)
+				i--;
 		}
-		if (lp - bp->bits > (bp->total - 1) / MALLOC_BITS) {
-			wrterror("chunk overflow", NULL);
-			errno = EFAULT;
-			return (NULL);
-		}
-		if (*lp & u)
-			i--;
 	}
 
 	*lp ^= u;
@@ -1077,16 +1081,16 @@ free_bytes(struct dir_info *d, struct region_info *r, void *ptr)
 	/* Find the chunk number on the page */
 	i = ((uintptr_t)ptr & MALLOC_PAGEMASK) >> info->shift;
 
-	if ((uintptr_t)ptr & ((1UL << (info->shift)) - 1)) {
+	if ((uintptr_t)ptr & ((1U << (info->shift)) - 1)) {
 		wrterror("modified chunk-pointer", ptr);
 		return;
 	}
-	if (info->bits[i / MALLOC_BITS] & (1UL << (i % MALLOC_BITS))) {
+	if (info->bits[i / MALLOC_BITS] & (1U << (i % MALLOC_BITS))) {
 		wrterror("chunk is already free", ptr);
 		return;
 	}
 
-	info->bits[i / MALLOC_BITS] |= 1UL << (i % MALLOC_BITS);
+	info->bits[i / MALLOC_BITS] |= 1U << (i % MALLOC_BITS);
 	info->free++;
 
 	if (info->size != 0)
