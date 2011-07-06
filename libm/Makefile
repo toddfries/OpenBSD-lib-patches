@@ -1,4 +1,4 @@
-#  $OpenBSD: Makefile,v 1.82 2011/05/28 22:13:52 martynas Exp $
+#  $OpenBSD: Makefile,v 1.84 2011/07/06 03:50:23 martynas Exp $
 #  $NetBSD: Makefile,v 1.28 1995/11/20 22:06:19 jtc Exp $
 #
 #  @(#)Makefile 5.1beta 93/09/24 
@@ -11,9 +11,6 @@
 #  software is freely granted, provided that this notice 
 #  is preserved.
 #  ====================================================
-
-# For NOPROFILE and NOPIC
-.include <bsd.own.mk>
 
 .if (${MACHINE_ARCH} == "sparc")
 CFLAGS+= -O0
@@ -118,12 +115,12 @@ COMMON_SRCS = b_exp__D.c b_log__D.c b_tgamma.c \
 	s_cproj.c s_cprojf.c s_creal.c s_crealf.c s_csin.c s_csinf.c s_csinh.c \
 	s_csinhf.c s_csqrt.c s_csqrtf.c s_ctan.c s_ctanf.c s_ctanh.c \
 	s_ctanhf.c s_erf.c s_erff.c s_exp2.c s_exp2f.c s_expm1.c s_expm1f.c \
-	s_fabsf.c s_fdim.c s_fmax.c s_fmaxf.c s_fmin.c s_fminf.c \
-	s_floor.c s_floorf.c s_frexpf.c s_ilogb.c s_ilogbf.c \
+	s_fabsf.c s_fdim.c s_fma.c s_fmaf.c s_fmax.c s_fmaxf.c s_fmin.c \
+	s_fminf.c s_floor.c s_floorf.c s_frexpf.c s_ilogb.c s_ilogbf.c \
 	s_log1p.c \
 	s_log1pf.c s_logb.c s_logbf.c s_llrint.c s_llrintf.c s_lrint.c \
-	s_lrintf.c s_modff.c s_nan.c s_nearbyint.c \
-	s_nextafter.c s_nextafterf.c s_remquo.c s_remquof.c s_rint.c \
+	s_lrintf.c s_modff.c s_nan.c s_nearbyint.c s_nextafter.c \
+	s_nextafterf.c s_nexttowardf.c s_remquo.c s_remquof.c s_rint.c \
 	s_rintf.c s_round.c s_roundf.c \
 	s_scalbln.c s_scalbn.c s_scalbnf.c s_signgam.c s_significand.c \
 	s_significandf.c \
@@ -131,12 +128,17 @@ COMMON_SRCS = b_exp__D.c b_log__D.c b_tgamma.c \
 	s_truncf.c w_drem.c w_dremf.c w_gamma.c w_gamma_r.c w_gammaf.c \
 	w_gammaf_r.c w_lgamma.c w_lgammaf.c
 
-LONG_SRCS = e_acosl.c e_asinl.c e_atan2l.c e_sqrtl.c \
-	invtrig.c \
-	k_cosl.c k_sinl.c k_tanl.c \
-	s_atanl.c s_copysignl.c s_cosl.c s_exp2l.c s_fabsl.c s_fmaxl.c \
-	s_fminl.c s_frexpl.c s_ilogbl.c s_logbl.c s_nanl.c s_rintl.c \
-	s_scalbnl.c s_sinl.c s_tanl.c
+LONG_SRCS = e_acoshl.c e_acosl.c e_asinl.c e_atan2l.c e_atanhl.c \
+	e_coshl.c e_expl.c e_fmodl.c e_hypotl.c e_lgammal.c e_log10l.c \
+	e_log2l.c e_logl.c e_powl.c e_remainderl.c e_sinhl.c e_sqrtl.c \
+	e_tgammal.c invtrig.c k_cosl.c k_sinl.c k_tanl.c polevll.c \
+	s_asinhl.c s_atanl.c s_cbrtl.c s_ceill.c s_copysignl.c \
+	s_cosl.c s_erfl.c s_exp2l.c s_expm1l.c s_fabsl.c s_floorl.c \
+	s_fmal.c s_fmaxl.c s_fminl.c s_frexpl.c s_ilogbl.c s_llrintl.c \
+	s_llroundl.c s_log1pl.c s_logbl.c s_lrintl.c s_lroundl.c \
+	s_modfl.c s_nanl.c s_nextafterl.c s_nexttoward.c s_remquol.c \
+	s_rintl.c s_roundl.c s_scalbnl.c s_sinl.c s_tanhl.c s_tanl.c \
+	s_truncl.c
 
 # math routines for non-IEEE architectures.
 NOIEEE_SRCS = n_acosh.c n_argred.c n_asincos.c n_asinh.c n_atan.c \
@@ -317,21 +319,5 @@ MLINKS+=scalbn.3 scalbnl.3
 MLINKS+=sin.3 sinl.3
 MLINKS+=sqrt.3 sqrtl.3
 MLINKS+=tan.3 tanl.3
-
-#.if (${MACHINE_ARCH} == "i386")
-#LINKS=	${LIBDIR}/libm.a ${LIBDIR}/libm_i387.a
-#.if !defined(NOPROFILE)
-#LINKS+=	${LIBDIR}/libm_p.a ${LIBDIR}/libm_i387_p.a
-#.endif
-#.if !defined(NOPIC)
-#LINKS+= ${LIBDIR}/libm.so.${SHLIB_MAJOR}.${SHLIB_MINOR} \
-#	${LIBDIR}/libm_i387.so.${SHLIB_MAJOR}.${SHLIB_MINOR}
-#LINKS+= ${LIBDIR}/libm_pic.a ${LIBDIR}/libm_i387_pic.a
-#.endif
-#.endif
-
-#e_acos.o: 
-#	cpp \
-#	/usr/src/lib/libm/arch/mc68881/e_acos.S |  as -o e_acos.o
 
 .include <bsd.lib.mk>

@@ -1,4 +1,4 @@
-/*	$OpenBSD: uthread_spec.c,v 1.9 2007/07/20 22:34:40 kettenis Exp $	*/
+/*	$OpenBSD: uthread_spec.c,v 1.12 2011/07/05 00:42:46 tedu Exp $	*/
 /*
  * Copyright (c) 1995 John Birrell <jb@cimlogic.com.au>.
  * All rights reserved.
@@ -78,18 +78,30 @@ int
 pthread_key_delete(pthread_key_t key)
 {
 	int ret = 0;
+	pthread_t pthread;
 
-	if (key < PTHREAD_KEYS_MAX) {
+	if (key >= 0 && key < PTHREAD_KEYS_MAX) {
 		/* Lock the key table entry: */
 		_SPINLOCK(&key_table[key].lock);
 
-		if (key_table[key].allocated)
+		if (key_table[key].allocated) {
 			key_table[key].allocated = 0;
-		else
+
+			_thread_kern_sig_defer();
+			TAILQ_FOREACH(pthread, &_thread_list, tle) {
+				if (pthread->specific_data != NULL &&
+				    pthread->specific_data[key]) {
+					pthread->specific_data[key] = NULL;
+					pthread->specific_data_count--;
+				}
+			}
+			_thread_kern_sig_undefer();
+		} else
 			ret = EINVAL;
 
 		/* Unlock the key table entry: */
 		_SPINUNLOCK(&key_table[key].lock);
+
 	} else
 		ret = EINVAL;
 	return (ret);
@@ -150,14 +162,14 @@ int
 pthread_setspecific(pthread_key_t key, const void *value)
 {
 	struct pthread	*pthread;
-	int		ret = 0;
+	int		ret = EINVAL;
 
 	/* Point to the running thread: */
 	pthread = _get_curthread();
 
 	if ((pthread->specific_data) ||
 	    (pthread->specific_data = pthread_key_allocate_data())) {
-		if (key < PTHREAD_KEYS_MAX) {
+		if (key >= 0 && key < PTHREAD_KEYS_MAX) {
 			if (key_table[key].allocated) {
 				if (pthread->specific_data[key] == NULL) {
 					if (value != NULL)
@@ -168,12 +180,11 @@ pthread_setspecific(pthread_key_t key, const void *value)
 				}
 				pthread->specific_data[key] = value;
 				ret = 0;
-			} else
-				ret = EINVAL;
-		} else
-			ret = EINVAL;
-	} else
+			}
+		}
+	} else {
 		ret = ENOMEM;
+	}
 	return (ret);
 }
 
@@ -181,27 +192,21 @@ void *
 pthread_getspecific(pthread_key_t key)
 {
 	struct pthread	*pthread;
-	void		*data;
+	void		*data = NULL;
 
 	/* Point to the running thread: */
 	pthread = _get_curthread();
 
 	/* Check if there is specific data: */
-	if (pthread->specific_data != NULL && key < PTHREAD_KEYS_MAX) {
+	if (pthread->specific_data != NULL &&
+	    key >= 0 && key < PTHREAD_KEYS_MAX) {
 		/* Check if this key has been used before: */
 		if (key_table[key].allocated) {
 			/* Return the value: */
-			data = (void *) pthread->specific_data[key];
-		} else {
-			/*
-			 * This key has not been used before, so return NULL
-			 * instead: 
-			 */
-			data = NULL;
+			data = (void *)pthread->specific_data[key];
 		}
-	} else
-		/* No specific data has been created, so just return NULL: */
-		data = NULL;
+	}
+
 	return (data);
 }
 #endif
