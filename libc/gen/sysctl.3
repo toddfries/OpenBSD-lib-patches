@@ -1,4 +1,4 @@
-.\"	$OpenBSD: sysctl.3,v 1.203 2011/06/27 17:43:03 naddy Exp $
+.\"	$OpenBSD: sysctl.3,v 1.207 2011/07/08 19:50:32 jmc Exp $
 .\"
 .\" Copyright (c) 1993
 .\"	The Regents of the University of California.  All rights reserved.
@@ -27,7 +27,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: June 27 2011 $
+.Dd $Mdocdate: July 8 2011 $
 .Dt SYSCTL 3
 .Os
 .Sh NAME
@@ -1124,6 +1124,7 @@ privileges may change the value.
 .It Dv PF_INET No "	IPv4 values	yes"
 .It Dv PF_INET6 No "	IPv6 values	yes"
 .It Dv PF_KEY No "	key management	no"
+.It Dv PF_PIPEX No "	PIPEX values	yes"
 .El
 .Bl -tag -width "123456"
 .It Dv PF_ROUTE
@@ -1211,6 +1212,7 @@ The currently defined protocols and names are:
 .It ipip	allow	integer	yes
 .It mobileip	allow	integer	yes
 .It tcp	ackonpush	integer	yes
+.It tcp	always_keepalive	integer	yes
 .It tcp	baddynamic	array	yes
 .It tcp	ecn	integer	yes
 .It tcp	ident	structure	no
@@ -1575,6 +1577,10 @@ Time to keep alive the initial SYN packet of a TCP handshake.
 Time after a keepalive probe is sent until, in the absence of any response,
 another probe is sent.
 See also tcp.slowhz.
+.It Li tcp.always_keepalive
+Act as if the option
+.Dv SO_KEEPALIVE
+was set on all TCP sockets.
 .It Li tcp.mssdflt
 The maximum segment size that is used as default for non-local connections.
 The default value is 512.
@@ -1909,6 +1915,19 @@ Security Association database (SADB).
 .It Dv NET_KEY_SPD_DUMP
 IPsec flow database (SPD).
 .El
+.It Dv PF_PIPEX
+Get or set global information about PIPEX.
+.Pp
+The currently defined variable names are:
+.Bl -column "Third level nameXXXXXX" "struct loadavgXXX" -offset indent
+.It Sy Third level name	Type	Changeable
+.It Dv PIPEXCTL_ENABLE	integer	yes
+.El
+.Bl -tag -width "123456"
+.It Dv PIPEXCTL_ENABLE
+If set to 1, enable PIPEX processing.
+The default is 0.
+.El
 .El
 .Ss CTL_USER
 The string and integer information available for the
@@ -2202,6 +2221,8 @@ definitions for third level virtual file system identifiers
 definitions for second level virtual memory identifiers
 .It Aq Pa uvm/uvm_swap_encrypt.h
 definitions for third level virtual memory identifiers
+.It Aq Pa net/pipex.h
+definitions for third level PIPEX identifiers
 .It Aq Pa netinet/in.h
 definitions for third level IPv4/v6 identifiers and
 fourth level

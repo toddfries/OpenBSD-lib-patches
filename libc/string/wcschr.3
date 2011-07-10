@@ -1,8 +1,10 @@
-.\"	$OpenBSD: fabs.3,v 1.11 2009/08/03 21:26:07 martynas Exp $
-.\" Copyright (c) 1991 The Regents of the University of California.
+.\" Copyright (c) 1990, 1991 The Regents of the University of California.
 .\" All rights reserved.
 .\"
-.\"	@(#)fabs.3	5.1 (Berkeley) 5/2/91
+.\" This code is derived from software contributed to Berkeley by
+.\" Chris Torek and the American National Standards Committee X3,
+.\" on Information Processing Systems.
+.\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
 .\" are met:
@@ -27,53 +29,49 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     from: @(#)fabs.3	5.1 (Berkeley) 5/2/91
+.\"	$OpenBSD: wcschr.3,v 1.1 2011/07/09 16:32:11 nicm Exp $
 .\"
-.Dd $Mdocdate: August 3 2009 $
-.Dt FABS 3
+.Dd $Mdocdate: July 9 2011 $
+.Dt STRCHR 3
 .Os
 .Sh NAME
-.Nm fabs ,
-.Nm fabsf ,
-.Nm fabsl
-.Nd floating-point absolute value functions
+.Nm wcschr
+.Nd locate first occurrence of a wide character in a wide string
 .Sh SYNOPSIS
-.Fd #include <math.h>
-.Ft double
-.Fn fabs "double x"
-.Ft float
-.Fn fabsf "float x"
-.Ft long double
-.Fn fabsl "long double x"
+.Fd #include <wchar.h>
+.Ft wchar_t *
+.Fn wcschr "const wchar_t *s" "wchar_t c"
 .Sh DESCRIPTION
 The
-.Fn fabs
-function computes the absolute value of a floating-point number
-.Fa x .
-The
-.Fn fabsf
-function is a single precision version of
-.Fn fabs .
-The
-.Fn fabsl
-function is an extended precision version of
-.Fn fabs .
+.Fn wcschr
+function locates the first occurrence of the wide character
+.Fa c
+in the wide string
+.Fa s .
+The terminating null wide character is considered part of the wide string.
+If
+.Fa c
+is the null wide character (L'\e0'),
+.Fn wcschr
+locates the terminating null wide character.
 .Sh RETURN VALUES
 The
-.Fn fabs ,
-.Fn fabsf
-and
-.Fn fabsl
-functions return the absolute value of
-.Fa x .
+.Fn wcschr
+function returns a pointer to the located wide character or
+.Dv NULL
+if the wide character does not appear in the wide string.
 .Sh SEE ALSO
-.Xr abs 3 ,
-.Xr ceil 3 ,
-.Xr floor 3 ,
-.Xr math 3 ,
-.Xr rint 3
+.Xr wcscspn 3 ,
+.Xr wcspbrk 3 ,
+.Xr wcsrchr 3 ,
+.Xr wcsspn 3 ,
+.Xr wcsstr 3 ,
+.Xr wcstok 3 ,
+.Xr wmemchr 3
 .Sh STANDARDS
 The
-.Fn fabs
+.Fn wcschr
 function conforms to
-.St -ansiC .
+.St -isoC-99
+and was first introduced in
+.St -isoC-amd1 .

@@ -1,4 +1,4 @@
-/* $OpenBSD: modf.S,v 1.4 2005/08/07 16:40:14 espie Exp $ */
+/* $OpenBSD: modf.S,v 1.6 2011/07/08 22:28:33 martynas Exp $ */
 /*-
  * Copyright (c) 1990 The Regents of the University of California.
  * All rights reserved.

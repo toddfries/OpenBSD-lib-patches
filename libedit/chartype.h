@@ -1,4 +1,4 @@
-/*	$OpenBSD: chartype.h,v 1.2 2011/04/04 18:48:17 stsp Exp $	*/
+/*	$OpenBSD: chartype.h,v 1.4 2011/07/07 16:15:47 nicm Exp $	*/
 /*	$NetBSD: chartype.h,v 1.5 2010/04/15 00:55:57 christos Exp $	*/
 
 /*-
@@ -45,7 +45,7 @@
  * supports non-BMP code points without requiring UTF-16, but nothing
  * seems to actually advertise this properly, despite Unicode 3.1 having
  * been around since 2001... */
-#ifndef __NetBSD__
+#if !defined(__NetBSD__) && !defined(__OpenBSD__)
 #ifndef __STDC_ISO_10646__
 /* In many places it is assumed that the first 127 code points are ASCII
  * compatible, so ensure wchar_t indeed does ISO 10646 and not some other
@@ -173,11 +173,11 @@ typedef struct ct_buffer_t {
 } ct_buffer_t;
 
 #define ct_encode_string __ct_encode_string
-/* Encode a wide character string and return the UTF-8 encoded result. */
+/* Encode a wide-character string and return the UTF-8 encoded result. */
 public char *ct_encode_string(const Char *, ct_buffer_t *);
 
 #define ct_decode_string __ct_decode_string
-/* Decode a (multi)?byte string and return the wide character string result. */
+/* Decode a (multi)?byte string and return the wide-character string result. */
 public Char *ct_decode_string(const char *, ct_buffer_t *);
 
 /* Decode a (multi)?byte argv string array.
