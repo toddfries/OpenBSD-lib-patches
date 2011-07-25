@@ -1,4 +1,4 @@
-/*	$OpenBSD: s_cacosl.c,v 1.1 2011/07/08 19:25:31 martynas Exp $	*/
+/*	$OpenBSD: s_cacosl.c,v 1.3 2011/07/20 21:02:51 martynas Exp $	*/
 
 /*
  * Copyright (c) 2008 Stephen L. Moshier <steve@moshier.net>
@@ -50,7 +50,7 @@
 #include <complex.h>
 #include <math.h>
 
-static long double PIO2L = 1.570796326794896619231321691639751442098585L;
+static const long double PIO2L = 1.570796326794896619231321691639751442098585L;
 
 long double complex
 cacosl(long double complex z)
@@ -58,6 +58,6 @@ cacosl(long double complex z)
 	long double complex w;
 
 	w = casinl(z);
-	w = (PIO2L - creal(w)) - cimag(w) * I;
+	w = (PIO2L - creall(w)) - cimagl(w) * I;
 	return (w);
 }

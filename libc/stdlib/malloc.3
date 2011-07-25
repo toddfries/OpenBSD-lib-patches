@@ -30,9 +30,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"	$OpenBSD: malloc.3,v 1.68 2010/05/26 08:22:11 jmc Exp $
+.\"	$OpenBSD: malloc.3,v 1.70 2011/07/22 07:00:44 otto Exp $
 .\"
-.Dd $Mdocdate: May 26 2010 $
+.Dd $Mdocdate: July 22 2011 $
 .Dt MALLOC 3
 .Os
 .Sh NAME
@@ -202,7 +202,7 @@ i.e. avoid allocations like the following:
 if ((newp = realloc(p, num * size)) == NULL) {
 	...
 .Ed
-.Pp
+.Sh MALLOC_OPTIONS
 Malloc will first look for a symbolic link called
 .Pa /etc/malloc.conf
 and next check the environment for a variable called
@@ -302,8 +302,9 @@ Decrease the size of the free page cache by a factor of two.
 Increase the size of the free page cache by a factor of two.
 .El
 .Pp
-So to set a systemwide reduction of cache size and use guard pages:
-.Dl # ln -s 'G\*(Lt' /etc/malloc.conf
+So to set a systemwide reduction of the cache to a quarter of the
+default size and use guard pages:
+.Dl # ln -s 'G\*(Lt\*(Lt' /etc/malloc.conf
 .Pp
 The flags are mostly for testing and debugging.
 If a program changes behavior if any of these options (except

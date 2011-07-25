@@ -1,4 +1,4 @@
-#  $OpenBSD: Makefile,v 1.94 2011/07/11 11:07:04 martynas Exp $
+#  $OpenBSD: Makefile,v 1.96 2011/07/24 19:25:50 martynas Exp $
 #  $NetBSD: Makefile,v 1.28 1995/11/20 22:06:19 jtc Exp $
 #
 #  @(#)Makefile 5.1beta 93/09/24 
@@ -187,12 +187,16 @@ SRCS+=		${LONG_SRCS}
 .endif
 
 MAN+=	acos.3 acosh.3 asin.3 asinh.3 atan.3 atan2.3 atanh.3 ceil.3 \
-	cimag.3 conj.3 copysign.3 cos.3 cosh.3 cproj.3 erf.3 exp.3 \
+	copysign.3 cos.3 cosh.3 erf.3 exp.3 \
 	fdim.3 feclearexcept.3 feenableexcept.3 fegetenv.3 \
-	fegetround.3 floor.3 fmax.3 fmod.3 hypot.3 ilogb.3 j0.3 \
+	fegetround.3 floor.3 fma.3 fmax.3 fmod.3 hypot.3 ilogb.3 j0.3 \
 	lgamma.3 logb.3 lrint.3 lround.3 nan.3 nextafter.3 \
 	remainder.3 rint.3 round.3 scalbn.3 sin.3 sinh.3 sqrt.3 \
 	tan.3 tanh.3 trunc.3
+
+MAN+=	cacos.3 cacosh.3 carg.3 casin.3 casinh.3 catan.3 catanh.3 \
+	ccos.3 ccosh.3 cexp.3 cimag.3 clog.3 conj.3 cpow.3 cproj.3 \
+	creal.3 csin.3 csinh.3 csqrt.3 ctan.3 ctanh.3
 
 MLINKS+=erf.3 erfc.3
 MLINKS+=exp.3 exp2.3
@@ -220,6 +224,7 @@ MLINKS+=logb.3 scalb.3
 MLINKS+=logb.3 significand.3
 MLINKS+=lrint.3 llrint.3
 MLINKS+=lround.3 llround.3
+MLINKS+=nextafter.3 nexttoward.3
 MLINKS+=remainder.3 drem.3 remainder.3 remquo.3
 MLINKS+=rint.3 nearbyint.3
 MLINKS+=scalbn.3 scalbln.3
@@ -234,12 +239,9 @@ MLINKS+=atan.3 atanf.3
 MLINKS+=atan2.3 atan2f.3
 MLINKS+=atanh.3 atanhf.3
 MLINKS+=ceil.3 ceilf.3
-MLINKS+=cimag.3 cimagf.3
-MLINKS+=conj.3 conjf.3
 MLINKS+=copysign.3 copysignf.3
 MLINKS+=cos.3 cosf.3
 MLINKS+=cosh.3 coshf.3
-MLINKS+=cproj.3 cprojf.3
 MLINKS+=erf.3 erfcf.3
 MLINKS+=erf.3 erff.3
 MLINKS+=exp.3 exp2f.3
@@ -252,6 +254,7 @@ MLINKS+=exp.3 logf.3
 MLINKS+=exp.3 powf.3
 MLINKS+=fdim.3 fdimf.3
 MLINKS+=floor.3 floorf.3
+MLINKS+=fma.3 fmaf.3
 MLINKS+=fmax.3 fmaxf.3
 MLINKS+=fmax.3 fminf.3
 MLINKS+=fmod.3 fmodf.3
@@ -277,6 +280,7 @@ MLINKS+=lround.3 lroundf.3
 MLINKS+=nan.3 nanf.3
 MLINKS+=nearbyint.3 nearbyintf.3
 MLINKS+=nextafter.3 nextafterf.3
+MLINKS+=nexttoward.3 nexttowardf.3
 MLINKS+=remainder.3 dremf.3
 MLINKS+=remainder.3 remainderf.3
 MLINKS+=remainder.3 remquof.3
@@ -291,6 +295,29 @@ MLINKS+=sqrt.3 sqrtf.3
 MLINKS+=tan.3 tanf.3
 MLINKS+=tanh.3 tanhf.3
 MLINKS+=trunc.3 truncf.3
+
+# complex float versions
+MLINKS+=cacos.3 cacosf.3
+MLINKS+=cacosh.3 cacoshf.3
+MLINKS+=carg.3 cargf.3
+MLINKS+=casin.3 casinf.3
+MLINKS+=casinh.3 casinhf.3
+MLINKS+=catan.3 catanf.3
+MLINKS+=catanh.3 catanhf.3
+MLINKS+=ccos.3 ccosf.3
+MLINKS+=ccosh.3 ccoshf.3
+MLINKS+=cexp.3 cexpf.3
+MLINKS+=cimag.3 cimagf.3
+MLINKS+=clog.3 clogf.3
+MLINKS+=conj.3 conjf.3
+MLINKS+=cpow.3 cpowf.3
+MLINKS+=cproj.3 cprojf.3
+MLINKS+=creal.3 crealf.3
+MLINKS+=csin.3 csinf.3
+MLINKS+=csinh.3 csinhf.3
+MLINKS+=csqrt.3 csqrtf.3
+MLINKS+=ctan.3 ctanf.3
+MLINKS+=ctanh.3 ctanhf.3
 
 # long double versions
 MLINKS+=acos.3 acosl.3
@@ -316,6 +343,7 @@ MLINKS+=exp.3 logl.3
 MLINKS+=exp.3 powl.3
 MLINKS+=fdim.3 fdiml.3
 MLINKS+=floor.3 floorl.3
+MLINKS+=fma.3 fmal.3
 MLINKS+=fmax.3 fmaxl.3
 MLINKS+=fmax.3 fminl.3
 MLINKS+=fmod.3 fmodl.3
@@ -333,6 +361,7 @@ MLINKS+=lround.3 lroundl.3
 MLINKS+=nan.3 nanl.3
 MLINKS+=nearbyint.3 nearbyintl.3
 MLINKS+=nextafter.3 nextafterl.3
+MLINKS+=nexttoward.3 nexttowardl.3
 MLINKS+=remainder.3 remainderl.3
 MLINKS+=remainder.3 remquol.3
 MLINKS+=rint.3 rintl.3
@@ -346,5 +375,28 @@ MLINKS+=sqrt.3 sqrtl.3
 MLINKS+=tan.3 tanl.3
 MLINKS+=tanh.3 tanhl.3
 MLINKS+=trunc.3 truncl.3
+
+# complex long double versions
+MLINKS+=cacos.3 cacosl.3
+MLINKS+=cacosh.3 cacoshl.3
+MLINKS+=carg.3 cargl.3
+MLINKS+=casin.3 casinl.3
+MLINKS+=casinh.3 casinhl.3
+MLINKS+=catan.3 catanl.3
+MLINKS+=catanh.3 catanhl.3
+MLINKS+=ccos.3 ccosl.3
+MLINKS+=ccosh.3 ccoshl.3
+MLINKS+=cexp.3 cexpl.3
+MLINKS+=cimag.3 cimagl.3
+MLINKS+=clog.3 clogl.3
+MLINKS+=conj.3 conjl.3
+MLINKS+=cpow.3 cpowl.3
+MLINKS+=cproj.3 cprojl.3
+MLINKS+=creal.3 creall.3
+MLINKS+=csin.3 csinl.3
+MLINKS+=csinh.3 csinhl.3
+MLINKS+=csqrt.3 csqrtl.3
+MLINKS+=ctan.3 ctanl.3
+MLINKS+=ctanh.3 ctanhl.3
 
 .include <bsd.lib.mk>

@@ -1,4 +1,4 @@
-/*	$OpenBSD: s_ctanl.c,v 1.1 2011/07/08 19:25:31 martynas Exp $	*/
+/*	$OpenBSD: s_ctanl.c,v 1.3 2011/07/20 21:02:51 martynas Exp $	*/
 
 /*
  * Copyright (c) 2008 Stephen L. Moshier <steve@moshier.net>
@@ -61,15 +61,15 @@
 #include <math.h>
 
 #if	LDBL_MANT_DIG == 64
-static long double MACHEPL= 5.42101086242752217003726400434970855712890625E-20L;
+static const long double MACHEPL= 5.42101086242752217003726400434970855712890625E-20L;
 #elif	LDBL_MANT_DIG == 113
-static long double MACHEPL = 9.629649721936179265279889712924636592690508e-35L;
+static const long double MACHEPL = 9.629649721936179265279889712924636592690508e-35L;
 #endif
 
-static long double PIL = 3.141592653589793238462643383279502884197169L;
-static long double DP1 = 3.14159265358979323829596852490908531763125L;
-static long double DP2 = 1.6667485837041756656403424829301998703007e-19L;
-static long double DP3 = 1.8830410776607851167459095484560349402753e-39L;
+static const long double PIL = 3.141592653589793238462643383279502884197169L;
+static const long double DP1 = 3.14159265358979323829596852490908531763125L;
+static const long double DP2 = 1.6667485837041756656403424829301998703007e-19L;
+static const long double DP3 = 1.8830410776607851167459095484560349402753e-39L;
 
 static long double
 redupil(long double x)
@@ -95,8 +95,8 @@ ctansl(long double complex z)
 	long double f, x, x2, y, y2, rn, t;
 	long double d;
 
-	x = fabsl(2.0L * creal(z));
-	y = fabsl(2.0L * cimag(z));
+	x = fabsl(2.0L * creall(z));
+	y = fabsl(2.0L * cimagl(z));
 
 	x = redupil(x);
 
@@ -138,8 +138,8 @@ ctanl(long double complex z)
 	long double complex w;
 	long double d, x, y;
 
-	x = creal(z);
-	y = cimag(z);
+	x = creall(z);
+	y = cimagl(z);
 	d = cosl(2.0L * x) + coshl(2.0L * y);
 
 	if (fabsl(d) < 0.25L) {
