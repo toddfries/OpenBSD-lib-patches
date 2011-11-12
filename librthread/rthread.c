@@ -1,4 +1,4 @@
-/*	$OpenBSD: rthread.c,v 1.43 2011/10/17 06:39:20 guenther Exp $ */
+/*	$OpenBSD: rthread.c,v 1.45 2011/11/09 10:28:01 guenther Exp $ */
 /*
  * Copyright (c) 2004,2005 Ted Unangst <tedu@openbsd.org>
  * All Rights Reserved.
@@ -20,20 +20,13 @@
  * threads.
  */
 
-#include <sys/param.h>
-#include <sys/event.h>
-#include <sys/mman.h>
-#include <sys/wait.h>
+#include <sys/types.h>
 
-#include <machine/spinlock.h>
-
-#include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
-#include <err.h>
 #include <errno.h>
 #include <dlfcn.h>
 
@@ -94,21 +87,6 @@ __errno(void)
 {
 	return (TCB_ERRNOPTR());
 }
-
-
-static pthread_t
-_rthread_findself(void)
-{
-	pthread_t me;
-	pid_t tid = getthrid();
-
-	LIST_FOREACH(me, &_thread_list, threads) 
-		if (me->tid == tid)
-			break;
-
-	return (me);
-}
-
 
 static void
 _rthread_start(void *v)
@@ -197,17 +175,11 @@ _rthread_clearflag(pthread_t thread, int flag)
 pthread_t
 pthread_self(void)
 {
-	pthread_t thread;
-
 	if (!_threads_ready)
 		if (_rthread_init())
 			return (NULL);
 
-	_spinlock(&_thread_lock);
-	thread = _rthread_findself();
-	_spinunlock(&_thread_lock);
-
-	return (thread);
+	return (TCB_THREAD());
 }
 
 static void
