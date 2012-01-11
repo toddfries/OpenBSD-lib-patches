@@ -1,4 +1,4 @@
-/*	$OpenBSD: rthread.c,v 1.47 2011/12/05 06:56:09 guenther Exp $ */
+/*	$OpenBSD: rthread.c,v 1.49 2011/12/28 04:59:31 guenther Exp $ */
 /*
  * Copyright (c) 2004,2005 Ted Unangst <tedu@openbsd.org>
  * All Rights Reserved.
@@ -277,10 +277,11 @@ int
 pthread_join(pthread_t thread, void **retval)
 {
 	int e;
+	pthread_t self = pthread_self();
 
 	if (thread == NULL)
 		e = EINVAL;
-	else if (thread->tid == getthrid())
+	else if (thread == self)
 		e = EDEADLK;
 	else if (thread->flags & THREAD_DETACHED)
 		e = EINVAL;
@@ -400,7 +401,7 @@ fail1:
 int
 pthread_kill(pthread_t thread, int sig)
 {
-	return (kill(thread->tid, sig));
+	return (kill(thread->tid, sig) == 0 ? 0 : errno);
 }
 
 int
