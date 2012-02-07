@@ -1,7 +1,11 @@
-/*	$OpenBSD: readdir.c,v 1.16 2012/02/04 23:02:40 guenther Exp $ */
-/*
- * Copyright (c) 1983, 1993
- *	The Regents of the University of California.  All rights reserved.
+/*	$OpenBSD: stpncpy.c,v 1.1 2012/01/17 02:48:01 guenther Exp $	*/
+
+/*-
+ * Copyright (c) 1990 The Regents of the University of California.
+ * All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * Chris Torek.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,60 +32,25 @@
  * SUCH DAMAGE.
  */
 
-#include <dirent.h>
-#include <errno.h>
-#include "thread_private.h"
+#include <string.h>
 
-/*
- * get next entry in a directory.
- */
-int
-_readdir_unlocked(DIR *dirp, struct dirent **result, int skipdeleted)
+char *
+stpncpy(char *dst, const char *src, size_t n)
 {
-	struct dirent *dp;
+	if (n != 0) {
+		char *d = dst;
+		const char *s = src;
 
-	*result = NULL;
-	for (;;) {
-		if (dirp->dd_loc >= dirp->dd_size)
-			dirp->dd_loc = 0;
-		if (dirp->dd_loc == 0) {
-			dirp->dd_size = getdirentries(dirp->dd_fd,
-			    dirp->dd_buf, dirp->dd_len, &dirp->dd_seek);
-			if (dirp->dd_size == 0)
-				return (0);
-			if (dirp->dd_size < 0)
-				return (-1);
-		}
-		dp = (struct dirent *)(dirp->dd_buf + dirp->dd_loc);
-		if ((long)dp & 03 ||	/* bogus pointer check */
-		    dp->d_reclen <= 0 ||
-		    dp->d_reclen > dirp->dd_len + 1 - dirp->dd_loc) {
-			errno = EINVAL;
-			return (-1);
-		}
-		dirp->dd_loc += dp->d_reclen;
-
-		/*
-		 * When called from seekdir(), we let it decide on
-		 * the end condition to avoid overshooting: the next
-		 * readdir call should produce the next non-deleted entry,
-		 * and we already advanced dd_loc.
-		 */
-		if (dp->d_ino == 0 && skipdeleted)
-			continue;
-		*result = dp;
-		return (0);
+		dst = &dst[n];
+		do {
+			if ((*d++ = *s++) == 0) {
+				dst = d;
+				/* NUL pad the remaining n-1 bytes */
+				while (--n != 0)
+					*d++ = 0;
+				break;
+			}
+		} while (--n != 0);
 	}
-}
-
-struct dirent *
-readdir(DIR *dirp)
-{
-	struct dirent *dp;
-
-	_MUTEX_LOCK(&dirp->dd_lock);
-	_readdir_unlocked(dirp, &dp, 1);
-	_MUTEX_UNLOCK(&dirp->dd_lock);
-
-	return (dp);
+	return (dst);
 }

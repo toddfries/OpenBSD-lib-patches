@@ -1,6 +1,11 @@
-.\"	$OpenBSD: ilogb.3,v 1.5 2012/01/14 14:57:44 espie Exp $
-.\" Copyright (c) 1985, 1991 Regents of the University of California.
+.\"	$OpenBSD: stpcpy.3,v 1.2 2012/01/17 08:12:12 jmc Exp $
+.\"
+.\" Copyright (c) 1990, 1991 The Regents of the University of California.
 .\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" Chris Torek and the American National Standards Committee X3,
+.\" on Information Processing Systems.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -26,59 +31,87 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     from: @(#)ieee.3	6.4 (Berkeley) 5/6/91
-.\"
-.Dd $Mdocdate: January 14 2012 $
-.Dt ILOGB 3
+.Dd $Mdocdate: January 17 2012 $
+.Dt STPCPY 3
 .Os
 .Sh NAME
-.Nm ilogb ,
-.Nm ilogbf ,
-.Nm ilogbl
-.Nd extract exponent
+.Nm stpcpy ,
+.Nm stpncpy
+.Nd copy strings
 .Sh SYNOPSIS
-.Fd #include <math.h>
-.Ft int
-.Fn ilogb "double x"
-.Ft int
-.Fn ilogbf "float x"
-.Ft int
-.Fn ilogbl "long double x"
+.Fd #include <string.h>
+.Ft char *
+.Fn stpcpy "char *dst" "const char *src"
+.Ft char *
+.Fn stpncpy "char *dst" "const char *src" "size_t len"
 .Sh DESCRIPTION
-.Fn ilogb
-returns
-.Fa x Ns 's exponent
-.Fa n ,
-in integer format.
-.Fn ilogb \*(Pm\*(If
-returns
-.Dv INT_MAX
+The
+.Fn stpcpy
 and
-.Fn ilogb 0
-returns
-.Dv INT_MIN .
+.Fn stpncpy
+functions copy the string
+.Fa src
+to
+.Fa dst
+(including the terminating
+.Ql \e0
+character).
+.Pp
 The
-.Fn ilogbf
-function is a single precision version of
-.Fn ilogb .
+.Fn stpncpy
+function copies not more than
+.Fa len
+characters into
+.Fa dst ,
+appending
+.Ql \e0
+characters if
+.Fa src
+is less than
+.Fa len
+characters long, and
+.Em not
+terminating
+.Fa dst
+if the length of
+.Fa src
+is greater than or equal to
+.Fa len .
+.Sh RETURN VALUES
 The
-.Fn ilogbl
-function is an extended precision version of
-.Fn ilogb .
+.Fn stpcpy
+function returns a pointer to the terminating
+.Ql \e0
+character written into
+.Fa dst .
+.Pp
+The
+.Fn stpncpy
+function returns a pointer to the first
+.Ql \e0
+character written into
+.Fa dst ,
+or to
+.Fa &dst[len]
+if the length of
+.Fa src
+is greater than or equal to
+.Fa len .
 .Sh SEE ALSO
-.Xr ffs 3 ,
-.Xr frexp 3
+.Xr strcpy 3 ,
+.Xr strlcpy 3 ,
+.Xr strncpy 3
 .Sh STANDARDS
-.St -ieee754
+The
+.Fn stpcpy
+and
+.Fn stpncpy
+functions conform to
+.St -p1003.1-2008 .
 .Sh HISTORY
 The
-.Nm ilogb ,
-.Nm ilogbf
+.Fn stpcpy
 and
-.Nm ilogbl
-functions appeared in
-.Bx 4.3 ,
-.Nx 1.1
-and
-.Ox 4.5 ,
-respectively.
+.Fn stpncpy
+functions first appeared in
+.Ox 5.1 .
