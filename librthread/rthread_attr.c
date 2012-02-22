@@ -1,4 +1,4 @@
-/*	$OpenBSD: rthread_attr.c,v 1.10 2011/11/06 11:48:59 guenther Exp $ */
+/*	$OpenBSD: rthread_attr.c,v 1.16 2012/02/19 06:53:58 guenther Exp $ */
 /*
  * Copyright (c) 2004,2005 Ted Unangst <tedu@openbsd.org>
  * All Rights Reserved.
@@ -50,14 +50,17 @@ int
 pthread_attr_init(pthread_attr_t *attrp)
 {
 	pthread_attr_t attr;
+	int error;
+
+	/* make sure _rthread_attr_default has been initialized */
+	if (!_threads_ready)
+		if ((error = _rthread_init()))
+			return (error);
 
 	attr = calloc(1, sizeof(*attr));
 	if (!attr)
 		return (errno);
-	attr->stack_size = RTHREAD_STACK_SIZE_DEF;
-	attr->guard_size = sysconf(_SC_PAGESIZE);
-	attr->stack_size -= attr->guard_size;
-	attr->detach_state = PTHREAD_CREATE_JOINABLE;
+	*attr = _rthread_attr_default;
 	*attrp = attr;
 
 	return (0);
@@ -83,13 +86,9 @@ pthread_attr_getguardsize(const pthread_attr_t *attrp, size_t *guardsize)
 int
 pthread_attr_setguardsize(pthread_attr_t *attrp, size_t guardsize)
 {
-	if ((*attrp)->guard_size != guardsize) {
-		(*attrp)->stack_size += (*attrp)->guard_size;
-		(*attrp)->guard_size = guardsize;
-		(*attrp)->stack_size -= (*attrp)->guard_size;
-	}
+	(*attrp)->guard_size = guardsize;
 
-	return 0;
+	return (0);
 }
 
 int
@@ -103,14 +102,14 @@ pthread_attr_getdetachstate(const pthread_attr_t *attrp, int *detachstate)
 int
 pthread_attr_setdetachstate(pthread_attr_t *attrp, int detachstate)
 {
-	int retval;
+	int error;
 
-	retval = (detachstate == PTHREAD_CREATE_DETACHED ||
+	error = (detachstate == PTHREAD_CREATE_DETACHED ||
 		  detachstate == PTHREAD_CREATE_JOINABLE) ? 0 : EINVAL;
-	if (retval == 0)
+	if (error == 0)
 		(*attrp)->detach_state = detachstate;
 
-	return (retval);
+	return (error);
 }
 
 int
@@ -118,7 +117,7 @@ pthread_attr_getstack(const pthread_attr_t *attrp, void **stackaddr,
     size_t *stacksize)
 {
 	*stackaddr = (*attrp)->stack_addr;
-	*stacksize = (*attrp)->stack_size + (*attrp)->guard_size;
+	*stacksize = (*attrp)->stack_size;
 
 	return (0);
 }
@@ -126,12 +125,17 @@ pthread_attr_getstack(const pthread_attr_t *attrp, void **stackaddr,
 int
 pthread_attr_setstack(pthread_attr_t *attrp, void *stackaddr, size_t stacksize)
 {
-	int n;
+	int error;
 
-	if ((n = pthread_attr_setstackaddr(attrp, stackaddr)))
-		return (n);
+	/*
+	 * XXX Add an alignment test, on stackaddr for stack-grows-up
+	 * archs or on stackaddr+stacksize for stack-grows-down archs
+	 */
+	if (stacksize < PTHREAD_STACK_MIN)
+		return (EINVAL);
+	if ((error = pthread_attr_setstackaddr(attrp, stackaddr)))
+		return (error);
 	(*attrp)->stack_size = stacksize;
-	(*attrp)->stack_size -= (*attrp)->guard_size;
 
 	return (0);
 }
@@ -139,7 +143,7 @@ pthread_attr_setstack(pthread_attr_t *attrp, void *stackaddr, size_t stacksize)
 int
 pthread_attr_getstacksize(const pthread_attr_t *attrp, size_t *stacksize)
 {
-	*stacksize = (*attrp)->stack_size + (*attrp)->guard_size;
+	*stacksize = (*attrp)->stack_size;
 	
 	return (0);
 }
@@ -147,11 +151,10 @@ pthread_attr_getstacksize(const pthread_attr_t *attrp, size_t *stacksize)
 int
 pthread_attr_setstacksize(pthread_attr_t *attrp, size_t stacksize)
 {
+	if (stacksize < PTHREAD_STACK_MIN ||
+	    stacksize > ROUND_TO_PAGE(stacksize))
+		return (EINVAL);
 	(*attrp)->stack_size = stacksize;
-	if ((*attrp)->stack_size > (*attrp)->guard_size)
-		(*attrp)->stack_size -= (*attrp)->guard_size;
-	else
-		(*attrp)->stack_size = 0;
 
 	return (0);
 }
@@ -167,12 +170,8 @@ pthread_attr_getstackaddr(const pthread_attr_t *attrp, void **stackaddr)
 int
 pthread_attr_setstackaddr(pthread_attr_t *attrp, void *stackaddr)
 {
-	size_t pgsz = sysconf(_SC_PAGESIZE);
-
-	if (pgsz == (size_t)-1)
-		return EINVAL;
-	if ((uintptr_t)stackaddr & (pgsz - 1))
-		return EINVAL;
+	if (stackaddr == NULL || (uintptr_t)stackaddr & (_thread_pagesize - 1))
+		return (EINVAL);
 	(*attrp)->stack_addr = stackaddr;
 
 	return (0);
@@ -189,7 +188,9 @@ pthread_attr_getscope(const pthread_attr_t *attrp, int *contentionscope)
 int
 pthread_attr_setscope(pthread_attr_t *attrp, int contentionscope)
 {
-	/* XXX contentionscope should be validated here */
+	if (contentionscope != PTHREAD_SCOPE_SYSTEM ||
+	    contentionscope != PTHREAD_SCOPE_PROCESS)
+		return (EINVAL);
 	(*attrp)->contention_scope = contentionscope;
 
 	return (0);
