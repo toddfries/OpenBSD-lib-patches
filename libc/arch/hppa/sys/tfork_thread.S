@@ -1,4 +1,4 @@
-/*	$OpenBSD: rfork_thread.S,v 1.5 2012/02/26 13:13:22 miod Exp $	*/
+/*	$OpenBSD: tfork_thread.S,v 1.1 2012/03/22 00:44:55 guenther Exp $	*/
 
 /*
  * Copyright (c) 2005, Miodrag Vallat
@@ -25,45 +25,41 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "../../../libc/arch/vax/SYS.h"
+#include "SYS.h"
 
 /*
- * int __tfork_thread(const struct __tfork *param, void *stack, void (*func)(void *), void *arg);
+ * int __tfork_thread(param, void *stack, void (*func)(void *), void *arg);
  */
-ENTRY(__tfork_thread, R2|R3|R4)
-	/*
-	 * Save thread creation arguments into registers.
-	 */
-	movl	8(ap), r2	/* stack */
-	movl	12(ap), r3	/* func */
-	movl	16(ap), r4	/* arg */
+ENTRY(__tfork_thread, 0)
+	SYSCALL(__tfork)
+	comb,<>	r0, ret0, 1f
+	 nop
 
-	__DO_SYSCALL(__tfork)
-	jcs	9f
-
-	cmpl	r0, $0
-	beql	1f
-
-	/*
-	 * In parent process: just return.
-	 */
-	ret
-
-1:
 	/*
 	 * In child process: switch stack, invoke function, then exit.
-	 * Note that since we can not pass a register to calls, we need
-	 * to waste 4 bytes of stack in every thread.
 	 */
-	movl	r2, sp		/* stack */
-	pushl	r3		/* func */
-	pushl	r4		/* arg */
-	calls	$1, *4(sp)	/* func */
 
-	__DO_SYSCALL(__threxit)
-
-9:
 	/*
-	 * system call failed.
+	 * PIC code expects 32 bytes of room available below sp.
+	 * Then the regular procedure invocation requires us to allocate
+	 * 64 bytes as well.
 	 */
-	jmp	_C_LABEL(_cerror)
+	copy	arg1, sp
+	ldo	0(sp), r3
+	stw,ma	r0, HPPA_FRAME_SIZE(sp)
+	stw	r0, HPPA_FRAME_CRP(sp)
+	stw	r0, HPPA_FRAME_PSP(sp)
+
+	copy	arg3, arg0		/* arg */
+	copy	arg2, t1
+	bl	$$dyncall, r31
+	copy	r31, rp
+
+	copy	r0, arg0
+	SYSCALL(__threxit)
+
+1:
+	bv	r0(rp)
+	 nop
+
+EXIT(__tfork_thread)

@@ -1,4 +1,4 @@
-/*	$OpenBSD: rfork_thread.S,v 1.3 2012/01/17 02:34:18 guenther Exp $	*/
+/*	$OpenBSD: tfork_thread.S,v 1.1 2012/03/22 00:44:55 guenther Exp $	*/
 
 /*
  * Copyright (c) 2005, Miodrag Vallat
@@ -25,50 +25,33 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "../../../libc/arch/sparc/SYS.h"
+#include  "SYS.h"
 
 /*
  * int __tfork_thread(const struct __tfork *param, void *stack, void (*func)(void *), void *arg);
  */
-ENTRY(__tfork_thread)
-	mov	%o1, %o4	/* save stack */
+LEAF(__tfork_thread,0)
+	/* a0 = flags, a1 = stack, a2 = func, a3 = arg */
+	mov	a3, a5
+	CALLSYS_ERROR(__tfork)
 
-	/*
-	 * We can not invoke __tfork as a G2-style system call since we want
-	 * different return paths.
-	 */
-	mov	SYS___tfork, %g1
-	t	ST_SYSCALL
-	bcs	9f
-	 nop
-
-	cmp	%o0, 0
-	be	1f
-	 nop
+	beq	v0, 1f
 
 	/*
 	 * In parent process: just return.
 	 */
-	retl
-	 nop
+	RET
 
 1:
 	/*
 	 * In child process: switch stack, invoke function, then exit.
-	 * Don't forget to allocate room for a window save on the new
-	 * stack!
 	 */
-	sub	%g0, %g0, %fp
-	sub	%o4, 96, %sp	/* stack */
-	call	%o2		/* func */
-	 mov	%o3, %o0	/* arg */
+	mov	a1, sp		/* stack */
+	mov	a5, a0		/* arg */
+	mov	a2, pv		/* func */
+	jsr	ra, (pv)
 
-	mov	SYS___threxit, %g1
-	clr	%o0
-	t	ST_SYSCALL	/* will not return */
-
-9:
-	/*
-	 * System call failure.
-	 */
-	ERROR()
+	mov	zero, a0
+	CALLSYS_NOERROR(__threxit)
+	
+END(__tfork_thread)

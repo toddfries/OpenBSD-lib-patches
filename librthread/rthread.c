@@ -1,4 +1,4 @@
-/*	$OpenBSD: rthread.c,v 1.57 2012/03/03 10:02:26 guenther Exp $ */
+/*	$OpenBSD: rthread.c,v 1.60 2012/03/22 15:26:04 kurt Exp $ */
 /*
  * Copyright (c) 2004,2005 Ted Unangst <tedu@openbsd.org>
  * All Rights Reserved.
@@ -60,7 +60,6 @@ struct pthread_attr _rthread_attr_default = {
 	.sched_policy			= SCHED_OTHER,
 	.sched_param = { .sched_priority = 0 },
 	.sched_inherit			= PTHREAD_INHERIT_SCHED,
-	.create_suspended		= 0,
 #else
 	0
 #endif
@@ -180,6 +179,7 @@ _rthread_init(void)
 	_rthread_dl_lock(1);
 	_rthread_bind_lock(0);
 	_rthread_bind_lock(1);
+	sched_yield();
 	dlctl(NULL, DL_SETTHREADLCK, _rthread_dl_lock);
 	dlctl(NULL, DL_SETBINDLCK, _rthread_bind_lock);
 #endif
@@ -579,15 +579,55 @@ _thread_dump_info(void)
 }
 
 #if defined(__ELF__) && defined(PIC)
+/*
+ * _rthread_dl_lock() provides the locking for dlopen(), dlclose(), and
+ * the function called via atexit() to invoke all destructors.  The latter
+ * two call shared-object destructors, which may need to call dlclose(),
+ * so this lock needs to permit recursive locking.
+ * The specific code here was extracted from _rthread_mutex_lock() and
+ * pthread_mutex_unlock() and simplified to use the static variables.
+ */
 void
 _rthread_dl_lock(int what)
 {
 	static _spinlock_lock_t lock = _SPINLOCK_UNLOCKED;
+	static pthread_t owner = NULL;
+	static struct pthread_queue lockers = TAILQ_HEAD_INITIALIZER(lockers);
+	static int count = 0;
 
 	if (what == 0)
+	{
+		pthread_t self = pthread_self();
+
+		/* lock, possibly recursive */
 		_spinlock(&lock);
-	else
+		if (owner == NULL) {
+			owner = self;
+		} else if (owner != self) {
+			TAILQ_INSERT_TAIL(&lockers, self, waiting);
+			while (owner != self) {
+				__thrsleep(self, 0, NULL, &lock, NULL);
+				_spinlock(&lock);
+			}
+		}
+		count++;
 		_spinunlock(&lock);
+	}
+	else
+	{
+		/* unlock, possibly recursive */
+		if (--count == 0) {
+			pthread_t next;
+
+			_spinlock(&lock);
+			owner = next = TAILQ_FIRST(&lockers);
+			if (next != NULL)
+				TAILQ_REMOVE(&lockers, next, waiting);
+			_spinunlock(&lock);
+			if (next != NULL)
+				__thrwakeup(next, 1);
+		}
+	}
 }
 
 void

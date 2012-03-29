@@ -1,7 +1,6 @@
-/*	$OpenBSD: rfork_thread.S,v 1.6 2012/01/17 02:34:18 guenther Exp $ */
+/*	$OpenBSD: tfork_thread.S,v 1.1 2012/03/22 00:44:55 guenther Exp $ */
 /*-
  * Copyright (c) 2000 Peter Wemm <peter@FreeBSD.org>
- * Copyright (c) 2003 Alan L. Cox <alc@cs.rice.edu>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,34 +27,50 @@
 
 #include <machine/asm.h>
 #if 0
-__FBSDID("$FreeBSD: /repoman/r/ncvs/src/lib/libc/amd64/gen/rfork_thread.S,v 1.1 2003/10/13 20:32:33 alc Exp $");
+__FBSDID("$FreeBSD: /repoman/r/ncvs/src/lib/libc/i386/gen/rfork_thread.S,v 1.5 2003/05/07 17:23:25 jhb Exp $");
 #endif
 
 /*
  * With thanks to John Dyson for the original version of this.
  */
 
-#include "../../../libc/arch/amd64/SYS.h"
+#include "SYS.h"
 
 /*
- *                %rdi   %rsi        %rdx       %rcx
+ *                8      12          16         20
  * __tfork_thread(param, stack_addr, start_fnc, start_arg);
  *
- * param:		Argument to pass to the actual kernel call.
+ * param:		Arguments to actual system call.
  * stack_addr:		Top of stack for thread.
  * start_fnc:		Address of thread function to call in child.
  * start_arg:		Argument to pass to the thread function in child.
  */
 
 ENTRY(__tfork_thread)
-	movq	%rdx, %r8
-	movq	%rcx, %r9
+	pushl	%ebp
+	movl	%esp, %ebp
+	pushl	%esi
+
+	/*
+	 * Push thread info onto the new thread's stack
+	 */
+	movl	12(%ebp), %esi	# get stack addr
+
+	subl	$4, %esi
+	movl	20(%ebp), %eax	# get start argument
+	movl	%eax, (%esi)
+
+	subl	$4, %esi
+	movl	16(%ebp), %eax	# get start thread address
+	movl	%eax, (%esi)
 
 	/*
 	 * Prepare and execute the thread creation syscall
 	 */
+	pushl	8(%ebp)
+	pushl	$0
 	movl	$SYS___tfork, %eax
-	syscall
+	int	$0x80
 	jb 	2f
 
 	/*
@@ -63,32 +78,45 @@ ENTRY(__tfork_thread)
 	 */
 	cmpl	$0, %edx
 	jnz	1f
+	addl	$8, %esp
+	popl	%esi
+	movl	%ebp, %esp
+	popl	%ebp
 	ret
+	.p2align 2
 
 	/*
 	 * If we are in the child (new thread), then
 	 * set-up the call to the internal subroutine.  If it
-	 * returns, then call __threxit.
+	 * returns, then call __exit.
 	 */
 1:
-	movq	%rsi, %rsp
-	movq	%r9, %rdi
-	call	*%r8
+	movl	%esi,%esp
+	popl	%eax 
+	call	*%eax
+	addl	$4, %esp
 
 	/*
-	 * Thread exit system call
+	 * Exit system call
 	 */
+	pushl	%eax
+	pushl	$0
 	movl	$SYS___threxit, %eax
-	xorl	%edi, %edi
-	syscall
+	int	$0x80
 
 	/*
 	 * Branch here if the thread creation fails:
 	 */
 2:
+	addl	$8, %esp
+	popl	%esi
+	movl	%ebp, %esp
+	popl	%ebp
 #ifdef PIC
-	movq	PIC_GOT(CERROR), %rcx
-	jmp	*%rcx
+	PIC_PROLOGUE
+	movl	PIC_GOT(CERROR), %ecx
+	PIC_EPILOGUE
+	jmp	*%ecx
 #else
 	jmp	CERROR
 #endif

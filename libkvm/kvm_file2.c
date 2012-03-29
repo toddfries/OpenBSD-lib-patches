@@ -1,4 +1,4 @@
-/*	$OpenBSD: kvm_file2.c,v 1.19 2012/01/07 05:38:12 guenther Exp $	*/
+/*	$OpenBSD: kvm_file2.c,v 1.21 2012/03/28 16:01:30 guenther Exp $	*/
 
 /*
  * Copyright (c) 2009 Todd C. Miller <Todd.Miller@courtesan.com>
@@ -327,7 +327,7 @@ kvm_deadfile2_byid(kvm_t *kd, int op, int arg, size_t esize, int *cnt)
 				continue;
 			}
 		} else /* if (op == KERN_FILE_BYUID) */ {
-			if (arg > 0 && proc.p_ucred->cr_uid != (uid_t)arg) {
+			if (arg >= 0 && proc.p_ucred->cr_uid != (uid_t)arg) {
 				/* not the uid we are looking for */
 				continue;
 			}
@@ -480,7 +480,7 @@ fill_file2(kvm_t *kd, struct kinfo_file2 *kf, struct file *fp, struct vnode *vp,
 			kf->f_rwfer = fp->f_wxfer;
 			kf->f_seek = fp->f_seek;
 			kf->f_rbytes = fp->f_rbytes;
-			kf->f_wbytes = fp->f_rbytes;
+			kf->f_wbytes = fp->f_wbytes;
 		}
 	} else if (vp != NULL) {
 		/* fake it */

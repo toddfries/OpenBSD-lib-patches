@@ -1,4 +1,4 @@
-/*	$OpenBSD: rfork_thread.S,v 1.4 2012/01/17 02:34:18 guenther Exp $	*/
+/*	$OpenBSD: tfork_thread.S,v 1.1 2012/03/22 00:44:55 guenther Exp $	*/
 
 /*
  * Copyright (c) 2005, Miodrag Vallat
@@ -25,33 +25,46 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include  "../../../libc/arch/alpha/SYS.h"
+#include "SYS.h"
 
 /*
  * int __tfork_thread(const struct __tfork *param, void *stack, void (*func)(void *), void *arg);
  */
-LEAF(__tfork_thread,0)
-	/* a0 = flags, a1 = stack, a2 = func, a3 = arg */
-	mov	a3, a5
-	CALLSYS_ERROR(__tfork)
-
-	beq	v0, 1f
+ENTRY(__tfork_thread)
+	/*
+	 * Set up the new thread's stack.
+	 */
+	movl	sp@(8), a0	/* stack */
+	movl	sp@(16), a0@-	/* arg */
+	movl	sp@(12), a1	/* func */
 
 	/*
-	 * In parent process: just return.
+	 * We did not create a frame, so the stack is ready for an immediate
+	 * system call invocation.
 	 */
-	RET
+	__DO_SYSCALL(__tfork)
+	jcs	9f
+
+	tstl	d0
+	jeq	1f
+
+	/*
+	 * parent process: just return.
+	 */
+	rts
 
 1:
 	/*
-	 * In child process: switch stack, invoke function, then exit.
+	 * child process: switch stacks, invoke function, then exit.
 	 */
-	mov	a1, sp		/* stack */
-	mov	a5, a0		/* arg */
-	mov	a2, pv		/* func */
-	jsr	ra, (pv)
+	movl	a0, sp		/* stack with arg pushed on it */
+	jsr	a1@		/* func */
+	addq	#4, sp
 
-	mov	zero, a0
-	CALLSYS_NOERROR(__threxit)
-	
-END(__tfork_thread)
+	__DO_SYSCALL(__threxit)
+
+9:
+	/*
+	 * system call failure.
+	 */
+	jra	__cerror

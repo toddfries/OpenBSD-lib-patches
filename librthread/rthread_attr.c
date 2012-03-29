@@ -1,4 +1,4 @@
-/*	$OpenBSD: rthread_attr.c,v 1.17 2012/03/02 23:11:57 fgsch Exp $ */
+/*	$OpenBSD: rthread_attr.c,v 1.19 2012/03/22 15:26:04 kurt Exp $ */
 /*
  * Copyright (c) 2004,2005 Ted Unangst <tedu@openbsd.org>
  * All Rights Reserved.
@@ -28,12 +28,6 @@
 #include <pthread_np.h>
 
 #include "rthread.h"
-
-/*
- * temp: these need to be added to pthread.h
- */
-int	pthread_attr_getguardsize(const pthread_attr_t *, size_t *);
-int	pthread_attr_setguardsize(pthread_attr_t *, size_t);
 
 /*
  * Note: stack_size + guard_size == total stack used
@@ -193,13 +187,6 @@ pthread_attr_setscope(pthread_attr_t *attrp, int contentionscope)
 		return (EINVAL);
 	(*attrp)->contention_scope = contentionscope;
 
-	return (0);
-}
-
-int
-pthread_attr_setcreatesuspend_np(pthread_attr_t *attr)
-{
-	(*attr)->create_suspended = 1;
 	return (0);
 }
 

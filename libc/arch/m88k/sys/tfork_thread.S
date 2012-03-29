@@ -1,4 +1,4 @@
-/*	$OpenBSD: rfork_thread.S,v 1.4 2012/02/17 18:02:18 miod Exp $	*/
+/*	$OpenBSD: tfork_thread.S,v 1.1 2012/03/22 00:44:55 guenther Exp $	*/
 
 /*
  * Copyright (c) 2005, Miodrag Vallat
@@ -25,56 +25,31 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "../../../libc/arch/mips64/SYS.h"
+#include "SYS.h"
 
 /*
  * int __tfork_thread(const struct __tfork *param, void *stack, void (*func)(void *), void *arg);
  */
-FRAMESZ=4*REGSZ
-GPOFF=FRAMESZ-2*REGSZ
-LEAF(__tfork_thread, FRAMESZ)
-	/* a0 = param, a1 = stack, a2 = func, a3 = arg */
-	PTR_SUBU sp, FRAMESZ
-	SETUP_GP64(GPOFF, _C_LABEL(__tfork_thread))
-	.set	reorder
+ENTRY(__tfork_thread)
+	or	r6,  r3,  r0	/* save stack */
+	or	r13, r0,  __SYSCALLNAME(SYS_,__tfork)
+	tb0	0,   r0,  128	/* corrupts r2 and r3 in the child */
+	br	__cerror
 
-	move	t0, a1		/* stack */
-	move	t1, a3		/* arg */
-
-	__DO_SYSCALL(__tfork)
-	bnez	a3, 9f
-
-	RESTORE_GP64
-	PTR_ADDU sp, FRAMESZ
-
-	beqz	v0, 1f
+	bcnd	eq0, r2,  1f
 
 	/*
 	 * In parent process: just return.
 	 */
-	j	ra
+	jmp	r1
 
 1:
 	/*
 	 * In child process: switch stack, invoke function, then exit.
 	 */
+	or	r31, r6,  r0	/* stack */
+	jsr.n	r4		/* func */
+	 or	r2,  r5,  r0	/* arg */
 
-	move	sp, t0		/* stack */
-	move	t9, a2		/* func */
-	move	a0, t1		/* arg */
-	move	v0, zero
-	jal	ra, t9
-
-	move	a0, zero
-	__DO_SYSCALL(__threxit)
-
-9:
-	/*
-	 * System call failure.
-	 */
-	LA	t9, CERROR
-
-	RESTORE_GP64
-	PTR_ADDU sp, FRAMESZ
-	jr	t9
-END(__tfork_thread)
+	or	r13, r0,  __SYSCALLNAME(SYS_,__threxit)
+	tb0	0,   r0,  128

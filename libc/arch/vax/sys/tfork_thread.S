@@ -1,4 +1,4 @@
-/*	$OpenBSD: rfork_thread.S,v 1.3 2012/01/17 02:34:18 guenther Exp $	*/
+/*	$OpenBSD: tfork_thread.S,v 1.1 2012/03/22 00:44:56 guenther Exp $	*/
 
 /*
  * Copyright (c) 2005, Miodrag Vallat
@@ -25,46 +25,45 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "../../../libc/arch/m68k/SYS.h"
+#include "SYS.h"
 
 /*
  * int __tfork_thread(const struct __tfork *param, void *stack, void (*func)(void *), void *arg);
  */
-ENTRY(__tfork_thread)
+ENTRY(__tfork_thread, R2|R3|R4)
 	/*
-	 * Set up the new thread's stack.
+	 * Save thread creation arguments into registers.
 	 */
-	movl	sp@(8), a0	/* stack */
-	movl	sp@(16), a0@-	/* arg */
-	movl	sp@(12), a1	/* func */
+	movl	8(ap), r2	/* stack */
+	movl	12(ap), r3	/* func */
+	movl	16(ap), r4	/* arg */
 
-	/*
-	 * We did not create a frame, so the stack is ready for an immediate
-	 * system call invocation.
-	 */
 	__DO_SYSCALL(__tfork)
 	jcs	9f
 
-	tstl	d0
-	jeq	1f
+	cmpl	r0, $0
+	beql	1f
 
 	/*
-	 * parent process: just return.
+	 * In parent process: just return.
 	 */
-	rts
+	ret
 
 1:
 	/*
-	 * child process: switch stacks, invoke function, then exit.
+	 * In child process: switch stack, invoke function, then exit.
+	 * Note that since we can not pass a register to calls, we need
+	 * to waste 4 bytes of stack in every thread.
 	 */
-	movl	a0, sp		/* stack with arg pushed on it */
-	jsr	a1@		/* func */
-	addq	#4, sp
+	movl	r2, sp		/* stack */
+	pushl	r3		/* func */
+	pushl	r4		/* arg */
+	calls	$1, *4(sp)	/* func */
 
 	__DO_SYSCALL(__threxit)
 
 9:
 	/*
-	 * system call failure.
+	 * system call failed.
 	 */
-	jra	__cerror
+	jmp	_C_LABEL(_cerror)

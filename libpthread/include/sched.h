@@ -1,4 +1,4 @@
-/*	$OpenBSD: sched.h,v 1.6 2002/02/16 21:27:25 millert Exp $	*/
+/*	$OpenBSD: sched.h,v 1.8 2012/03/22 04:26:31 guenther Exp $	*/
 
 /* sched.h: POSIX 1003.1b Process Scheduling header */
 
@@ -40,10 +40,7 @@
 #define _SCHED_H_
 
 #include <sys/types.h>	/* For pid_t */
-
-#ifndef KERNEL
-#include <time.h>		/* Per P1003.4 */
-#endif
+#include <time.h>	/* Per P1003.4 */
 
 /* Scheduling policies
  */
@@ -56,23 +53,25 @@ struct sched_param
 	int sched_priority;
 };
 
-#ifndef KERNEL
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
+#if 0	/* not yet */
 int sched_setparam(pid_t, const struct sched_param *);
 int sched_getparam(pid_t, struct sched_param *);
 
 int sched_setscheduler(pid_t, int, const struct sched_param *);
 int sched_getscheduler(pid_t);
+#endif
 
 int sched_yield(void);
 int sched_get_priority_max(int);
 int sched_get_priority_min(int);
+
+#if 0	/* not yet */
 struct timespec;
 int sched_rr_get_interval(pid_t, struct timespec *);
+#endif
 __END_DECLS
-
-#endif /* KERNEL */
 
 #endif /* _SCHED_H_ */

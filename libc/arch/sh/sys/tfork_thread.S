@@ -1,4 +1,4 @@
-/*	$OpenBSD: rfork_thread.S,v 1.3 2012/01/17 02:34:18 guenther Exp $	*/
+/*	$OpenBSD: tfork_thread.S,v 1.1 2012/03/22 00:44:56 guenther Exp $	*/
 
 /*
  * Copyright (c) 2007 Miodrag Vallat.
@@ -17,7 +17,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "../../../libc/arch/sh/SYS.h"
+#include "SYS.h"
 
 /*
  * int __tfork_thread(const struct __tfork *param, void *stack, void (*func)(void *), void *arg);

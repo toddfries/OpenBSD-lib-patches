@@ -1,7 +1,6 @@
-/*	$OpenBSD: rfork_thread.S,v 1.5 2012/01/17 02:34:18 guenther Exp $	*/
-
+/* $OpenBSD: tfork_thread.S,v 1.1 2012/03/22 00:44:55 guenther Exp $ */
 /*
- * Copyright (c) 2005 Tim Wiess <tim@nop.cx>
+ * Copyright (c) 2005 Dale Rahn <drahn@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,39 +14,35 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
 #include <sys/syscall.h>
 #include <machine/asm.h>
+#include "SYS.h"
+
+/*
+ *                r0     r1          r2         r3
+ * __tfork_thread(param, stack_addr, start_fnc, start_arg);
+ */
 
 ENTRY(__tfork_thread)
-	/* sanity check */
-	cmpwi	%r4, 0
-	beq	1f
-	cmpwi	%r5, 0
-	beq	1f
-	
-	mr	%r7,%r4
-	
-	/* call __tfork */
-	li	%r0, SYS___tfork
-	sc
-	cmpwi	%r0, 0
-	bne	2f
-	
+	stmdb   sp!, {r4}
+	mov	r4, r1
+
+
+	SYSTRAP(__tfork)
+	bcs	1f
+
 	/* check if we are parent or child */
-	cmpwi	%r3, 0
-	bnelr
-	
+	cmp	r0, #0
+	ldmneia   sp!, {r4}
+	movne	pc, lr
+
 	/* child */
-	mtlr	%r5		/* fp */
-	mr	%r3, %r6	/* arg */
-	subi	%r1, %r7, 16	/* fixup sp to get headroom */
-	blrl
-	
-	/* child returned, call _exit */
-	li	%r0, SYS___threxit
-	sc
+	mov	sp, r4
+	mov	r0, r3
+	mov	lr, pc
+	mov	pc, r2
+	nop
+	SYSTRAP(__threxit)
 1:
-	li	%r3, -1
-2:
-	b PIC_PLT(_C_LABEL(__cerror))
+	ldmia   sp!, {r4}
+	b     PIC_SYM(CERROR, PLT)

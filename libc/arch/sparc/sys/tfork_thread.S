@@ -1,4 +1,4 @@
-/*	$OpenBSD: rfork_thread.S,v 1.4 2012/01/17 02:34:18 guenther Exp $	*/
+/*	$OpenBSD: tfork_thread.S,v 1.1 2012/03/22 00:44:56 guenther Exp $	*/
 
 /*
  * Copyright (c) 2005, Miodrag Vallat
@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "../../../libc/arch/sparc64/SYS.h"
+#include "SYS.h"
 
 /*
  * int __tfork_thread(const struct __tfork *param, void *stack, void (*func)(void *), void *arg);
@@ -55,12 +55,13 @@ ENTRY(__tfork_thread)
 1:
 	/*
 	 * In child process: switch stack, invoke function, then exit.
+	 * Don't forget to allocate room for a window save on the new
+	 * stack!
 	 */
-
-	mov	%g0, %fp			/* clear frame pointer */
-	sub	%o4, (BIAS + CC64FSZ), %sp	/* stack */
-	call	%o2				/* func */
-	 mov	%o3, %o0			/* arg */
+	sub	%g0, %g0, %fp
+	sub	%o4, 96, %sp	/* stack */
+	call	%o2		/* func */
+	 mov	%o3, %o0	/* arg */
 
 	mov	SYS___threxit, %g1
 	clr	%o0
