@@ -1,4 +1,4 @@
-/*	$OpenBSD: kvm_proc2.c,v 1.10 2012/03/23 15:51:25 guenther Exp $	*/
+/*	$OpenBSD: kvm_proc2.c,v 1.13 2012/04/17 23:17:53 pirofti Exp $	*/
 /*	$NetBSD: kvm_proc.c,v 1.30 1999/03/24 05:50:50 mrg Exp $	*/
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -119,6 +119,10 @@ kvm_proclist(kvm_t *kd, int op, int arg, struct proc *p,
 	struct plimit limits, *limp;
 	pid_t process_pid, parent_pid, leader_pid;
 	int cnt = 0;
+	int dothreads = 0;
+
+	dothreads = op & KERN_PROC_SHOW_THREADS;
+	op &= ~KERN_PROC_SHOW_THREADS;
 
 	for (; cnt < maxcnt && p != NULL; p = LIST_NEXT(&proc, p_list)) {
 		if (KREAD(kd, (u_long)p, &proc)) {
@@ -262,10 +266,10 @@ kvm_proclist(kvm_t *kd, int op, int arg, struct proc *p,
 		/*
 		 * We're going to add another proc to the set.  If this
 		 * will overflow the buffer, assume the reason is because
-		 * nprocs (or the proc list) is corrupt and declare an error.
+		 * nthreads (or the proc list) is corrupt and declare an error.
 		 */
 		if (cnt >= maxcnt) {
-			_kvm_err(kd, kd->program, "nprocs corrupt");
+			_kvm_err(kd, kd->program, "nthreads corrupt");
 			return (-1);
 		}
 
@@ -282,9 +286,43 @@ kvm_proclist(kvm_t *kd, int op, int arg, struct proc *p,
 			limp = NULL;
 
 #define do_copy_str(_d, _s, _l)	kvm_read(kd, (u_long)(_s), (_d), (_l)-1)
+		if ((proc.p_flag & P_THREAD) == 0) {
+			FILL_KPROC(&kp, do_copy_str, &proc, &process, &pcred,
+			    &ucred, &pgrp, p, proc.p_p, &sess, vmp, limp, sap,
+			    0);
+
+			/* stuff that's too painful to generalize */
+			kp.p_pid = process_pid;
+			kp.p_ppid = parent_pid;
+			kp.p_sid = leader_pid;
+			if ((process.ps_flags & PS_CONTROLT) && 
+			    sess.s_ttyp != NULL) {
+				kp.p_tdev = tty.t_dev;
+				if (tty.t_pgrp != NULL &&
+				    tty.t_pgrp != process.ps_pgrp &&
+				    KREAD(kd, (u_long)tty.t_pgrp, &pgrp)) {
+					_kvm_err(kd, kd->program,
+					    "can't read tpgrp at &x",
+					    tty.t_pgrp);
+					return (-1);
+				}
+				kp.p_tpgid = tty.t_pgrp ? pgrp.pg_id : -1;
+				kp.p_tsess = PTRTOINT64(tty.t_session);
+			} else {
+				kp.p_tpgid = -1;
+				kp.p_tdev = NODEV;
+			}
+
+			memcpy(bp, &kp, esize);
+			bp += esize;
+			++cnt;
+		}
+
+		if (!dothreads)
+			continue;
+
 		FILL_KPROC(&kp, do_copy_str, &proc, &process, &pcred, &ucred,
-		    &pgrp, p, proc.p_p, &sess, vmp, limp, sap);
-#undef do_copy_str
+		    &pgrp, p, proc.p_p, &sess, vmp, limp, sap, 1);
 
 		/* stuff that's too painful to generalize into the macros */
 		kp.p_pid = process_pid;
@@ -309,6 +347,7 @@ kvm_proclist(kvm_t *kd, int op, int arg, struct proc *p,
 		memcpy(bp, &kp, esize);
 		bp += esize;
 		++cnt;
+#undef do_copy_str
 	}
 	return (cnt);
 }
@@ -316,7 +355,7 @@ kvm_proclist(kvm_t *kd, int op, int arg, struct proc *p,
 struct kinfo_proc *
 kvm_getprocs(kvm_t *kd, int op, int arg, size_t esize, int *cnt)
 {
-	int mib[6], st, nprocs;
+	int mib[6], st, nthreads;
 	size_t size;
 
 	if ((ssize_t)esize < 0)
@@ -354,10 +393,10 @@ kvm_getprocs(kvm_t *kd, int op, int arg, size_t esize, int *cnt)
 			_kvm_syserr(kd, kd->program, "kvm_getprocs");
 			return (NULL);
 		}
-		nprocs = size / esize;
+		nthreads = size / esize;
 	} else {
 		struct nlist nl[4];
-		int i, maxprocs;
+		int i, maxthread;
 		struct proc *p;
 		char *bp;
 
@@ -368,7 +407,7 @@ kvm_getprocs(kvm_t *kd, int op, int arg, size_t esize, int *cnt)
 		}
 
 		memset(nl, 0, sizeof(nl));
-		nl[0].n_name = "_nprocs";
+		nl[0].n_name = "_nthreads";
 		nl[1].n_name = "_allproc";
 		nl[2].n_name = "_zombproc";
 		nl[3].n_name = NULL;
@@ -380,12 +419,12 @@ kvm_getprocs(kvm_t *kd, int op, int arg, size_t esize, int *cnt)
 			    "%s: no such symbol", nl[i].n_name);
 			return (NULL);
 		}
-		if (KREAD(kd, nl[0].n_value, &maxprocs)) {
-			_kvm_err(kd, kd->program, "can't read nprocs");
+		if (KREAD(kd, nl[0].n_value, &maxthread)) {
+			_kvm_err(kd, kd->program, "can't read nthreads");
 			return (NULL);
 		}
 
-		kd->procbase = _kvm_malloc(kd, maxprocs * esize);
+		kd->procbase = _kvm_malloc(kd, maxthread * esize);
 		if (kd->procbase == 0)
 			return (NULL);
 		bp = (char *)kd->procbase;
@@ -395,8 +434,8 @@ kvm_getprocs(kvm_t *kd, int op, int arg, size_t esize, int *cnt)
 			_kvm_err(kd, kd->program, "cannot read allproc");
 			return (NULL);
 		}
-		nprocs = kvm_proclist(kd, op, arg, p, bp, maxprocs, esize);
-		if (nprocs < 0)
+		nthreads = kvm_proclist(kd, op, arg, p, bp, maxthread, esize);
+		if (nthreads < 0)
 			return (NULL);
 
 		/* zombproc */
@@ -404,11 +443,12 @@ kvm_getprocs(kvm_t *kd, int op, int arg, size_t esize, int *cnt)
 			_kvm_err(kd, kd->program, "cannot read zombproc");
 			return (NULL);
 		}
-		i = kvm_proclist(kd, op, arg, p, bp + (esize * nprocs),
-		    maxprocs - nprocs, esize);
+		i = kvm_proclist(kd, op, arg, p, bp + (esize * nthreads),
+		    maxthread - nthreads, esize);
 		if (i > 0)
-			nprocs += i;
+			nthreads += i;
 	}
-	*cnt = nprocs;
+	if (kd->procbase != NULL)
+		*cnt = nthreads;
 	return (kd->procbase);
 }

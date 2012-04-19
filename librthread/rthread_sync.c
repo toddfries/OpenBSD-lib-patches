@@ -1,4 +1,4 @@
-/*	$OpenBSD: rthread_sync.c,v 1.33 2012/02/28 02:41:56 guenther Exp $ */
+/*	$OpenBSD: rthread_sync.c,v 1.36 2012/04/14 12:07:49 kurt Exp $ */
 /*
  * Copyright (c) 2004,2005 Ted Unangst <tedu@openbsd.org>
  * Copyright (c) 2012 Philip Guenther <guenther@openbsd.org>
@@ -47,7 +47,7 @@ pthread_mutex_init(pthread_mutex_t *mutexp, const pthread_mutexattr_t *attr)
 	mutex->lock = _SPINLOCK_UNLOCKED;
 	TAILQ_INIT(&mutex->lockers);
 	if (attr == NULL) {
-		mutex->type = PTHREAD_MUTEX_ERRORCHECK;
+		mutex->type = PTHREAD_MUTEX_DEFAULT;
 		mutex->prioceiling = -1;
 	} else {
 		mutex->type = (*attr)->ma_type;
@@ -121,8 +121,12 @@ _rthread_mutex_lock(pthread_mutex_t *mutexp, int trywait,
 				return (trywait ? EBUSY : EDEADLK);
 			}
 
+			/* self-deadlock is disallowed by strict */
+			if (mutex->type == PTHREAD_MUTEX_STRICT_NP &&
+			    abstime == NULL)
+				abort();
+
 			/* self-deadlock, possibly until timeout */
-			assert(mutex->type == PTHREAD_MUTEX_NORMAL);
 			while (__thrsleep(self, CLOCK_REALTIME, abstime,
 			    &mutex->lock, NULL) != EWOULDBLOCK)
 				_spinlock(&mutex->lock);
@@ -187,13 +191,33 @@ pthread_mutex_unlock(pthread_mutex_t *mutexp)
 	_rthread_debug(5, "%p: mutex_unlock %p\n", (void *)self,
 	    (void *)mutex);
 
-#if PTHREAD_MUTEX_DEFAULT == PTHREAD_MUTEX_ERRORCHECK
 	if (mutex == NULL)
+#if PTHREAD_MUTEX_DEFAULT == PTHREAD_MUTEX_ERRORCHECK
 		return (EPERM);
+#elif PTHREAD_MUTEX_DEFAULT == PTHREAD_MUTEX_NORMAL
+		return(0);
+#else
+		abort();
 #endif
 
-	if (mutex->owner != self)
-		return (EPERM);
+	if (mutex->owner != self) {
+		if (mutex->type == PTHREAD_MUTEX_ERRORCHECK ||
+		    mutex->type == PTHREAD_MUTEX_RECURSIVE)
+			return (EPERM);
+		else {
+			/*
+			 * For mutex type NORMAL our undefined behavior for
+			 * unlocking an unlocked mutex is to succeed without
+			 * error.  All other undefined behaviors are to
+			 * abort() immediately.
+			 */
+			if (mutex->owner == NULL &&
+			    mutex->type == PTHREAD_MUTEX_NORMAL)
+				return (0);
+			else
+				abort();
+		}
+	}
 
 	if (--mutex->count == 0) {
 		pthread_t next;
@@ -273,13 +297,20 @@ pthread_cond_timedwait(pthread_cond_t *condp, pthread_mutex_t *mutexp,
 	_rthread_debug(5, "%p: cond_timed %p,%p\n", (void *)self,
 	    (void *)cond, (void *)mutex);
 
-#if PTHREAD_MUTEX_DEFAULT == PTHREAD_MUTEX_ERRORCHECK
 	if (mutex == NULL)
+#if PTHREAD_MUTEX_DEFAULT == PTHREAD_MUTEX_ERRORCHECK
 		return (EPERM);
+#else
+		abort();
 #endif
 
-	if (mutex->owner != self)
-		return (EPERM);
+	if (mutex->owner != self) {
+		if (mutex->type == PTHREAD_MUTEX_ERRORCHECK)
+			return (EPERM);
+		else
+			abort();
+	}
+
 	if (abstime == NULL || abstime->tv_sec < 0 || abstime->tv_nsec < 0 ||
 	    abstime->tv_nsec >= 1000000000)
 		return (EINVAL);
@@ -417,13 +448,19 @@ pthread_cond_wait(pthread_cond_t *condp, pthread_mutex_t *mutexp)
 	_rthread_debug(5, "%p: cond_timed %p,%p\n", (void *)self,
 	    (void *)cond, (void *)mutex);
 
-#if PTHREAD_MUTEX_DEFAULT == PTHREAD_MUTEX_ERRORCHECK
 	if (mutex == NULL)
+#if PTHREAD_MUTEX_DEFAULT == PTHREAD_MUTEX_ERRORCHECK
 		return (EPERM);
+#else
+		abort();
 #endif
 
-	if (mutex->owner != self)
-		return (EPERM);
+	if (mutex->owner != self) {
+		if (mutex->type == PTHREAD_MUTEX_ERRORCHECK)
+			return (EPERM);
+		else
+			abort();
+	}
 
 	_enter_delayed_cancel(self);
 
