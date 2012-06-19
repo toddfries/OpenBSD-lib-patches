@@ -502,15 +502,28 @@ static void sqliteDeleteColumnNames(sqlite3 *db, Table *pTable){
 ** the table data structure from the hash table.  But it does destroy
 ** memory structures of the indices and foreign keys associated with 
 ** the table.
+**
+** The db parameter is optional.  It is needed if the Table object 
+** contains lookaside memory.  (Table objects in the schema do not use
+** lookaside memory, but some ephemeral Table objects do.)  Or the
+** db parameter can be used with db->pnBytesFreed to measure the memory
+** used by the Table object.
 */
 void sqlite3DeleteTable(sqlite3 *db, Table *pTable){
   Index *pIndex, *pNext;
+  TESTONLY( int nLookaside; ) /* Used to verify lookaside not used for schema */
 
   assert( !pTable || pTable->nRef>0 );
 
   /* Do not delete the table until the reference count reaches zero. */
   if( !pTable ) return;
   if( ((!db || db->pnBytesFreed==0) && (--pTable->nRef)>0) ) return;
+
+  /* Record the number of outstanding lookaside allocations in schema Tables
+  ** prior to doing any free() operations.  Since schema Tables do not use
+  ** lookaside, this number should not change. */
+  TESTONLY( nLookaside = (db && (pTable->tabFlags & TF_Ephemeral)==0) ?
+                         db->lookaside.nOut : 0 );
 
   /* Delete all indices associated with this table. */
   for(pIndex = pTable->pIndex; pIndex; pIndex=pNext){
@@ -537,12 +550,15 @@ void sqlite3DeleteTable(sqlite3 *db, Table *pTable){
   sqlite3DbFree(db, pTable->zColAff);
   sqlite3SelectDelete(db, pTable->pSelect);
 #ifndef SQLITE_OMIT_CHECK
-  sqlite3ExprDelete(db, pTable->pCheck);
+  sqlite3ExprListDelete(db, pTable->pCheck);
 #endif
 #ifndef SQLITE_OMIT_VIRTUALTABLE
   sqlite3VtabClear(db, pTable);
 #endif
   sqlite3DbFree(db, pTable);
+
+  /* Verify that no lookaside memory was used by schema tables */
+  assert( nLookaside==0 || nLookaside==db->lookaside.nOut );
 }
 
 /*
@@ -1200,15 +1216,17 @@ void sqlite3AddCheckConstraint(
   Parse *pParse,    /* Parsing context */
   Expr *pCheckExpr  /* The check expression */
 ){
-  sqlite3 *db = pParse->db;
 #ifndef SQLITE_OMIT_CHECK
   Table *pTab = pParse->pNewTable;
   if( pTab && !IN_DECLARE_VTAB ){
-    pTab->pCheck = sqlite3ExprAnd(db, pTab->pCheck, pCheckExpr);
+    pTab->pCheck = sqlite3ExprListAppend(pParse, pTab->pCheck, pCheckExpr);
+    if( pParse->constraintName.n ){
+      sqlite3ExprListSetName(pParse, pTab->pCheck, &pParse->constraintName, 1);
+    }
   }else
 #endif
   {
-    sqlite3ExprDelete(db, pCheckExpr);
+    sqlite3ExprDelete(pParse->db, pCheckExpr);
   }
 }
 
@@ -1478,6 +1496,8 @@ void sqlite3EndTable(
   if( p->pCheck ){
     SrcList sSrc;                   /* Fake SrcList for pParse->pNewTable */
     NameContext sNC;                /* Name context for pParse->pNewTable */
+    ExprList *pList;                /* List of all CHECK constraints */
+    int i;                          /* Loop counter */
 
     memset(&sNC, 0, sizeof(sNC));
     memset(&sSrc, 0, sizeof(sSrc));
@@ -1487,9 +1507,12 @@ void sqlite3EndTable(
     sSrc.a[0].iCursor = -1;
     sNC.pParse = pParse;
     sNC.pSrcList = &sSrc;
-    sNC.isCheck = 1;
-    if( sqlite3ResolveExprNames(&sNC, p->pCheck) ){
-      return;
+    sNC.ncFlags = NC_IsCheck;
+    pList = p->pCheck;
+    for(i=0; i<pList->nExpr; i++){
+      if( sqlite3ResolveExprNames(&sNC, pList->a[i].pExpr) ){
+        return;
+      }
     }
   }
 #endif /* !defined(SQLITE_OMIT_CHECK) */
@@ -3040,19 +3063,21 @@ exit_drop_index:
 }
 
 /*
-** pArray is a pointer to an array of objects.  Each object in the
-** array is szEntry bytes in size.  This routine allocates a new
-** object on the end of the array.
+** pArray is a pointer to an array of objects. Each object in the
+** array is szEntry bytes in size. This routine uses sqlite3DbRealloc()
+** to extend the array so that there is space for a new object at the end.
 **
-** *pnEntry is the number of entries already in use.  *pnAlloc is
-** the previously allocated size of the array.  initSize is the
-** suggested initial array size allocation.
+** When this function is called, *pnEntry contains the current size of
+** the array (in entries - so the allocation is ((*pnEntry) * szEntry) bytes
+** in total).
 **
-** The index of the new entry is returned in *pIdx.
+** If the realloc() is successful (i.e. if no OOM condition occurs), the
+** space allocated for the new object is zeroed, *pnEntry updated to
+** reflect the new size of the array and a pointer to the new allocation
+** returned. *pIdx is set to the index of the new array entry in this case.
 **
-** This routine returns a pointer to the array of objects.  This
-** might be the same as the pArray parameter or it might be a different
-** pointer if the array was resized.
+** Otherwise, if the realloc() fails, *pIdx is set to -1, *pnEntry remains
+** unchanged and a copy of pArray returned.
 */
 void *sqlite3ArrayAllocate(
   sqlite3 *db,      /* Connection to notify of malloc failures */
