@@ -1,4 +1,4 @@
-/*	$OpenBSD: malloc.c,v 1.142 2012/06/18 17:03:51 matthew Exp $	*/
+/*	$OpenBSD: malloc.c,v 1.144 2012/06/22 01:30:17 tedu Exp $	*/
 /*
  * Copyright (c) 2008 Otto Moerbeek <otto@drijf.net>
  *
@@ -93,6 +93,9 @@
 
 #define MMAPA(a,sz)	mmap((a), (size_t)(sz), PROT_READ | PROT_WRITE, \
     MAP_ANON | MAP_PRIVATE, -1, (off_t) 0)
+
+#define MQUERY(a, sz)	mquery((a), (size_t)(sz), PROT_READ | PROT_WRITE, \
+    MAP_ANON | MAP_PRIVATE, -1, (off_t)0)
 
 struct region_info {
 	void *p;		/* page; low bits used to mark chunks */
@@ -317,7 +320,7 @@ unmap(struct dir_info *d, void *p, size_t sz)
 	rsz = mopts.malloc_cache - d->free_regions_size;
 	if (psz > rsz)
 		tounmap = psz - rsz;
-	offset = getrnibble();
+	offset = getrnibble() + getrnibble() << 4;
 	for (i = 0; tounmap > 0 && i < mopts.malloc_cache; i++) {
 		r = &d->free_regions[(i + offset) & (mopts.malloc_cache - 1)];
 		if (r->p != NULL) {
@@ -337,7 +340,7 @@ unmap(struct dir_info *d, void *p, size_t sz)
 	if (tounmap > 0)
 		wrterror("malloc cache underflow", NULL);
 	for (i = 0; i < mopts.malloc_cache; i++) {
-		r = &d->free_regions[i];
+		r = &d->free_regions[(i + offset) & (mopts.malloc_cache - 1)];
 		if (r->p == NULL) {
 			if (mopts.malloc_hint)
 				madvise(p, sz, MADV_FREE);
@@ -356,7 +359,7 @@ unmap(struct dir_info *d, void *p, size_t sz)
 }
 
 static void
-zapcacheregion(struct dir_info *d, void *p)
+zapcacheregion(struct dir_info *d, void *p, size_t len)
 {
 	u_int i;
 	struct region_info *r;
@@ -364,7 +367,7 @@ zapcacheregion(struct dir_info *d, void *p)
 
 	for (i = 0; i < mopts.malloc_cache; i++) {
 		r = &d->free_regions[i];
-		if (r->p == p) {
+		if (r->p >= p && r->p <= (void *)((char *)p + len)) {
 			rsz = r->size << MALLOC_PAGESHIFT;
 			if (munmap(r->p, rsz))
 				wrterror("munmap", r->p);
@@ -398,7 +401,7 @@ map(struct dir_info *d, size_t sz, int zero_fill)
 		/* zero fill not needed */
 		return p;
 	}
-	offset = getrnibble();
+	offset = getrnibble() + getrnibble() << 4;
 	for (i = 0; i < mopts.malloc_cache; i++) {
 		r = &d->free_regions[(i + offset) & (mopts.malloc_cache - 1)];
 		if (r->p != NULL) {
@@ -1283,20 +1286,26 @@ orealloc(void *p, size_t newsz, void *f)
 
 		if (rnewsz > roldsz) {
 			if (!mopts.malloc_guard) {
+				void *hint = (char *)p + roldsz;
+				size_t needed = rnewsz - roldsz;
+
 				STATS_INC(g_pool->cheap_realloc_tries);
-				zapcacheregion(g_pool, (char *)p + roldsz);
-				q = MMAPA((char *)p + roldsz, rnewsz - roldsz);
-				if (q == (char *)p + roldsz) {
-					malloc_used += rnewsz - roldsz;
+				zapcacheregion(g_pool, hint, needed);
+				q = MQUERY(hint, needed);
+				if (q == hint)
+					q = MMAPA(hint, needed);
+				else
+					q = MAP_FAILED;
+				if (q == hint) {
+					malloc_used += needed;
 					if (mopts.malloc_junk)
-						memset(q, SOME_JUNK,
-						    rnewsz - roldsz);
+						memset(q, SOME_JUNK, needed);
 					r->size = newsz;
 					STATS_SETF(r, f);
 					STATS_INC(g_pool->cheap_reallocs);
 					return p;
 				} else if (q != MAP_FAILED) {
-					if (munmap(q, rnewsz - roldsz))
+					if (munmap(q, needed))
 						wrterror("munmap", q);
 				}
 			}
