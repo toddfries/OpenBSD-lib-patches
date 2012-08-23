@@ -1,4 +1,4 @@
-/*	$OpenBSD: rthread.c,v 1.62 2012/06/21 00:56:59 guenther Exp $ */
+/*	$OpenBSD: rthread.c,v 1.66 2012/08/22 23:43:32 matthew Exp $ */
 /*
  * Copyright (c) 2004,2005 Ted Unangst <tedu@openbsd.org>
  * All Rights Reserved.
@@ -21,6 +21,15 @@
  */
 
 #include <sys/types.h>
+#include <sys/uio.h>
+#include <sys/wait.h>
+#include <sys/socket.h>
+#include <sys/mman.h>
+#include <sys/msg.h>
+#if defined(__ELF__)
+#include <sys/exec_elf.h>
+#pragma weak _DYNAMIC
+#endif
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -29,6 +38,8 @@
 #include <string.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include <fcntl.h>
+#include <poll.h>
 
 #include <pthread.h>
 
@@ -167,19 +178,21 @@ _rthread_init(void)
 
 	_rthread_debug(1, "rthread init\n");
 
-#if defined(__ELF__) && defined(PIC)
-	/*
-	 * To avoid recursion problems in ld.so, we need to trigger the
-	 * functions once to fully bind them before registering them
-	 * for use.
-	 */
-	_rthread_dl_lock(0);
-	_rthread_dl_lock(1);
-	_rthread_bind_lock(0);
-	_rthread_bind_lock(1);
-	sched_yield();
-	dlctl(NULL, DL_SETTHREADLCK, _rthread_dl_lock);
-	dlctl(NULL, DL_SETBINDLCK, _rthread_bind_lock);
+#if defined(__ELF__)
+	if (_DYNAMIC) {
+		/*
+		 * To avoid recursion problems in ld.so, we need to trigger the
+		 * functions once to fully bind them before registering them
+		 * for use.
+		 */
+		_rthread_dl_lock(0);
+		_rthread_dl_lock(1);
+		_rthread_bind_lock(0);
+		_rthread_bind_lock(1);
+		sched_yield();
+		dlctl(NULL, DL_SETTHREADLCK, _rthread_dl_lock);
+		dlctl(NULL, DL_SETBINDLCK, _rthread_bind_lock);
+	}
 #endif
 
 	/*
@@ -575,7 +588,7 @@ _thread_dump_info(void)
 	_spinunlock(&_thread_lock);
 }
 
-#if defined(__ELF__) && defined(PIC)
+#if defined(__ELF__)
 /*
  * _rthread_dl_lock() provides the locking for dlopen(), dlclose(), and
  * the function called via atexit() to invoke all destructors.  The latter
@@ -638,3 +651,72 @@ _rthread_bind_lock(int what)
 		_spinunlock(&lock);
 }
 #endif
+
+#ifdef __ELF__
+#define CERROR_SYMBOL __cerror
+#else
+#define CERROR_SYMBOL _cerror
+#endif
+
+/*
+ * XXX: Bogus type signature, but we only need to be able to emit a
+ * reference to it below.
+ */
+extern void CERROR_SYMBOL(void);
+
+/*
+ * All weak references used within libc that are redefined in libpthread
+ * MUST be in this table.   This is necessary to force the proper version to
+ * be used when linking -static.
+ */
+static void *__libc_overrides[] __used = {
+	&CERROR_SYMBOL,
+	&__errno,
+	&_thread_arc4_lock,
+	&_thread_arc4_unlock,
+	&_thread_atexit_lock,
+	&_thread_atexit_unlock,
+	&_thread_malloc_lock,
+	&_thread_malloc_unlock,
+	&_thread_mutex_destroy,
+	&_thread_mutex_lock,
+	&_thread_mutex_unlock,
+	&_thread_tag_lock,
+	&_thread_tag_storage,
+	&_thread_tag_unlock,
+	&accept,
+	&close,
+	&closefrom,
+	&connect,
+	&fcntl,
+	&flockfile,
+	&fork,
+	&fsync,
+	&ftrylockfile,
+	&funlockfile,
+	&msgrcv,
+	&msgsnd,
+	&msync,
+	&nanosleep,
+	&open,
+	&openat,
+	&poll,
+	&pread,
+	&preadv,
+	&pwrite,
+	&pwritev,
+	&read,
+	&readv,
+	&recvfrom,
+	&recvmsg,
+	&select,
+	&sendmsg,
+	&sendto,
+	&sigaction,
+	&sigprocmask,
+	&sigsuspend,
+	&vfork,
+	&wait4,
+	&write,
+	&writev,
+};

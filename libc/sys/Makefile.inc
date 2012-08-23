@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile.inc,v 1.103 2012/06/19 09:40:39 deraadt Exp $
+#	$OpenBSD: Makefile.inc,v 1.106 2012/08/23 06:19:48 deraadt Exp $
 #	$NetBSD: Makefile.inc,v 1.35 1995/10/16 23:49:07 jtc Exp $
 #	@(#)Makefile.inc	8.1 (Berkeley) 6/17/93
 
@@ -55,7 +55,7 @@ ASM=	__get_tcb.o __getcwd.o __semctl.o __set_tcb.o __syscall.o \
 	minherit.o mkdir.o mkdirat.o mkfifo.o mkfifoat.o \
 	mknod.o mknodat.o mlock.o mlockall.o mount.o mprotect.o \
 	msgctl.o msgget.o msgrcv.o msgsnd.o msync.o munlock.o \
-	munlockall.o munmap.o nanosleep.o nfssvc.o nnpfspioctl.o \
+	munlockall.o munmap.o nanosleep.o nfssvc.o \
 	open.o openat.o pathconf.o pipe.o poll.o profil.o \
 	quotactl.o read.o readlink.o readlinkat.o readv.o reboot.o \
 	recvfrom.o recvmsg.o rename.o renameat.o revoke.o rmdir.o \
@@ -88,102 +88,90 @@ OBJS+=	${ASM} ${PSEUDO} ${PSEUDO_NOERR}
 ${GASM}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
 	@echo creating ${.TARGET}
 	@printf '#include "SYS.h"\nRSYSCALL(${.PREFIX})\n' | \
-	    ${CPP} ${CFLAGS:M-[ID]*} ${AINC} | ${AS} -o ${.TARGET}.o
+	    ${COMPILE.S} ${CFLAGS:M-[ID]*} ${AINC} -x assembler-with-cpp - \
+	    -o ${.TARGET}.o
 	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
 	@rm -f ${.TARGET}.o
 
 ${PASM}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
 	@echo creating ${.TARGET}
 	@printf '#include "SYS.h"\nRSYSCALL(${.PREFIX})\n' | \
-	    ${CPP} -DPROF ${CFLAGS:M-[ID]*} ${AINC} | ${AS} -o ${.TARGET}.o
+	    ${COMPILE.S} -DPROF ${CFLAGS:M-[ID]*} ${AINC} \
+	    -x assembler-with-cpp - -o ${.TARGET}.o
 	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
 	@rm -f ${.TARGET}.o
 
-.if (${MACHINE_CPU} != "mips")
 ${SASM}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
 	@echo creating ${.TARGET}
 	@printf '#include "SYS.h"\nRSYSCALL(${.PREFIX})\n' | \
-	    ${CPP} -DPIC ${CFLAGS:M-[ID]*} ${AINC} | \
-	    ${AS} ${ASPICFLAG} -o ${.TARGET}
-.else
-${SASM}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
-	@echo creating ${.TARGET}
-	@printf '#include "SYS.h"\nRSYSCALL(${.PREFIX})\n' | \
-	    ${CPP} -DPIC ${CFLAGS:M-[ID]*} ${AINC} | ${AS} -o ${.TARGET}
-.endif
+	    ${COMPILE.S} ${PICFLAG} ${CFLAGS:M-[ID]*} ${AINC} \
+	    -x assembler-with-cpp - -o ${.TARGET}
 
 ${ASM}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
 	@echo creating ${.TARGET}
 	@printf '#include "SYS.h"\nRSYSCALL(${.PREFIX})\n' | \
-	    ${CPP} ${CFLAGS:M-[ID]*} ${AINC} | ${AS} -o ${.TARGET}.o
+	    ${COMPILE.S} ${CFLAGS:M-[ID]*} ${AINC} -x assembler-with-cpp - \
+	     -o ${.TARGET}.o
 	@${LD} -x -r ${.TARGET}.o -o ${.TARGET}
 	@rm -f ${.TARGET}.o
 
 ${GPSEUDO}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
 	@echo creating ${.TARGET}
 	@printf '#include "SYS.h"\nPSEUDO(${.PREFIX},${.PREFIX:S/_//})\n' | \
-	    ${CPP} ${CFLAGS:M-[ID]*} ${AINC} | ${AS} -o ${.TARGET}.o
+	    ${COMPILE.S} ${CFLAGS:M-[ID]*} ${AINC} -x assembler-with-cpp - \
+	    -o ${.TARGET}.o
 	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
 	@rm -f ${.TARGET}.o
 
 ${PPSEUDO}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
 	@echo creating ${.TARGET}
 	@printf '#include "SYS.h"\nPSEUDO(${.PREFIX},${.PREFIX:S/_//})\n' | \
-	    ${CPP} -DPROF ${CFLAGS:M-[ID]*} ${AINC} | ${AS} -o ${.TARGET}.o
+	    ${COMPILE.S} -DPROF ${CFLAGS:M-[ID]*} ${AINC} \
+	    -x assembler-with-cpp - -o ${.TARGET}.o
 	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
 	@rm -f ${.TARGET}.o
 
-.if (${MACHINE_CPU} != "mips")
 ${SPSEUDO}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
 	@echo creating ${.TARGET}
 	@printf '#include "SYS.h"\nPSEUDO(${.PREFIX},${.PREFIX:S/_//})\n' | \
-	    ${CPP} -DPIC ${CFLAGS:M-[ID]*} ${AINC} | \
-	    ${AS} ${ASPICFLAG} -o ${.TARGET}
-.else
-${SPSEUDO}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
-	@echo creating ${.TARGET}
-	@printf '#include "SYS.h"\nPSEUDO(${.PREFIX},${.PREFIX:S/_//})\n' | \
-	    ${CPP} -DPIC ${CFLAGS:M-[ID]*} ${AINC} | ${AS} -o ${.TARGET}
-.endif
+	    ${COMPILE.S} ${PICFLAG} ${CFLAGS:M-[ID]*} ${AINC} \
+	    -x assembler-with-cpp - -o ${.TARGET}
 
 ${PSEUDO}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
 	@echo creating ${.TARGET}
 	@printf '#include "SYS.h"\nPSEUDO(${.PREFIX},${.PREFIX:S/_//})\n' | \
-	    ${CPP} ${CFLAGS:M-[ID]*} ${AINC} | ${AS} -o ${.TARGET}.o
+	    ${COMPILE.S} ${CFLAGS:M-[ID]*} ${AINC} -x assembler-with-cpp - \
+	    -o ${.TARGET}.o
 	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
 	@rm -f ${.TARGET}.o
 
 ${GPSEUDO_NOERR}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
 	@echo creating ${.TARGET}
 	@printf '#include "SYS.h"\nPSEUDO_NOERROR(${.PREFIX},${.PREFIX:S/_//})\n' | \
-	    ${CPP} ${CFLAGS:M-[ID]*} ${AINC} | ${AS} -o ${.TARGET}.o
+	    ${COMPILE.S} ${CFLAGS:M-[ID]*} ${AINC} -x assembler-with-cpp - \
+	    -o ${.TARGET}.o
 	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
 	@rm -f ${.TARGET}.o
 
 ${PPSEUDO_NOERR}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
 	@echo creating ${.TARGET}
 	@printf '#include "SYS.h"\nPSEUDO_NOERROR(${.PREFIX},${.PREFIX:S/_//})\n' | \
-	    ${CPP} -DPROF ${CFLAGS:M-[ID]*} ${AINC} | ${AS} -o ${.TARGET}.o
+	    ${COMPILE.S} -DPROF ${CFLAGS:M-[ID]*} ${AINC} \
+	    -x assembler-with-cpp - -o ${.TARGET}.o
 	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
 	@rm -f ${.TARGET}.o
 
-.if (${MACHINE_CPU} != "mips")
 ${SPSEUDO_NOERR}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
 	@echo creating ${.TARGET}
 	@printf '#include "SYS.h"\nPSEUDO_NOERROR(${.PREFIX},${.PREFIX:S/_//})\n' | \
-	    ${CPP} -DPIC ${CFLAGS:M-[ID]*} ${AINC} | \
-	    ${AS} ${ASPICFLAG} -o ${.TARGET}
-.else
-${SPSEUDO_NOERR}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
-	@echo creating ${.TARGET}
-	@printf '#include "SYS.h"\nPSEUDO_NOERROR(${.PREFIX},${.PREFIX:S/_//})\n' | \
-	    ${CPP} -DPIC ${CFLAGS:M-[ID]*} ${AINC} | ${AS} -o ${.TARGET}
-.endif
+	    ${COMPILE.S} ${PICFLAG} ${CFLAGS:M-[ID]*} ${AINC} \
+	    -x assembler-with-cpp - -o ${.TARGET}
 
 ${PSEUDO_NOERR}: ${LIBCSRCDIR}/arch/${MACHINE_CPU}/SYS.h /usr/include/sys/syscall.h
 	@echo creating ${.TARGET}
 	@printf '#include "SYS.h"\nPSEUDO_NOERROR(${.PREFIX},${.PREFIX:S/_//})\n' | \
-	    ${CPP} ${CFLAGS:M-[ID]*} ${AINC} | ${AS} -o ${.TARGET}.o
+	    ${COMPILE.S} ${CFLAGS:M-[ID]*} ${AINC} -x assembler-with-cpp - \
+	    -o ${.TARGET}.o
 	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
 	@rm -f ${.TARGET}.o
 
