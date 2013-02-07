@@ -1,7 +1,14 @@
-/*	$OpenBSD: strtold.c,v 1.1 2008/09/07 20:36:07 martynas Exp $	*/
+/*	$OpenBSD: vdprintf.c,v 1.1 2013/01/30 00:08:13 brad Exp $	*/
+/*	$FreeBSD: src/lib/libc/stdio/vdprintf.c,v 1.4 2012/11/17 01:49:40 svnexp Exp $ */
+
 /*-
- * Copyright (c) 2003 David Schultz <das@FreeBSD.ORG>
+ * Copyright (c) 2009 David Schultz <das@FreeBSD.org>
  * All rights reserved.
+ *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,21 +32,42 @@
  * SUCH DAMAGE.
  */
 
-/*
- * Machine-dependent glue to integrate David Gay's gdtoa
- * package into libc for architectures where a long double
- * uses quad precision, such as sparc64.
- */
+#include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
-#include <float.h>
+#include "local.h"
 
-#include "gdtoaimp.h"
-
-long double
-strtold(const char * __restrict s, char ** __restrict sp)
+static int
+__dwrite(void *cookie, const char *buf, int n)
 {
-	long double result;
+	int *fdp = cookie;
+	return (write(*fdp, buf, n));
+}
 
-	strtorQ(s, sp, FLT_ROUNDS, &result);
-	return result;
+int
+vdprintf(int fd, const char * __restrict fmt, va_list ap)
+{
+	FILE f;
+	struct __sfileext fext;
+	unsigned char buf[BUFSIZ];
+	int ret;
+
+	_FILEEXT_SETUP(&f, &fext);
+
+	f._p = buf;
+	f._w = sizeof(buf);
+	f._flags = __SWR;
+	f._file = -1;
+	f._bf._base = buf;
+	f._bf._size = sizeof(buf);
+	f._cookie = &fd;
+	f._write = __dwrite;
+
+	if ((ret = __vfprintf(&f, fmt, ap)) < 0)
+		return ret;
+
+	return fflush(&f) ? EOF : ret;
 }
