@@ -1,4 +1,4 @@
-/*	$OpenBSD: mcount.c,v 1.11 2010/05/09 15:56:08 kettenis Exp $ */
+/*	$OpenBSD: mcount.c,v 1.13 2013/02/12 08:06:22 mpi Exp $ */
 /*-
  * Copyright (c) 1983, 1992, 1993
  *	The Regents of the University of California.  All rights reserved.

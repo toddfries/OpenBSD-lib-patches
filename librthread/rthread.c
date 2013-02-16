@@ -1,4 +1,4 @@
-/*	$OpenBSD: rthread.c,v 1.66 2012/08/22 23:43:32 matthew Exp $ */
+/*	$OpenBSD: rthread.c,v 1.68 2013/02/15 22:01:24 guenther Exp $ */
 /*
  * Copyright (c) 2004,2005 Ted Unangst <tedu@openbsd.org>
  * All Rights Reserved.
