@@ -1,4 +1,4 @@
-/*	$OpenBSD: asr_private.h,v 1.10 2012/11/24 15:12:48 eric Exp $	*/
+/*	$OpenBSD: asr_private.h,v 1.16 2013/04/02 16:38:37 eric Exp $	*/
 /*
  * Copyright (c) 2012 Eric Faurot <eric@openbsd.org>
  *
@@ -206,8 +206,8 @@ struct async {
 			unsigned char	*ibuf;
 			size_t		 ibuflen;
 			size_t		 ibufsize;
-			size_t		 bufpos;
 			size_t		 datalen; /* for tcp io */
+			uint16_t	 pktlen;
 		} dns;
 
 		struct {
@@ -233,10 +233,10 @@ struct async {
 		struct {
 			char		*name;
 			int		 family;
-			char		*dname;
 			struct async	*subq;
 			char		 addr[16];
 			int		 addrlen;
+			int		 subq_h_errno;
 		} hostnamadr;
 
 		struct {
@@ -306,15 +306,15 @@ enum asr_state {
 
 /* asr_utils.c */
 void	pack_init(struct pack *, char *, size_t);
-int	pack_header(struct pack*, const struct header*);
-int	pack_query(struct pack*, uint16_t, uint16_t, const char*);
+int	pack_header(struct pack *, const struct header *);
+int	pack_query(struct pack *, uint16_t, uint16_t, const char *);
 
 void	unpack_init(struct unpack *, const char *, size_t);
-int	unpack_header(struct unpack*, struct header*);
-int	unpack_query(struct unpack*, struct query*);
-int	unpack_rr(struct unpack*, struct rr*);
+int	unpack_header(struct unpack *, struct header *);
+int	unpack_query(struct unpack *, struct query *);
+int	unpack_rr(struct unpack *, struct rr *);
 int	sockaddr_from_str(struct sockaddr *, int, const char *);
-ssize_t dname_from_fqdn(const char*, char*, size_t);
+ssize_t dname_from_fqdn(const char *, char *, size_t);
 
 /* asr.c */
 struct asr_ctx *asr_use_resolver(struct asr *);

@@ -1,4 +1,4 @@
-/*	$OpenBSD: asr_debug.c,v 1.10 2012/11/24 15:12:48 eric Exp $	*/
+/*	$OpenBSD: asr_debug.c,v 1.12 2013/04/09 06:42:17 otto Exp $	*/
 /*
  * Copyright (c) 2012 Eric Faurot <eric@openbsd.org>
  *
@@ -26,11 +26,11 @@
 #include "asr.h"
 #include "asr_private.h"
 
-static const char* rcodetostr(uint16_t);
-static const char* print_dname(const char *, char *, size_t);
-static const char* print_header(const struct header *, char *, size_t);
-static const char* print_query(const struct query *, char *, size_t);
-static const char* print_rr(const struct rr*, char *, size_t);
+static const char *rcodetostr(uint16_t);
+static const char *print_dname(const char *, char *, size_t);
+static const char *print_header(const struct header *, char *, size_t);
+static const char *print_query(const struct query *, char *, size_t);
+static const char *print_rr(const struct rr *, char *, size_t);
 
 FILE *asr_debug = NULL;
 
@@ -51,13 +51,13 @@ rcodetostr(uint16_t v)
 	}
 }
 
-static const char*
+static const char *
 print_dname(const char *_dname, char *buf, size_t max)
 {
 	return (asr_strdname(_dname, buf, max));
 }
 
-static const char*
+static const char *
 print_rr(const struct rr *rr, char *buf, size_t max)
 {
 	char	*res;
@@ -129,7 +129,7 @@ print_rr(const struct rr *rr, char *buf, size_t max)
 	return (res);
 }
 
-static const char*
+static const char *
 print_query(const struct query *q, char *buf, size_t max)
 {
 	char b[256];
@@ -141,7 +141,7 @@ print_query(const struct query *q, char *buf, size_t max)
 	return (buf);
 }
 
-static const char*
+static const char *
 print_header(const struct header *h, char *buf, size_t max)
 {
 	snprintf(buf, max,
@@ -293,7 +293,7 @@ asr_dump_config(FILE *f, struct asr *a)
 	fprintf(f, " ndots: %i\n", ac->ac_ndots);
 	fprintf(f, " family:");
 	for (i = 0; ac->ac_family[i] != -1; i++)
-		fprintf(f, " %s", (ac->ac_family[i] == AF_INET)?"inet":"inet6");
+		fprintf(f, " %s", (ac->ac_family[i] == AF_INET)?"inet4":"inet6");
 	fprintf(f, "\n");
 	fprintf(f, "NAMESERVERS timeout=%i retry=%i\n",
 		    ac->ac_nstimeout,

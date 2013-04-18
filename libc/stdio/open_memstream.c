@@ -1,4 +1,5 @@
-/*	$OpenBSD: open_memstream.c,v 1.1 2013/01/01 17:41:13 mpi Exp $	*/
+/*	$OpenBSD: open_memstream.c,v 1.3 2013/04/03 03:11:53 guenther Exp $	*/
+
 /*
  * Copyright (c) 2011 Martin Pieuchot <mpi@openbsd.org>
  *
@@ -15,8 +16,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/param.h>
+
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +31,7 @@ struct state {
 	char		**pbuf;		/* point to the stream */
 	size_t		 *psize;	/* point to min(pos, len) */
 	size_t		  pos;		/* current position */
-	size_t		  size;		/* allocated size */
+	size_t		  size;		/* number of allocated char */
 	size_t		  len;		/* length of the data */
 };
 
@@ -35,15 +39,17 @@ static int
 memstream_write(void *v, const char *b, int l)
 {
 	struct state	*st = v;
-	int		 i;
 	char		*p;
+	size_t		 i, end;
 
-	if (st->pos + l >= st->size) {
+	end = (st->pos + l);
+
+	if (end >= st->size) {
 		/* 1.6 is (very) close to the golden ratio. */
 		size_t	sz = st->size * 8 / 5;
 
-		if (sz < st->pos + l + 1)
-			sz = st->pos + l + 1;
+		if (sz < end + 1)
+			sz = end + 1;
 		p = realloc(st->string, sz);
 		if (!p)
 			return (-1);
@@ -54,7 +60,7 @@ memstream_write(void *v, const char *b, int l)
 
 	for (i = 0; i < l; i++)
 		st->string[st->pos + i] = b[i];
-	st->pos += i;
+	st->pos += l;
 
 	if (st->pos > st->len) {
 		st->len = st->pos;
@@ -67,52 +73,41 @@ memstream_write(void *v, const char *b, int l)
 }
 
 static fpos_t
-memstream_seek(void *v, fpos_t pos, int w)
+memstream_seek(void *v, fpos_t off, int whence)
 {
 	struct state	*st = v;
-	char		*p;
+	ssize_t		 base = 0;
 
-	switch (w) {
+	switch (whence) {
 	case SEEK_SET:
 		break;
 	case SEEK_CUR:
-		pos += st->pos;
+		base = st->pos;
 		break;
 	case SEEK_END:
-		pos += st->len;
+		base = st->len;
 		break;
-	default:
-		errno = EINVAL;
+	}
+
+	if (off > SIZE_MAX - base || off < -base) {
+		errno = EOVERFLOW;
 		return (-1);
 	}
 
-	if (pos < 0)
-		return (-1);
+	st->pos = base + off;
+	*st->psize = MIN(st->pos, st->len);
 
-	st->pos = pos;
-
-	if (st->pos < st->len)
-		*st->psize = st->pos;
-	else
-		*st->psize = st->len;
-
-	return (pos);
+	return (st->pos);
 }
 
 static int
 memstream_close(void *v)
 {
 	struct state	*st = v;
-	char		*p;
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
-
-	*st->psize = MIN(st->pos, st->len);
-	*st->pbuf = st->string;
 
 	free(st);
 
 	return (0);
-#undef MIN
 }
 
 FILE *
@@ -134,11 +129,7 @@ open_memstream(char **pbuf, size_t *psize)
 		return (NULL);
 	}
 
-	if (*psize < 128)
-		st->size = 128;
-	else
-		st->size = *psize;
-
+	st->size = BUFSIZ;
 	if ((st->string = calloc(1, st->size)) == NULL) {
 		free(st);
 		fp->_flags = 0;
@@ -161,6 +152,7 @@ open_memstream(char **pbuf, size_t *psize)
 	fp->_write = memstream_write;
 	fp->_seek = memstream_seek;
 	fp->_close = memstream_close;
+	_SET_ORIENTATION(fp, -1);
 
 	return (fp);
 }

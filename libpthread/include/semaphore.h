@@ -1,4 +1,4 @@
-/*	$OpenBSD: semaphore.h,v 1.6 2012/12/05 23:20:05 deraadt Exp $	*/
+/*	$OpenBSD: semaphore.h,v 1.9 2013/03/26 14:38:08 deraadt Exp $	*/
 
 /* semaphore.h: POSIX 1003.1b semaphores */
 
@@ -32,24 +32,19 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: semaphore.h,v 1.6 2000/01/20 07:55:42 jasone Exp $
  */
 
 #ifndef _SEMAPHORE_H_
 #define _SEMAPHORE_H_
 
-#include <machine/limits.h>
+#include <sys/cdefs.h>
 
 /* Opaque type definition. */
-struct sem;
-typedef struct sem *sem_t;
+struct __sem;
+typedef struct __sem *sem_t;
 struct timespec;
 
 #define SEM_FAILED      ((sem_t *)0)
-#define SEM_VALUE_MAX   UINT_MAX
-
-#ifndef _KERNEL
 
 __BEGIN_DECLS
 int	sem_init(sem_t *, int, unsigned int);
@@ -63,7 +58,5 @@ int	sem_trywait(sem_t *);
 int	sem_post(sem_t *);
 int	sem_getvalue(sem_t * __restrict, int * __restrict);
 __END_DECLS
-
-#endif /* _KERNEL */
 
 #endif /* _SEMAPHORE_H_ */

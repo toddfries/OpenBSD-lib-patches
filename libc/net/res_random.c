@@ -1,4 +1,4 @@
-/* $OpenBSD: res_random.c,v 1.17 2008/04/13 00:28:35 djm Exp $ */
+/* $OpenBSD: res_random.c,v 1.19 2013/04/17 03:07:40 deraadt Exp $ */
 
 /*
  * Copyright 1997 Niels Provos <provos@physnet.uni-hamburg.de>
@@ -68,6 +68,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "thread_private.h"
+
 #define RU_OUT  	180	/* Time after wich will be reseeded */
 #define RU_MAX		30000	/* Uniq cycle, avoid blackjack prediction */
 #define RU_GEN		2	/* Starting generator */
@@ -98,7 +100,7 @@ static u_int16_t ru_g;
 static u_int16_t ru_counter = 0;
 static u_int16_t ru_msb = 0;
 static struct prf_ctx *ru_prf = NULL;
-static long ru_reseed;
+static time_t ru_reseed;
 
 static u_int16_t pmod(u_int16_t, u_int16_t, u_int16_t);
 static void res_initid(void);
@@ -172,7 +174,7 @@ res_initid(void)
 	u_int16_t j, i;
 	u_int32_t tmp;
 	int noprime = 1;
-	struct timeval tv;
+	struct timespec ts;
 
 	ru_x = arc4random_uniform(RU_M);
 
@@ -216,25 +218,34 @@ res_initid(void)
 	if (ru_prf != NULL)
 		arc4random_buf(ru_prf, sizeof(*ru_prf));
 
-	gettimeofday(&tv, NULL);
-	ru_reseed = tv.tv_sec + RU_OUT;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	ru_reseed = ts.tv_sec + RU_OUT;
 	ru_msb = ru_msb == 0x8000 ? 0 : 0x8000; 
 }
 
 u_int
 res_randomid(void)
 {
-	struct timeval tv;
+	struct timespec ts;
+	u_int r;
+	_THREAD_PRIVATE_MUTEX(random);
 
-	gettimeofday(&tv, NULL);
-	if (ru_counter >= RU_MAX || tv.tv_sec > ru_reseed)
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+
+	_THREAD_PRIVATE_MUTEX_LOCK(random);
+
+	if (ru_counter >= RU_MAX || ts.tv_sec > ru_reseed)
 		res_initid();
 
 	/* Linear Congruential Generator */
 	ru_x = (ru_a * ru_x + ru_b) % RU_M;
 	ru_counter++;
 
-	return permute15(ru_seed ^ pmod(ru_g, ru_seed2 + ru_x, RU_N)) | ru_msb;
+	r = permute15(ru_seed ^ pmod(ru_g, ru_seed2 + ru_x, RU_N)) | ru_msb;
+
+	_THREAD_PRIVATE_MUTEX_UNLOCK(random);
+
+	return (r);
 }
 
 #if 0

@@ -1,4 +1,4 @@
-/*	$OpenBSD: res_search_async.c,v 1.3 2012/11/24 15:12:48 eric Exp $	*/
+/*	$OpenBSD: res_search_async.c,v 1.6 2013/04/01 20:22:27 eric Exp $	*/
 /*
  * Copyright (c) 2012 Eric Faurot <eric@openbsd.org>
  *
@@ -25,7 +25,7 @@
 #include <string.h>
 #include <unistd.h>
 
-/* 
+/*
  * TODO:
  *
  * - make it possible to reuse ibuf if it was NULL when first called,
@@ -121,7 +121,7 @@ res_search_async_run(struct async *as, struct async_res *ar)
 			async_set_state(as, ASR_STATE_NOT_FOUND);
 			break;
 		}
-		if (r > sizeof(fqdn)) {
+		if (r == 0) {
 			ar->ar_errno = EINVAL;
 			ar->ar_h_errno = NO_RECOVERY;
 			ar->ar_datalen = -1;
@@ -177,7 +177,7 @@ res_search_async_run(struct async *as, struct async_res *ar)
 			free(ar->ar_data);
 
 		/*
-		 * The original resolver does something like this, to 
+		 * The original resolver does something like this.
 		 */
 		if (as->as_dom_flags & (ASYNC_DOM_NDOTS | ASYNC_DOM_ASIS))
 			as->as.search.saved_h_errno = ar->ar_h_errno;
@@ -200,7 +200,7 @@ res_search_async_run(struct async *as, struct async_res *ar)
 			ar->ar_h_errno = NO_DATA;
 		else if (as->as.search.flags & ASYNC_AGAIN)
 			ar->ar_h_errno = TRY_AGAIN;
-		/* 
+		/*
 		 * Else, we got the ar_h_errno value set by res_query_async()
 		 * for the last domain.
 		 */

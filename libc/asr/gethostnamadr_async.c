@@ -1,4 +1,4 @@
-/*	$OpenBSD: gethostnamadr_async.c,v 1.12 2012/12/17 21:13:16 eric Exp $	*/
+/*	$OpenBSD: gethostnamadr_async.c,v 1.18 2013/04/14 22:23:08 deraadt Exp $	*/
 /*
  * Copyright (c) 2012 Eric Faurot <eric@openbsd.org>
  *
@@ -192,42 +192,16 @@ gethostnamadr_async_run(struct async *as, struct async_res *ar)
 					ar->ar_h_errno = NETDB_SUCCESS;
 				}
 				async_set_state(as, ASR_STATE_HALT);
+				break;
 			}
-			else
-				async_set_state(as, ASR_STATE_NEXT_DOMAIN);
 		}
-		else
-			async_set_state(as, ASR_STATE_NEXT_DB);
-		break;
-
-	case ASR_STATE_NEXT_DOMAIN:
-
-		r = asr_iter_domain(as, as->as.hostnamadr.name, dname,
-		    sizeof(dname));
-		if (r == -1) {
-			async_set_state(as, ASR_STATE_NOT_FOUND);
-			break;
-		}
-
-		if (as->as.hostnamadr.dname)
-			free(as->as.hostnamadr.dname);
-		if ((as->as.hostnamadr.dname = strdup(dname)) == NULL) {
-			ar->ar_h_errno = NETDB_INTERNAL;
-			ar->ar_errno = errno;
-			async_set_state(as, ASR_STATE_HALT);
-		}
-
-		as->as_db_idx = 0;
 		async_set_state(as, ASR_STATE_NEXT_DB);
 		break;
 
 	case ASR_STATE_NEXT_DB:
 
 		if (asr_iter_db(as) == -1) {
-			if (as->as_type == ASR_GETHOSTBYNAME)
-				async_set_state(as, ASR_STATE_NEXT_DOMAIN);
-			else
-				async_set_state(as, ASR_STATE_NOT_FOUND);
+			async_set_state(as, ASR_STATE_NOT_FOUND);
 			break;
 		}
 
@@ -240,8 +214,8 @@ gethostnamadr_async_run(struct async *as, struct async_res *ar)
 			if (as->as_type == ASR_GETHOSTBYNAME) {
 				type = (as->as.hostnamadr.family == AF_INET) ?
 				    T_A : T_AAAA;
-				as->as.hostnamadr.subq = res_query_async_ctx(
-				    as->as.hostnamadr.dname,
+				as->as.hostnamadr.subq = res_search_async_ctx(
+				    as->as.hostnamadr.name,
 				    C_IN, type, NULL, 0, as->as_ctx);
 			} else {
 				addr_as_fqdn(as->as.hostnamadr.addr,
@@ -269,7 +243,7 @@ gethostnamadr_async_run(struct async *as, struct async_res *ar)
 				break;
 
 			if (as->as_type == ASR_GETHOSTBYNAME)
-				data = as->as.hostnamadr.dname;
+				data = as->as.hostnamadr.name;
 			else
 				data = as->as.hostnamadr.addr;
 
@@ -299,7 +273,7 @@ gethostnamadr_async_run(struct async *as, struct async_res *ar)
 			if (as->as.hostnamadr.family != AF_INET)
 				break;
 			if (as->as_type == ASR_GETHOSTBYNAME)
-				data = as->as.hostnamadr.dname;
+				data = as->as.hostnamadr.name;
 			else
 				data = as->as.hostnamadr.addr;
 			h = _yp_gethostnamadr(as->as_type, data);
@@ -338,6 +312,7 @@ gethostnamadr_async_run(struct async *as, struct async_res *ar)
 		/* If we got a packet but no anwser, use the next DB. */
 		if (ar->ar_count == 0) {
 			free(ar->ar_data);
+			as->as.hostnamadr.subq_h_errno = ar->ar_h_errno;
 			async_set_state(as, ASR_STATE_NEXT_DB);
 			break;
 		}
@@ -369,8 +344,10 @@ gethostnamadr_async_run(struct async *as, struct async_res *ar)
 		 * No address found in the dns packet. The blocking version
 		 * reports this as an error.
 		 */
-		if (as->as_type == ASR_GETHOSTBYNAME &&
-		    h->h.h_addr_list[0] == NULL) {
+		if ((as->as_type == ASR_GETHOSTBYNAME &&
+		     h->h.h_addr_list[0] == NULL) ||
+		    (as->as_type == ASR_GETHOSTBYADDR &&
+		     h->h.h_name == NULL)) {
 			free(h);
 			async_set_state(as, ASR_STATE_NEXT_DB);
 			break;
@@ -383,7 +360,10 @@ gethostnamadr_async_run(struct async *as, struct async_res *ar)
 
 	case ASR_STATE_NOT_FOUND:
 		ar->ar_errno = 0;
-		ar->ar_h_errno = HOST_NOT_FOUND;
+		if (as->as.hostnamadr.subq_h_errno)
+			ar->ar_h_errno = as->as.hostnamadr.subq_h_errno;
+		else
+			ar->ar_h_errno = HOST_NOT_FOUND;
 		async_set_state(as, ASR_STATE_HALT);
 		break;
 
@@ -484,6 +464,7 @@ hostent_from_packet(int reqtype, int family, char *pkt, size_t pktlen)
 	struct header	 hdr;
 	struct query	 q;
 	struct rr	 rr;
+	char		 dname[MAXDNAME];
 
 	if ((h = hostent_alloc(family)) == NULL)
 		return (NULL);
@@ -492,6 +473,8 @@ hostent_from_packet(int reqtype, int family, char *pkt, size_t pktlen)
 	unpack_header(&p, &hdr);
 	for (; hdr.qdcount; hdr.qdcount--)
 		unpack_query(&p, &q);
+	strlcpy(dname, q.q_dname, sizeof(dname));
+
 	for (; hdr.ancount; hdr.ancount--) {
 		unpack_rr(&p, &rr);
 		if (rr.rr_class != C_IN)
@@ -503,14 +486,17 @@ hostent_from_packet(int reqtype, int family, char *pkt, size_t pktlen)
 				if (hostent_add_alias(h, rr.rr_dname, 1) == -1)
 					goto fail;
 			} else {
-				if (hostent_set_cname(h, rr.rr_dname, 1) == -1)
-					goto fail;
+				if (strcasecmp(rr.rr_dname, dname) == 0)
+					strlcpy(dname, rr.rr.cname.cname,
+					    sizeof(dname));
 			}
 			break;
 
 		case T_PTR:
 			if (reqtype != ASR_GETHOSTBYADDR)
 				break;
+			if (strcasecmp(rr.rr_dname, dname) != 0)
+				continue;
 			if (hostent_set_cname(h, rr.rr.ptr.ptrname, 1) == -1)
 				goto fail;
 			/* XXX See if we need MULTI_PTRS_ARE_ALIASES */
@@ -522,7 +508,7 @@ hostent_from_packet(int reqtype, int family, char *pkt, size_t pktlen)
 			if (family != AF_INET)
 				break;
 			if (hostent_set_cname(h, rr.rr_dname, 1) == -1)
-				goto fail;
+				;
 			if (hostent_add_addr(h, &rr.rr.in_a.addr, 4) == -1)
 				goto fail;
 			break;
@@ -533,7 +519,7 @@ hostent_from_packet(int reqtype, int family, char *pkt, size_t pktlen)
 			if (family != AF_INET6)
 				break;
 			if (hostent_set_cname(h, rr.rr_dname, 1) == -1)
-				goto fail;
+				;
 			if (hostent_add_addr(h, &rr.rr.in_aaaa.addr6, 16) == -1)
 				goto fail;
 			break;
@@ -549,7 +535,7 @@ fail:
 static struct hostent_ext *
 hostent_alloc(int family)
 {
-	struct hostent_ext     *h;
+	struct hostent_ext	*h;
 	size_t			alloc;
 
 	alloc = sizeof(*h) + 1024;
@@ -560,7 +546,7 @@ hostent_alloc(int family)
 	h->h.h_length = (family == AF_INET) ? 4 : 16;
 	h->h.h_aliases = h->aliases;
 	h->h.h_addr_list = h->addrs;
-	h->pos = (char*)(h) + sizeof(*h);
+	h->pos = (char *)(h) + sizeof(*h);
 	h->end = h->pos + 1024;
 
 	return (h);
