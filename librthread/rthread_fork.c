@@ -1,4 +1,4 @@
-/*	$OpenBSD: rthread_fork.c,v 1.6 2012/08/22 23:43:32 matthew Exp $ */
+/*	$OpenBSD: rthread_fork.c,v 1.9 2013/06/25 22:51:46 guenther Exp $ */
 
 /*
  * Copyright (c) 2008 Kurt Miller <kurt@openbsd.org>
@@ -40,6 +40,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "thread_private.h"	/* in libc/include */
 
@@ -55,7 +56,7 @@ struct rthread_atfork {
 static TAILQ_HEAD(atfork_listhead, rthread_atfork) _atfork_list =
     TAILQ_HEAD_INITIALIZER(_atfork_list);
 
-static _spinlock_lock_t _atfork_lock = _SPINLOCK_UNLOCKED;
+static struct _spinlock _atfork_lock = _SPINLOCK_UNLOCKED;
 
 pid_t   _thread_sys_fork(void);
 pid_t   _thread_sys_vfork(void);
@@ -67,6 +68,9 @@ _dofork(int is_vfork)
 	pthread_t me;
 	pid_t (*sys_fork)(void);
 	pid_t newid;
+#if defined(__ELF__)
+	sigset_t nmask, omask;
+#endif
 
 	sys_fork = is_vfork ? &_thread_sys_vfork : &_thread_sys_fork;
 
@@ -93,15 +97,20 @@ _dofork(int is_vfork)
 	_thread_arc4_lock();
 
 #if defined(__ELF__)
-	if (_DYNAMIC)
+	if (_DYNAMIC) {
+		sigfillset(&nmask);
+		_thread_sys_sigprocmask(SIG_BLOCK, &nmask, &omask);
 		_rthread_bind_lock(0);
+	}
 #endif
 
 	newid = sys_fork();
 
 #if defined(__ELF__)
-	if (_DYNAMIC)
+	if (_DYNAMIC) {
 		_rthread_bind_lock(1);
+		_thread_sys_sigprocmask(SIG_SETMASK, &omask, NULL);
+	}
 #endif
 
 	_thread_arc4_unlock();
@@ -116,9 +125,9 @@ _dofork(int is_vfork)
 	if (newid == 0) {
 		/* update this thread's structure */
 		me->tid = getthrid();
-		me->donesem.lock = _SPINLOCK_UNLOCKED;
+		me->donesem.lock = _SPINLOCK_UNLOCKED_ASSIGN;
 		me->flags &= ~THREAD_DETACHED;
-		me->flags_lock = _SPINLOCK_UNLOCKED;
+		me->flags_lock = _SPINLOCK_UNLOCKED_ASSIGN;
 
 		/* this thread is the initial thread for the new process */
 		_initial_thread = *me;
@@ -126,7 +135,7 @@ _dofork(int is_vfork)
 		/* reinit the thread list */
 		LIST_INIT(&_thread_list);
 		LIST_INSERT_HEAD(&_thread_list, &_initial_thread, threads);
-		_thread_lock = _SPINLOCK_UNLOCKED;
+		_thread_lock = _SPINLOCK_UNLOCKED_ASSIGN;
 
 		/* single threaded now */
 		__isthreaded = 0;

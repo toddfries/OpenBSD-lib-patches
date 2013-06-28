@@ -1,4 +1,4 @@
-/*	$OpenBSD: rthread.h,v 1.41 2013/03/24 19:55:45 guenther Exp $ */
+/*	$OpenBSD: rthread.h,v 1.45 2013/06/21 06:08:50 guenther Exp $ */
 /*
  * Copyright (c) 2004,2005 Ted Unangst <tedu@openbsd.org>
  * All Rights Reserved.
@@ -20,9 +20,11 @@
  * Since only the thread library cares about their size or arrangement,
  * it should be possible to switch libraries without relinking.
  *
- * Do not reorder _spinlock_lock_t and sem_t variables in the structs.
+ * Do not reorder struct _spinlock and sem_t variables in the structs.
  * This is due to alignment requirements of certain arches like hppa.
  * The current requirement is 16 bytes.
+ *
+ * THE MACHINE DEPENDENT CERROR CODE HAS HARD CODED OFFSETS INTO PTHREAD_T!
  */
 
 #include <sys/queue.h>
@@ -36,6 +38,19 @@
 #define RTHREAD_STACK_SIZE_DEF (256 * 1024)
 #endif
 
+#define _USING_TICKETS 0
+/*
+ * tickets don't work yet? (or seem much slower, with lots of system time)
+ * until then, keep the struct around to avoid excessive changes going
+ * back and forth.
+ */
+struct _spinlock {
+	_atomic_lock_t ticket;
+};
+
+#define	_SPINLOCK_UNLOCKED { _ATOMIC_LOCK_UNLOCKED }
+extern struct _spinlock _SPINLOCK_UNLOCKED_ASSIGN;
+
 struct stack {
 	SLIST_ENTRY(stack)	link;	/* link for free default stacks */
 	void	*sp;			/* machine stack pointer */
@@ -46,16 +61,16 @@ struct stack {
 };
 
 struct __sem {
-	_spinlock_lock_t lock;
+	struct _spinlock lock;
 	volatile int waitcount;
 	volatile int value;
-	int pad;
+	int __pad;
 };
 
 TAILQ_HEAD(pthread_queue, pthread);
 
 struct pthread_mutex {
-	_spinlock_lock_t lock;
+	struct _spinlock lock;
 	struct pthread_queue lockers;
 	int type;
 	pthread_t owner;
@@ -70,7 +85,7 @@ struct pthread_mutex_attr {
 };
 
 struct pthread_cond {
-	_spinlock_lock_t lock;
+	struct _spinlock lock;
 	struct pthread_queue waiters;
 	struct pthread_mutex *mutex;
 	clockid_t clock;
@@ -81,7 +96,7 @@ struct pthread_cond_attr {
 };
 
 struct pthread_rwlock {
-	_spinlock_lock_t lock;
+	struct _spinlock lock;
 	pthread_t owner;
 	struct pthread_queue writers;
 	int readers;
@@ -135,7 +150,7 @@ struct pthread_barrierattr {
 };
 
 struct pthread_spinlock {
-	_spinlock_lock_t lock;
+	struct _spinlock lock;
 	pthread_t owner;
 };
 
@@ -146,7 +161,7 @@ struct pthread {
 #endif
 	pid_t tid;
 	unsigned int flags;
-	_spinlock_lock_t flags_lock;
+	struct _spinlock flags_lock;
 	void *retval;
 	void *(*fn)(void *);
 	void *arg;
@@ -184,14 +199,15 @@ extern int _threads_ready;
 extern size_t _thread_pagesize;
 extern LIST_HEAD(listhead, pthread) _thread_list;
 extern struct pthread _initial_thread;
-extern _spinlock_lock_t _thread_lock;
+extern struct _spinlock _thread_lock;
 extern struct pthread_attr _rthread_attr_default;
 
 #define	ROUND_TO_PAGE(size) \
 	(((size) + (_thread_pagesize - 1)) & ~(_thread_pagesize - 1))
 
-void	_spinlock(_spinlock_lock_t *);
-void	_spinunlock(_spinlock_lock_t *);
+void	_spinlock(volatile struct _spinlock *);
+int	_spinlocktry(volatile struct _spinlock *);
+void	_spinunlock(volatile struct _spinlock *);
 int	_sem_wait(sem_t, int, const struct timespec *, int *);
 int	_sem_post(sem_t);
 
@@ -217,15 +233,15 @@ void	_leave_delayed_cancel(pthread_t, int);
 
 void	_thread_dump_info(void);
 
-int	_atomic_lock(register volatile _spinlock_lock_t *);
-
 /* syscalls */
 int	getthrid(void);
 void	__threxit(pid_t *);
 int	__thrsleep(const volatile void *, clockid_t, const struct timespec *,
-	    void *, const int *);
+	    volatile void *, const int *);
 int	__thrwakeup(const volatile void *, int n);
 int	__thrsigdivert(sigset_t, siginfo_t *, const struct timespec *);
 int	sched_yield(void);
 int	_thread_sys_sigaction(int, const struct sigaction *,
 	    struct sigaction *);
+int	_thread_sys_sigprocmask(int, const sigset_t *, sigset_t *);
+

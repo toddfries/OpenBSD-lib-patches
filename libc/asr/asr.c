@@ -1,4 +1,4 @@
-/*	$OpenBSD: asr.c,v 1.25 2013/04/30 12:02:39 eric Exp $	*/
+/*	$OpenBSD: asr.c,v 1.30 2013/06/01 15:02:01 eric Exp $	*/
 /*
  * Copyright (c) 2010-2012 Eric Faurot <eric@openbsd.org>
  *
@@ -74,9 +74,6 @@ static int asr_parse_nameserver(struct sockaddr *, const char *);
 static int asr_ndots(const char *);
 static void pass0(char **, int, struct asr_ctx *);
 static int strsplit(char *, char **, int);
-#if ASR_OPT_HOSTALIASES
-static char *asr_hostalias(const char *, char *, size_t);
-#endif
 #if ASR_OPT_ENVOPTS
 static void asr_ctx_envopts(struct asr_ctx *);
 #endif
@@ -394,9 +391,9 @@ asr_ctx_free(struct asr_ctx *ac)
 
 	if (ac->ac_domain)
 		free(ac->ac_domain);
-	for (i = 0; i < ac->ac_nscount; i++)
+	for (i = 0; i < ASR_MAXNS; i++)
 		free(ac->ac_ns[i]);
-	for (i = 0; i < ac->ac_domcount; i++)
+	for (i = 0; i < ASR_MAXDOM; i++)
 		free(ac->ac_dom[i]);
 
 	free(ac);
@@ -487,23 +484,6 @@ asr_make_fqdn(const char *name, const char *domain, char *buf, size_t buflen)
 	}
 
 	return (strlen(buf));
-}
-
-/*
- * Concatenate a name and a domain name. The result has no trailing dot.
- * Return the resulting string length, or 0 in case of error.
- */
-size_t
-asr_domcat(const char *name, const char *domain, char *buf, size_t buflen)
-{
-	size_t	r;
-
-	r = asr_make_fqdn(name, domain, buf, buflen);
-	if (r == 0)
-		return (0);
-	buf[r - 1] = '\0';
-
-	return (r - 1);
 }
 
 /*
@@ -632,7 +612,7 @@ pass0(char **tok, int n, struct asr_ctx *ac)
 		}
 	} else if (!strcmp(tok[0], "search")) {
 		/* resolv.conf says the last line wins */
-		for (i = 0; i < ac->ac_domcount; i++)
+		for (i = 0; i < ASR_MAXDOM; i++)
 			free(ac->ac_dom[i]);
 		ac->ac_domcount = 0;
 		for (i = 1; i < n; i++)
@@ -914,168 +894,30 @@ asr_iter_db(struct async *as)
 	}
 
 	as->as_db_idx += 1;
-	as->as_ns_idx = 0;
 	DPRINT("asr_iter_db: %i\n", as->as_db_idx);
 
 	return (0);
 }
 
 /*
- * Set the async context nameserver index to the next nameserver of the
- * currently used DB (assuming it is DNS), cycling over the list until the
- * maximum retry counter is reached.  Return 0 on success, or -1 if all
- * nameservers were used.
- */
-int
-asr_iter_ns(struct async *as)
-{
-	for (;;) {
-		if (as->as_ns_cycles >= as->as_ctx->ac_nsretries)
-			return (-1);
-
-		as->as_ns_idx += 1;
-		if (as->as_ns_idx <= as->as_ctx->ac_nscount)
-			break;
-		as->as_ns_idx = 0;
-		as->as_ns_cycles++;
-		DPRINT("asr: asr_iter_ns(): cycle %i\n", as->as_ns_cycles);
-	}
-
-	as->as_timeout = 1000 * (as->as_ctx->ac_nstimeout << as->as_ns_cycles);
-	if (as->as_ns_cycles > 0)
-		as->as_timeout /= as->as_ctx->ac_nscount;
-	if (as->as_timeout < 1000)
-		as->as_timeout = 1000;
-
-	return (0);
-}
-
-enum {
-	DOM_INIT,
-	DOM_DOMAIN,
-	DOM_DONE
-};
-
-/*
- * Implement the search domain strategy.
- *
- * This function works as a generator that constructs complete domains in
- * buffer "buf" of size "len" for the given host name "name", according to the
- * search rules defined by the resolving context.  It is supposed to be called
- * multiple times (with the same name) to generate the next possible domain
- * name, if any.
- *
- * It returns -1 if all possibilities have been exhausted, 0 if there was an
- * error generating the next name, or the resulting name length.
- */
-int
-asr_iter_domain(struct async *as, const char *name, char * buf, size_t len)
-{
-#if ASR_OPT_HOSTALIASES
-	char	*alias;
-#endif
-
-	switch (as->as_dom_step) {
-
-	case DOM_INIT:
-		/* First call */
-
-		/*
-		 * If "name" is an FQDN, that's the only result and we
-		 * don't try anything else.
-		 */
-		if (strlen(name) && name[strlen(name) - 1] ==  '.') {
-			DPRINT("asr: asr_iter_domain(\"%s\") fqdn\n", name);
-			as->as_dom_flags |= ASYNC_DOM_FQDN;
-			as->as_dom_step = DOM_DONE;
-			return (asr_domcat(name, NULL, buf, len));
-		}
-
-#if ASR_OPT_HOSTALIASES
-		/*
-		 * If "name" has no dots, it might be an alias. If so,
-		 * That's also the only result.
-		 */
-		if ((as->as_ctx->ac_options & RES_NOALIASES) == 0 &&
-		    asr_ndots(name) == 0 &&
-		    (alias = asr_hostalias(name, buf, len)) != NULL) {
-			DPRINT("asr: asr_iter_domain(\"%s\") is alias \"%s\"\n",
-			    name, alias);
-			as->as_dom_flags |= ASYNC_DOM_HOSTALIAS;
-			as->as_dom_step = DOM_DONE;
-			return (asr_domcat(alias, NULL, buf, len));
-		}
-#endif
-
-		/*
-		 * Otherwise, we iterate through the specified search domains.
-		 */
-		as->as_dom_step = DOM_DOMAIN;
-		as->as_dom_idx = 0;
-
-		/*
-		 * If "name" as enough dots, use it as-is first, as indicated
-		 * in resolv.conf(5).
-		 */
-		if ((asr_ndots(name)) >= as->as_ctx->ac_ndots) {
-			DPRINT("asr: asr_iter_domain(\"%s\") ndots\n", name);
-			as->as_dom_flags |= ASYNC_DOM_NDOTS;
-			if (strlcpy(buf, name, len) >= len)
-				return (0);
-			return (strlen(buf));
-		}
-		/* Otherwise, starts using the search domains */
-		/* FALLTHROUGH */
-
-	case DOM_DOMAIN:
-		if (as->as_dom_idx < as->as_ctx->ac_domcount) {
-			DPRINT("asr: asr_iter_domain(\"%s\") domain \"%s\"\n",
-			    name, as->as_ctx->ac_dom[as->as_dom_idx]);
-			as->as_dom_flags |= ASYNC_DOM_DOMAIN;
-			return (asr_domcat(name,
-			    as->as_ctx->ac_dom[as->as_dom_idx++], buf, len));
-		}
-
-		/* No more domain to try. */
-
-		as->as_dom_step = DOM_DONE;
-
-		/*
-		 * If the name was not tried as an absolute name before,
-		 * do it now.
-		 */
-		if (!(as->as_dom_flags & ASYNC_DOM_NDOTS)) {
-			DPRINT("asr: asr_iter_domain(\"%s\") as is\n", name);
-			as->as_dom_flags |= ASYNC_DOM_ASIS;
-			if (strlcpy(buf, name, len) >= len)
-				return (0);
-			return (strlen(buf));
-		}
-		/* Otherwise, we are done. */
-
-	case DOM_DONE:
-	default:
-		DPRINT("asr: asr_iter_domain(\"%s\") done\n", name);
-		return (-1);
-	}
-}
-
-#if ASR_OPT_HOSTALIASES
-/*
  * Check if the hostname "name" is a user-defined alias as per hostname(7).
  * If so, copies the result in the buffer "abuf" of size "abufsz" and
  * return "abuf". Otherwise return NULL.
  */
-static char *
-asr_hostalias(const char *name, char *abuf, size_t abufsz)
+char *
+asr_hostalias(struct asr_ctx *ac, const char *name, char *abuf, size_t abufsz)
 {
+#if ASR_OPT_HOSTALIASES
 	FILE	 *fp;
 	size_t	  len;
 	char	 *file, *buf, *tokens[2];
 	int	  ntok;
 
-	file = getenv("HOSTALIASES");
-	if (file == NULL || issetugid() != 0 || (fp = fopen(file, "r")) == NULL)
+	if (ac->ac_options & RES_NOALIASES ||
+	    asr_ndots(name) != 0 ||
+	    issetugid() ||
+	    (file = getenv("HOSTALIASES")) == NULL ||
+	    (fp = fopen(file, "r")) == NULL)
 		return (NULL);
 
 	DPRINT("asr: looking up aliases in \"%s\"\n", file);
@@ -1096,6 +938,6 @@ asr_hostalias(const char *name, char *abuf, size_t abufsz)
 	}
 
 	fclose(fp);
+#endif
 	return (NULL);
 }
-#endif

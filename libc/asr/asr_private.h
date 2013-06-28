@@ -1,4 +1,4 @@
-/*	$OpenBSD: asr_private.h,v 1.17 2013/04/30 12:02:39 eric Exp $	*/
+/*	$OpenBSD: asr_private.h,v 1.22 2013/06/01 15:02:01 eric Exp $	*/
 /*
  * Copyright (c) 2012 Eric Faurot <eric@openbsd.org>
  *
@@ -121,11 +121,9 @@ enum async_type {
 	ASR_GETNAMEINFO,
 };
 
-enum asr_db_type {
-	ASR_DB_FILE,
-	ASR_DB_DNS,
-	ASR_DB_YP,
-};
+#define	ASR_DB_FILE	'f'
+#define	ASR_DB_DNS	'b'
+#define	ASR_DB_YP	'y'
 
 struct asr_ctx {
 	int		 ac_refcount;
@@ -135,7 +133,7 @@ struct asr_ctx {
 	int		 ac_domcount;
 	char		*ac_dom[ASR_MAXDOM];
 	int		 ac_dbcount;
-	int		 ac_db[ASR_MAXDB];
+	char		 ac_db[ASR_MAXDB + 1];
 	int		 ac_family[3];
 
 	char		*ac_hostfile;
@@ -157,9 +155,8 @@ struct asr {
 
 #define	ASYNC_DOM_FQDN		0x00000001
 #define	ASYNC_DOM_NDOTS		0x00000002
-#define	ASYNC_DOM_HOSTALIAS	0x00000004
-#define	ASYNC_DOM_DOMAIN	0x00000008
-#define ASYNC_DOM_ASIS		0x00000010
+#define	ASYNC_DOM_DOMAIN	0x00000004
+#define ASYNC_DOM_ASIS		0x00000008
 
 #define	ASYNC_NODATA		0x00000100
 #define	ASYNC_AGAIN		0x00000200
@@ -183,8 +180,6 @@ struct async {
 	int		 as_dom_flags;
 	int		 as_family_idx;
 	int		 as_db_idx;
-	int		 as_ns_idx;
-	int		 as_ns_cycles;
 
 	int		 as_count;
 
@@ -197,6 +192,9 @@ struct async {
 			char		*dname;		/* not fqdn! */
 			int		 rcode;		/* response code */
 			int		 ancount;	/* answer count */
+
+			int		 nsidx;
+			int		 nsloop;
 
 			/* io buffers for query/response */
 			unsigned char	*obuf;
@@ -318,12 +316,10 @@ void asr_ctx_unref(struct asr_ctx *);
 struct async *async_new(struct asr_ctx *, int);
 void async_free(struct async *);
 size_t asr_make_fqdn(const char *, const char *, char *, size_t);
-size_t asr_domcat(const char *, const char *, char *, size_t);
 char *asr_strdname(const char *, char *, size_t);
 int asr_iter_db(struct async *);
-int asr_iter_ns(struct async *);
-int asr_iter_domain(struct async *, const char *, char *, size_t);
 int asr_parse_namedb_line(FILE *, char **, int);
+char *asr_hostalias(struct asr_ctx *, const char *, char *, size_t);
 
 /* <*>_async.h */
 struct async *res_query_async_ctx(const char *, int, int, struct asr_ctx *);

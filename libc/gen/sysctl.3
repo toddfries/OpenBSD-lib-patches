@@ -1,4 +1,4 @@
-.\"	$OpenBSD: sysctl.3,v 1.219 2013/04/15 16:47:14 guenther Exp $
+.\"	$OpenBSD: sysctl.3,v 1.225 2013/06/09 15:09:20 jmc Exp $
 .\"
 .\" Copyright (c) 1993
 .\"	The Regents of the University of California.  All rights reserved.
@@ -27,17 +27,17 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: April 15 2013 $
+.Dd $Mdocdate: June 9 2013 $
 .Dt SYSCTL 3
 .Os
 .Sh NAME
 .Nm sysctl
 .Nd get or set system information
 .Sh SYNOPSIS
-.Fd #include <sys/param.h>
-.Fd #include <sys/sysctl.h>
+.In sys/param.h
+.In sys/sysctl.h
 .Ft int
-.Fn sysctl "int *name" "u_int namelen" "void *oldp" "size_t *oldlenp" "void *newp" "size_t newlen"
+.Fn sysctl "const int *name" "u_int namelen" "void *oldp" "size_t *oldlenp" "void *newp" "size_t newlen"
 .Sh DESCRIPTION
 The
 .Fn sysctl
@@ -1114,6 +1114,7 @@ privileges may change the value.
 .It Dv PF_INET Ta "IPv4 values" Ta "yes"
 .It Dv PF_INET6 Ta "IPv6 values" Ta "yes"
 .It Dv PF_KEY Ta "key management" Ta "no"
+.It Dv PF_MPLS Ta "MPLS values" Ta "yes"
 .It Dv PF_PIPEX Ta "PIPEX values" Ta "yes"
 .El
 .Bl -tag -width "123456"
@@ -1171,6 +1172,7 @@ The currently defined protocols and names are:
 .It ip Ta directed-broadcast Ta integer Ta yes
 .It ip Ta encdebug Ta integer Ta yes
 .It ip Ta forwarding Ta integer Ta yes
+.It ip Ta ifq Ta node Ta "N/A"
 .It ip Ta ipsec-allocs Ta integer Ta yes
 .It ip Ta ipsec-auth-alg Ta string Ta yes
 .It ip Ta ipsec-bytes Ta integer Ta yes
@@ -1344,6 +1346,30 @@ forwarding is restricted to traffic that has
 been IPsec encapsulated or decapsulated by
 the host.
 The default value is 0.
+.It Li ip.ifq
+Fifth level comprises an array of
+.Li struct ifqueue
+structures containing information about IP packet input queue.
+The fifth level names for the elements of
+.Li struct ifqueue
+are detailed below.
+.Bl -column "Fifth level name" "integer" "Changeable" -offset indent
+.It Sy "Fifth level name" Ta Sy "Type" Ta Sy "Changeable"
+.It Dv IFQCTL_DROPS Ta "integer" Ta "no"
+.It Dv IFQCTL_LEN Ta "integer" Ta "no"
+.It Dv IFQCTL_MAXLEN Ta "integer" Ta "yes"
+.El
+.Pp
+The variables are as follows:
+.Pp
+.Bl -tag -width Ds -compact
+.It Dv IFQCTL_DROPS
+Returns number of packet dropped.
+.It Dv IFQCTL_LEN
+Returns the current queue length.
+.It Dv IFQCTL_MAXLEN
+Get or set the maximum number of queue length.
+.El
 .It Li ip.ipsec-allocs
 The number of IPsec flows that can use a security association before
 it expires.
@@ -1898,6 +1924,49 @@ Security Association database (SADB).
 .It Dv NET_KEY_SPD_DUMP
 IPsec flow database (SPD).
 .El
+.It Dv PF_MPLS
+Get or set global information about MPLS (Multiprotocol Label Switching).
+.Bl -column "MPLSCTL_MAXINKLOOP " "integer" "not applicable" -offset indent
+.It Sy "Third level name" Ta Sy "Type" Ta Sy "Changeable"
+.It Dv MPLSCTL_DEFTTL Ta integer Ta yes
+.It Dv MPLSCTL_IFQUEUE Ta node Ta "not applicable"
+.It Dv MPLSCTL_MAPTTL_IP Ta integer Ta yes
+.It Dv MPLSCTL_MAPTTL_IP6 Ta integer Ta yes
+.It Dv MPLSCTL_MAXINKLOOP Ta integer Ta yes
+.El
+.Bl -tag -width "123456"
+.It Dv MPLSCTL_DEFTTL
+Set or get the default TTL value which is used for MPLS (Shim) Header.
+The default is 255.
+.It Dv MPLSCTL_IFQUEUE
+Fourth level comprises an array of
+.Li struct ifqueue
+structures containing information about MPLS packet input queue.
+The forth level names for the elements of
+.Li struct ifqueue are same as described in
+.Li ip.ifq
+in the
+.Dv PF_INET
+section.
+.It Dv MPLSCTL_MAPTTL_IP
+If set to 1 the TTL field is synchronized between the IP header and the
+MPLS label stack.
+If set to 0 the IP header TTL is not modified while passing through MPLS
+and the MPLS label stack is initialized with the
+.Dv MPLSCTL_DEFTTL .
+The default is 1.
+.It Dv MPLSCTL_MAPTTL_IP6
+If set to 1 the TTL field is synchronized between the IPv6 header and the
+MPLS label stack.
+If set to 0 the IPv6 header TTL is not modified while passing through MPLS
+and the MPLS label stack is initialized with the
+.Dv MPLSCTL_DEFTTL .
+The default is 0.
+.It Dv MPLSCTL_MAXINKLOOP
+Set or get the maxinum number of label stack operations (push, swap, pop)
+that can be made on a packet.
+The default is 16.
+.El
 .It Dv PF_PIPEX
 Get or set global information about PIPEX.
 .Pp
@@ -1905,11 +1974,34 @@ The currently defined variable names are:
 .Bl -column "Third level name" "integer" "Changeable" -offset indent
 .It Sy "Third level name" Ta Sy "Type" Ta Sy "Changeable"
 .It Dv PIPEXCTL_ENABLE Ta integer Ta yes
+.It Dv PIPEXCTL_INQ Ta node Ta not applicable
+.It Dv PIPEXCTL_OUTQ Ta node Ta not applicable
 .El
 .Bl -tag -width "123456"
 .It Dv PIPEXCTL_ENABLE
 If set to 1, enable PIPEX processing.
 The default is 0.
+.It Dv PIPEXCTL_INQ
+Fourth level comprises an array of
+.Li struct ifqueue
+structures containing information about the PIPEX packet input queue.
+The forth level names for the elements of
+.Li struct ifqueue
+are the same as described in
+.Li ip.ifq
+in the
+.Dv PF_INET
+section.
+.It Dv PIPEXCTL_OUTQ
+Fourth level comprises an array of
+.Li struct ifqueue
+structures containing information about PIPEX packet output queue.
+The forth level names for the elements of
+.Li struct ifqueue are same as described in
+.Li ip.ifq
+in the
+.Dv PF_INET
+section.
 .El
 .El
 .Ss CTL_VFS
@@ -1994,6 +2086,24 @@ are contiguous on disk, reducing fragmentation.
 The number of I/O kernel threads for NFS clients.
 The default is 4;
 the maximum is 20.
+.El
+.It FUSE
+.Bl -column "FUSEFS_POOL_NBPAGES" "Type" "Changeable" -offset indent
+.It Sy "Third level name" Ta Sy "Type" Ta Sy "Changeable"
+.It Dv FUSEFS_INFBUFS Ta "int" Ta "no"
+.It Dv FUSEFS_OPENDEVS Ta "int" Ta "no"
+.It Dv FUSEFS_POOL_NBPAGES Ta "int" Ta "no"
+.It Dv FUSEFS_WAITFBUFS Ta "int" Ta "no"
+.El
+.Bl -tag -width Ds
+.It Dv FUSEFS_INFBUFS
+The number of inbound fusebufs.
+.It Dv FUSEFS_OPENDEVS
+The number of FUSE devices opened.
+.It Dv FUSEFS_POOL_NBPAGES
+The number of pages used for fusebuf memory.
+.It Dv FUSEFS_WAITFBUFS
+The number of fusebufs waiting for a response.
 .El
 .El
 .El
@@ -2105,6 +2215,8 @@ definitions for third level virtual file system identifiers
 definitions for second level virtual memory identifiers
 .It Aq Pa uvm/uvm_swap_encrypt.h
 definitions for third level virtual memory identifiers
+.It Aq Pa net/if.h
+definitions for packet input/output queue identifiers
 .It Aq Pa net/pipex.h
 definitions for third level PIPEX identifiers
 .It Aq Pa netinet/in.h
