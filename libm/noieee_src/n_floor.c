@@ -1,4 +1,4 @@
-/*	$OpenBSD: n_floor.c,v 1.17 2013/03/28 18:09:38 martynas Exp $	*/
+/*	$OpenBSD: n_floor.c,v 1.19 2013/07/05 05:44:10 espie Exp $	*/
 /*	$NetBSD: n_floor.c,v 1.1 1995/10/10 23:36:48 ragge Exp $	*/
 /*
  * Copyright (c) 1985, 1993
@@ -33,7 +33,8 @@
 
 #include "mathimpl.h"
 
-static const double L = 36028797018963968.0E0;
+static const double L = 36028797018963968.0E0;	/* 2**55 */
+static const float F = 8388608E0f;		/* 2**23 */
 
 /*
  * floor(x) := the largest integer no larger than x;
@@ -58,6 +59,8 @@ floor(double x)
 	}
 }
 
+__strong_alias(floorl, floor);
+
 double
 ceil(double x)
 {
@@ -74,6 +77,39 @@ ceil(double x)
 	}
 }
 
+__strong_alias(ceill, ceil);
+
+float
+floorf(float x)
+{
+	volatile float y;
+
+	if (isnanf(x) || x >= F)	/* already an even integer */
+		return x;
+	else if (x < (float)0)
+		return -ceilf(-x);
+	else {			/* now 0 <= x < F */
+		y = F+x;		/* destructive store must be forced */
+		y -= F;			/* an integer, and |x-y| < 1 */
+		return x < y ? y-(float)1 : y;
+	}
+}
+
+float
+ceilf(float x)
+{
+	volatile float y;
+
+	if (isnanf(x) || x >= F)	/* already an even integer */
+		return x;
+	else if (x < (float)0)
+		return -floorf(-x);
+	else {			/* now 0 <= x < F */
+		y = F+x;		/* destructive store must be forced */
+		y -= F;			/* an integer, and |x-y| < 1 */
+		return x > y ? y+(float)1 : y;
+	}
+}
 /*
  * algorithm for rint(x) in pseudo-pascal form ...
  *
@@ -114,3 +150,22 @@ rint(double x)
 }
 
 __strong_alias(rintl, rint);
+
+float
+rintf(float x)
+{
+	float s;
+	volatile float t;
+	const float one = 1.0f;
+
+	if (isnanf(x))
+		return (x);
+
+	if (copysignf(x, one) >= F)	/* already an integer */
+		return (x);
+
+	s = copysignf(F,x);
+	t = x + s;				/* x+s rounded to integer */
+	return (t - s);
+}
+

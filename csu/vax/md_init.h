@@ -1,6 +1,7 @@
-/*	$OpenBSD: n_cimagf.c,v 1.1 2008/10/07 22:25:53 martynas Exp $	*/
+/*	$OpenBSD: md_init.h,v 1.1 2013/07/05 21:10:50 miod Exp $	*/
+
 /*
- * Copyright (c) 2008 Martynas Venckus <martynas@openbsd.org>
+ * Copyright (c) 2008 Miodrag Vallat.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,11 +16,21 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <complex.h>
-#include <math.h>
+#define	MD_SECT_CALL_FUNC(section, func) __asm (			\
+	"\t.section\t" #section ",\"ax\",@progbits\n"			\
+	"\tcalls\t$0," #func "\n"					\
+	"\t.previous")
 
-float
-cimagf(float complex z)
-{
-	return __imag__ z;
-}
+#define	MD_SECTION_PROLOGUE(section, entry) __asm (			\
+	"\t.section\t" #section ",\"ax\",@progbits\n"			\
+	"\t.globl\t" #entry "\n"					\
+	"\t.type\t" #entry ",@function\n"				\
+	"\t.align\t1\n"							\
+	#entry ":\n"							\
+	"\t.word 0x0000\n"	/* entry mask */			\
+	"\t.previous")
+
+#define	MD_SECTION_EPILOGUE(section) __asm(				\
+	"\t.section\t" #section ",\"ax\",@progbits\n"			\
+	"\tret\n"							\
+	"\t.previous")

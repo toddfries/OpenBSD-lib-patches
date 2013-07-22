@@ -1,4 +1,4 @@
-/*	$OpenBSD: n_sincos.S,v 1.8 2013/03/28 18:09:38 martynas Exp $	*/
+/*	$OpenBSD: n_sincos.S,v 1.10 2013/07/15 04:03:41 espie Exp $	*/
 /*	$NetBSD: n_sincos.S,v 1.1 1995/10/10 23:40:28 ragge Exp $	*/
 /*
  * Copyright (c) 1985, 1993
@@ -48,16 +48,22 @@
  * S. McDonald, April 4,  1985
  */
 
+ENTRY(sinf, 0)
+	cvtfd	4(%ap),-(%sp)
+	calls	$2,_C_LABEL(sin)
+	cvtdf	%r0,%r0
+	ret
+
 STRONG_ALIAS(sinl,sin)
 ENTRY(sin, R2|R3|R4|R5|R6|R7|R8|R9|R10|R11)
-	movq	4(ap),r0
-	bicw3	$0x807f,r0,r2
+	movq	4(%ap),%r0
+	bicw3	$0x807f,%r0,%r2
 	beql	1f		# if x is zero or reserved operand then return x
 /*
  * Save the PSL's IV & FU bits on the stack.
  */
-	movpsl	r2
-	bicw3	$0xff9f,r2,-(sp)
+	movpsl	%r2
+	bicw3	$0xff9f,%r2,-(%sp)
 /*
  * Clear the IV & FU bits.
  */
@@ -66,9 +72,9 @@ ENTRY(sin, R2|R3|R4|R5|R6|R7|R8|R9|R10|R11)
  *  Entered by  sine    ; save  0  in  r4 .
  */
 	jsb	__libm_argred
-	movl	$0,r4
+	movl	$0,%r4
 	jsb	__libm_sincos
-	bispsw	(sp)+
+	bispsw	(%sp)+
 1:	ret
 
 /*
@@ -78,17 +84,23 @@ ENTRY(sin, R2|R3|R4|R5|R6|R7|R8|R9|R10|R11)
  * S. McDonald, April 4,  1985
  */
 
+ENTRY(cosf, 0)
+	cvtfd	4(%ap),-(%sp)
+	calls	$2,_C_LABEL(cos)
+	cvtdf	%r0,%r0
+	ret
+
 STRONG_ALIAS(cosl,cos)
 ENTRY(cos, R2|R3|R4|R5|R6|R7|R8|R9|R10|R11)
-	movq	4(ap),r0
-	bicw3	$0x7f,r0,r2
-	cmpw	$0x8000,r2
+	movq	4(%ap),%r0
+	bicw3	$0x7f,%r0,%r2
+	cmpw	$0x8000,%r2
 	beql	1f		# if x is reserved operand then return x
 /*
  * Save the PSL's IV & FU bits on the stack.
  */
-	movpsl	r2
-	bicw3	$0xff9f,r2,-(sp)
+	movpsl	%r2
+	bicw3	$0xff9f,%r2,-(%sp)
 /*
  * Clear the IV & FU bits.
  */
@@ -97,7 +109,7 @@ ENTRY(cos, R2|R3|R4|R5|R6|R7|R8|R9|R10|R11)
  *  Entered by  cosine  ; save  1  in  r4 .
  */
 	jsb	__libm_argred
-	movl	$1,r4
+	movl	$1,%r4
 	jsb	__libm_sincos
-	bispsw	(sp)+
+	bispsw	(%sp)+
 1:	ret
