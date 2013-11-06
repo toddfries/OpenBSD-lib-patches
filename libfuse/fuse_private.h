@@ -1,4 +1,4 @@
-/* $OpenBSD: fuse_private.h,v 1.5 2013/10/07 18:41:01 syl Exp $ */
+/* $OpenBSD: fuse_private.h,v 1.8 2013/11/06 19:53:20 syl Exp $ */
 /*
  * Copyright (c) 2013 Sylvestre Gallon <ccna.syl@gmail.com>
  *
@@ -70,6 +70,10 @@ struct fuse_config {
 	int			set_gid;
 };
 
+struct fuse_core_opt {
+	char *mp;
+};
+
 struct fuse {
 	struct fuse_chan	*fc;
 	struct fuse_operations	op;
@@ -79,6 +83,7 @@ struct fuse {
 	struct tree		vnode_tree;
 	struct dict		name_tree;
 	uint64_t		max_ino;
+	void			*private_data;
 
 	struct fuse_config	conf;
 	struct fuse_session	se;
@@ -111,7 +116,7 @@ void			*dict_set(struct dict *, const char *, void *);
 void			*dict_get(struct dict *, const char *);;
 void			*dict_pop(struct dict *, const char *);
 
-#define FUSE_VERSION_PKG_INFO "2.6.9"
+#define FUSE_VERSION_PKG_INFO "2.8.0"
 #define unused __attribute__ ((unused))
 
 #endif /* _FUSE_SUBR_ */
