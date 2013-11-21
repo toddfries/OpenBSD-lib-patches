@@ -1,4 +1,4 @@
-/*	$OpenBSD: kvm_file2.c,v 1.28 2013/10/22 16:40:26 guenther Exp $	*/
+/*	$OpenBSD: kvm_file2.c,v 1.31 2013/11/16 00:37:11 guenther Exp $	*/
 
 /*
  * Copyright (c) 2009 Todd C. Miller <Todd.Miller@courtesan.com>
@@ -114,6 +114,7 @@
 #include <unistd.h>
 
 #include "kvm_private.h"
+#include "kvm_file.h"
 
 static struct kinfo_file *kvm_deadfile_byfile(kvm_t *, int, int,
     size_t, int *);
@@ -180,7 +181,7 @@ kvm_getfiles(kvm_t *kd, int op, int arg, size_t esize, int *cnt)
 		case KERN_FILE_BYFILE:
 			if (arg != 0) {
 				_kvm_err(kd, kd->program,
-				    "%s: invalid argument");
+				    "%d: invalid argument", arg);
 				return (NULL);
 			}
 			return (kvm_deadfile_byfile(kd, op, arg, esize, cnt));
@@ -311,7 +312,8 @@ kvm_deadfile_byid(kvm_t *kd, int op, int arg, size_t esize, int *cnt)
 	    p != NULL;
 	    p = LIST_NEXT(&proc, p_list)) {
 		if (KREAD(kd, (u_long)p, &proc)) {
-			_kvm_err(kd, kd->program, "can't read proc at %x", p);
+			_kvm_err(kd, kd->program, "can't read proc at %lx",
+			    (u_long)p);
 			goto cleanup;
 		}
 
@@ -335,8 +337,8 @@ kvm_deadfile_byid(kvm_t *kd, int op, int arg, size_t esize, int *cnt)
 			continue;
 
 		if (KREAD(kd, (u_long)proc.p_p, &process)) {
-			_kvm_err(kd, kd->program, "can't read process at %x",
-			    proc.p_p);
+			_kvm_err(kd, kd->program, "can't read process at %lx",
+			    (u_long)proc.p_p);
 			goto cleanup;
 		}
 		if (process.ps_flags & PS_EXITING)
@@ -347,21 +349,29 @@ kvm_deadfile_byid(kvm_t *kd, int op, int arg, size_t esize, int *cnt)
 		else {
 			if (KREAD(kd, (u_long)process.ps_mainproc, &proc2)) {
 				_kvm_err(kd, kd->program,
-				    "can't read proc at %x",
-				    process.ps_mainproc);
+				    "can't read proc at %lx",
+				    (u_long)process.ps_mainproc);
 				goto cleanup;
 			}
 			pid = proc2.p_pid;
 		}
 
-		if (KREAD(kd, (u_long)process.ps_cred, &pcred) == 0)
-			KREAD(kd, (u_long)pcred.pc_ucred, &ucred);
+		if (KREAD(kd, (u_long)process.ps_cred, &pcred)) {
+			_kvm_err(kd, kd->program, "can't read pcred at %lx",
+			    (u_long)process.ps_cred);
+			goto cleanup;
+		}
+		if (KREAD(kd, (u_long)pcred.pc_ucred, &ucred)) {
+			_kvm_err(kd, kd->program, "can't read ucred at %lx",
+			    (u_long)pcred.pc_ucred);
+			goto cleanup;
+		}
 		process.ps_cred = &pcred;
 		pcred.pc_ucred = &ucred;
 
 		if (KREAD(kd, (u_long)proc.p_fd, &filed0)) {
-			_kvm_err(kd, kd->program, "can't read filedesc at %x",
-			    proc.p_fd);
+			_kvm_err(kd, kd->program, "can't read filedesc at %lx",
+			    (u_long)proc.p_fd);
 			goto cleanup;
 		}
 		if ((char *)proc.p_fd + offsetof(struct filedesc0, fd_dfiles)
@@ -438,8 +448,8 @@ kvm_deadfile_byid(kvm_t *kd, int op, int arg, size_t esize, int *cnt)
 		    filed.fd_lastfile >= filed.fd_nfiles ||
 		    filed.fd_freefile > filed.fd_lastfile + 1) {
 			_kvm_err(kd, kd->program,
-			    "filedesc corrupted at %x for pid %d",
-			    proc.p_fd, proc.p_pid);
+			    "filedesc corrupted at %lx for pid %d",
+			    (u_long)proc.p_fd, proc.p_pid);
 			goto cleanup;
 		}
 
@@ -899,6 +909,9 @@ filestat(kvm_t *kd, struct kinfo_file *kf, struct vnode *vp)
 		case VT_NON:
 			if (vp->v_flag & VCLONE)
 				ret = spec_filestat(kd, kf, vp);
+			break;
+		default:
+			ret = -1;
 			break;
 		}
 	}

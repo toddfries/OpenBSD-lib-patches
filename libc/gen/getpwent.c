@@ -1,4 +1,4 @@
-/*	$OpenBSD: getpwent.c,v 1.46 2013/08/15 18:19:50 miod Exp $ */
+/*	$OpenBSD: getpwent.c,v 1.48 2013/11/15 22:32:55 benno Exp $ */
 /*
  * Copyright (c) 2008 Theo de Raadt
  * Copyright (c) 1988, 1993
@@ -63,7 +63,7 @@ static int _pw_stayopen;		/* keep fd's open */
 static int _pw_flags;			/* password flags */
 
 static int __hashpw(DBT *, char *buf, size_t buflen, struct passwd *, int *);
-static int __initdb();
+static int __initdb(void);
 static struct passwd *_pwhashbyname(const char *name, char *buf,
 	size_t buflen, struct passwd *pw, int *);
 static struct passwd *_pwhashbyuid(uid_t uid, char *buf,
@@ -83,7 +83,7 @@ static char	__ypline[_PW_BUF_LEN];
 static int	__getpwent_has_yppw = -1;
 static struct _ypexclude *__ypexhead;
 
-static int __has_yppw();
+static int __has_yppw(void);
 static int __has_ypmaster(void);
 static void __ypproto_set(struct passwd *, long long *, int, int *);
 static int __ypparse(struct passwd *pw, char *s, int);
@@ -708,10 +708,8 @@ getpwnam_r(const char *name, struct passwd *pw, char *buf, size_t buflen,
 {
 	struct passwd *pwret = NULL;
 	int flags = 0, *flagsp;
-	DB *savedb;
 
 	_THREAD_PRIVATE_MUTEX_LOCK(pw);
-	savedb = _pw_db;
 	if (!_pw_db && !__initdb())
 		goto fail;
 
@@ -728,7 +726,7 @@ getpwnam_r(const char *name, struct passwd *pw, char *buf, size_t buflen,
 	if (!pwret)
 		pwret = _pwhashbyname(name, buf, buflen, pw, flagsp);
 
-	if (savedb != _pw_db || !_pw_stayopen) {
+	if (!_pw_stayopen) {
 		(void)(_pw_db->close)(_pw_db);
 		_pw_db = NULL;
 	}
@@ -755,10 +753,8 @@ getpwuid_r(uid_t uid, struct passwd *pw, char *buf, size_t buflen,
 {
 	struct passwd *pwret = NULL;
 	int flags = 0, *flagsp;
-	DB *savedb;
 
 	_THREAD_PRIVATE_MUTEX_LOCK(pw);
-	savedb = _pw_db;
 	if (!_pw_db && !__initdb())
 		goto fail;
 
@@ -775,7 +771,7 @@ getpwuid_r(uid_t uid, struct passwd *pw, char *buf, size_t buflen,
 	if (!pwret)
 		pwret = _pwhashbyuid(uid, buf, buflen, pw, flagsp);
 
-	if (savedb != _pw_db || !_pw_stayopen) {
+	if (!_pw_stayopen) {
 		(void)(_pw_db->close)(_pw_db);
 		_pw_db = NULL;
 	}

@@ -1,4 +1,4 @@
-/*	$OpenBSD: findfp.c,v 1.12 2009/11/09 00:18:27 kurt Exp $ */
+/*	$OpenBSD: findfp.c,v 1.14 2013/11/13 15:52:48 deraadt Exp $ */
 /*-
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.

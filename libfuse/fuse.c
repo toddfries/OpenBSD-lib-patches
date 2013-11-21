@@ -1,4 +1,4 @@
-/* $OpenBSD: fuse.c,v 1.13 2013/11/06 19:53:20 syl Exp $ */
+/* $OpenBSD: fuse.c,v 1.17 2013/11/11 14:23:01 stsp Exp $ */
 /*
  * Copyright (c) 2013 Sylvestre Gallon <ccna.syl@gmail.com>
  *
@@ -61,7 +61,7 @@ fuse_loop(struct fuse *fuse)
 	struct fuse_context ctx;
 	struct fb_ioctl_xch ioexch;
 	struct kevent ev;
-	int error = 0;
+	ssize_t n;
 	int ret;
 
 	fuse->fc->kq = kqueue();
@@ -76,8 +76,8 @@ fuse_loop(struct fuse *fuse)
 		if (ret == -1)
 			DPERROR(__func__);
 		else if (ret > 0) {
-			error = read(fuse->fc->fd, &fbuf, sizeof(fbuf));
-			if (error != sizeof(fbuf)) {
+			n = read(fuse->fc->fd, &fbuf, sizeof(fbuf));
+			if (n != sizeof(fbuf)) {
 				fprintf(stderr, "%s: bad fusebuf read\n",
 				    __func__);
 				return (-1);
@@ -113,7 +113,7 @@ fuse_loop(struct fuse *fuse)
 				return (ret);
 			}
 
-			ret = write(fuse->fc->fd, &fbuf, sizeof(fbuf));
+			n = write(fuse->fc->fd, &fbuf, sizeof(fbuf));
 			if (fbuf.fb_len) {
 				if (fbuf.fb_dat == NULL) {
 					fprintf(stderr, "%s: fb_dat is Null\n",
@@ -132,7 +132,7 @@ fuse_loop(struct fuse *fuse)
 			}
 			ictx = NULL;
 
-			if (ret != FUSEBUFSIZE) {
+			if (n != FUSEBUFSIZE) {
 				errno = EINVAL;
 				return (-1);
 			}
@@ -191,15 +191,11 @@ bad:
 void
 fuse_unmount(const char *dir, unused struct fuse_chan *ch)
 {
-	int ret;
-
 	if (ch->dead)
-		return ;
+		return;
 
-	if ((ret = unmount(dir, MNT_UPDATE)) == -1)
+	if (unmount(dir, MNT_UPDATE) == -1)
 		DPERROR(__func__);
-
-	return ;
 }
 
 int
@@ -360,9 +356,14 @@ ifuse_process_opt(void *data, const char *arg, int key, struct fuse_args *args)
 		case FUSE_OPT_KEY_NONOPT:
 			if (opt->mp == NULL) {
 				opt->mp = realpath(arg, opt->mp);
-				res = stat(opt->mp, &st);
+				if (opt->mp == NULL) {
+					fprintf(stderr, "fuse: realpath: "
+					    "%s : %s\n", arg, strerror(errno));
+					return (-1);
+				}
 
-				if (!opt->mp || res == -1) {
+				res = stat(opt->mp, &st);
+				if (res == -1) {
 					fprintf(stderr, "fuse: bad mount point "
 					    "%s : %s\n", arg, strerror(errno));
 					return (-1);
@@ -428,31 +429,50 @@ fuse_teardown(struct fuse *fuse, char *mp)
 }
 
 int
-fuse_main(int argc, char **argv, const struct fuse_operations *ops, void *data)
+fuse_invalidate(struct fuse *f, const char *path)
+{
+	return (EINVAL);
+}
+
+struct fuse *
+fuse_setup(int argc, char **argv, const struct fuse_operations *ops,
+    size_t size, char **mp, int *mt, void *data)
 {
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 	struct fuse_chan *fc;
 	struct fuse *fuse;
-	char *mp = NULL;
-	int mt, fg;
-	int error = -1;
+	int fg;
 
-	if (fuse_parse_cmdline(&args, &mp, &mt, &fg))
+	if (fuse_parse_cmdline(&args, mp, mt, &fg))
 		goto err;
 
 	fuse_daemonize(0);
 
-	if ((fc = fuse_mount(mp, NULL)) == NULL)
+	if ((fc = fuse_mount(*mp, NULL)) == NULL)
 		goto err;
 
-	if ((fuse = fuse_new(fc, NULL, ops, sizeof(*(ops)), data)) == NULL) {
+	if ((fuse = fuse_new(fc, NULL, ops, size, data)) == NULL) {
 		free(fc);
 		goto err;
 	}
 
-	error = fuse_loop(fuse);
+	return (fuse);
 err:
 	if (mp)
 		free(mp);
-	return (error);
+	return (NULL);
+}
+
+int
+fuse_main(int argc, char **argv, const struct fuse_operations *ops, void *data)
+{
+	struct fuse *fuse;
+	char *mp = NULL;
+	int mt;
+
+	fuse = fuse_setup(argc, argv, ops, sizeof(*ops), &mp, &mt, data);
+	if (!fuse)
+		return (-1);
+
+	return (fuse_loop(fuse));
 }

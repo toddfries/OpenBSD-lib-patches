@@ -1,4 +1,4 @@
-/*	$OpenBSD: kvm_private.h,v 1.18 2013/10/22 16:40:27 guenther Exp $ */
+/*	$OpenBSD: kvm_private.h,v 1.22 2013/11/17 20:27:14 guenther Exp $ */
 /*	$NetBSD: kvm_private.h,v 1.7 1996/05/05 04:32:15 gwr Exp $	*/
 
 /*-
@@ -90,7 +90,9 @@ struct __kvm {
 /*
  * Functions used internally by kvm, but across kvm modules.
  */
-void	 _kvm_err(kvm_t *kd, const char *program, const char *fmt, ...);
+__BEGIN_HIDDEN_DECLS
+void	 _kvm_err(kvm_t *kd, const char *program, const char *fmt, ...)
+	    __attribute__((__format__ (printf, 3, 4)));
 int	 _kvm_dump_mkheader(kvm_t *kd_live, kvm_t *kd_dump);
 void	 _kvm_freevtop(kvm_t *);
 int	 _kvm_initvtop(kvm_t *);
@@ -98,9 +100,8 @@ int	 _kvm_kvatop(kvm_t *, u_long, paddr_t *);
 void	*_kvm_malloc(kvm_t *kd, size_t);
 off_t	 _kvm_pa2off(kvm_t *, paddr_t);
 void	*_kvm_realloc(kvm_t *kd, void *, size_t);
-void	 _kvm_syserr(kvm_t *kd, const char *program, const char *fmt, ...);
+void	 _kvm_syserr(kvm_t *kd, const char *program, const char *fmt, ...)
+	    __attribute__((__format__ (printf, 3, 4)));
 ssize_t	 _kvm_pread(kvm_t *, int, void *, size_t, off_t);
 ssize_t	 _kvm_pwrite(kvm_t *, int, const void *, size_t, off_t);
-int	 _kvm_stat_cd9660(kvm_t *, struct kinfo_file *, struct vnode *);
-int	 _kvm_stat_udf(kvm_t *, struct kinfo_file *, struct vnode *);
-int	 _kvm_stat_ntfs(kvm_t *, struct kinfo_file *, struct vnode *);
+__END_HIDDEN_DECLS

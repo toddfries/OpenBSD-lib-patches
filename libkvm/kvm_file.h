@@ -1,7 +1,13 @@
-/*	$OpenBSD: sethostent.c,v 1.9 2005/08/06 20:30:04 espie Exp $ */
-/*
- * Copyright (c) 1985, 1993
+/*	$OpenBSD: kvm_file.h,v 1.2 2013/11/17 20:27:14 guenther Exp $ */
+/*	$NetBSD: kvm_private.h,v 1.7 1996/05/05 04:32:15 gwr Exp $	*/
+
+/*-
+ * Copyright (c) 1992, 1993
  *	The Regents of the University of California.  All rights reserved.
+ *
+ * This code is derived from software developed by the Computer Systems
+ * Engineering group at Lawrence Berkeley Laboratory under DARPA contract
+ * BG 91-66 and contributed to Berkeley.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,32 +32,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ *	@(#)kvm_private.h	8.1 (Berkeley) 6/4/93
  */
 
-#include <sys/param.h>
-#include <netinet/in.h>
-#include <arpa/nameser.h>
-#include <netdb.h>
-#include <resolv.h>
-
-#include "thread_private.h"
-
-void
-sethostent(int stayopen)
-{
-	struct __res_state *_resp = _THREAD_PRIVATE(_res, _res, &_res);
-
-	if (_res_init(0) == -1)
-		return;
-	if (stayopen)
-		_resp->options |= RES_STAYOPEN | RES_USEVC;
-}
-
-void
-endhostent(void)
-{
-	struct __res_state *_resp = _THREAD_PRIVATE(_res, _res, &_res);
-
-	_resp->options &= ~(RES_STAYOPEN | RES_USEVC);
-	res_close();
-}
+/*
+ * Functions used internally by kvm vnode/file routines
+ */
+__BEGIN_HIDDEN_DECLS
+mode_t	_kvm_getftype(enum vtype);
+int	_kvm_stat_cd9660(kvm_t *, struct kinfo_file *, struct vnode *);
+int	_kvm_stat_udf(kvm_t *, struct kinfo_file *, struct vnode *);
+int	_kvm_stat_ntfs(kvm_t *, struct kinfo_file *, struct vnode *);
+__END_HIDDEN_DECLS
