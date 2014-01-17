@@ -1,4 +1,4 @@
-/* $OpenBSD: md_init.h,v 1.2 2004/09/09 17:45:26 pefo Exp $ */
+/* $OpenBSD: md_init.h,v 1.5 2013/12/23 18:16:39 kettenis Exp $ */
 
 /*-
  * Copyright (c) 2001 Ross Harvey
@@ -87,3 +87,36 @@
 	"	jal	" #func "		\n"	\
 	".previous")
 
+#define MD_CRT0_START				\
+	__asm(					\
+	".text					\n" \
+	"	.align	3			\n" \
+	"	.globl	__start			\n" \
+	"	.ent	__start			\n" \
+	"	.type	__start, @function	\n" \
+	"__start:				\n" \
+	"	lui	$gp, %hi(%neg(%gp_rel(__start)))	\n" \
+	"	addiu	$gp, $gp, %lo(%neg(%gp_rel(__start)))	\n" \
+	"	daddu	$gp, $gp, $t9		\n" \
+	"	move	$a0, $sp		\n" \
+	"	move	$a1, $v0		\n" \
+	"	dla	$t9, ___start		\n" \
+	"	jr	$t9			\n" \
+	"	.end	__start			\n" \
+	"	.previous")
+
+struct kframe {
+	long	kargc;
+	char	*kargv[1];	/* size depends on kargc */
+	char	kargstr[1];	/* size varies */
+	char	kenvstr[1];	/* size varies */
+};
+
+#define	MD_START_ARGS		struct kframe *kfp, void (*cleanup)(void)
+#define	MD_START_SETUP				\
+	char	**argv, **envp;			\
+	int	argc;				\
+						\
+	argc = kfp->kargc;			\
+	argv = &kfp->kargv[0];			\
+	environ = envp = argv + argc + 1;

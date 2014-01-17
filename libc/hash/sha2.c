@@ -1,4 +1,4 @@
-/*	$OpenBSD: sha2.c,v 1.14 2013/04/15 15:54:17 millert Exp $	*/
+/*	$OpenBSD: sha2.c,v 1.17 2014/01/08 06:14:57 tedu Exp $	*/
 
 /*
  * FILE:	sha2.c
@@ -214,7 +214,6 @@ const static u_int32_t sha256_initial_hash_value[8] = {
 	0x5be0cd19UL
 };
 
-#ifndef SHA256_ONLY
 /* Hash constant words K for SHA-384 and SHA-512: */
 const static u_int64_t K512[80] = {
 	0x428a2f98d728ae22ULL, 0x7137449123ef65cdULL,
@@ -259,18 +258,6 @@ const static u_int64_t K512[80] = {
 	0x5fcb6fab3ad6faecULL, 0x6c44198c4a475817ULL
 };
 
-/* Initial hash value H for SHA-384 */
-const static u_int64_t sha384_initial_hash_value[8] = {
-	0xcbbb9d5dc1059ed8ULL,
-	0x629a292a367cd507ULL,
-	0x9159015a3070dd17ULL,
-	0x152fecd8f70e5939ULL,
-	0x67332667ffc00b31ULL,
-	0x8eb44a8768581511ULL,
-	0xdb0c2e0d64f98fa7ULL,
-	0x47b5481dbefa4fa4ULL
-};
-
 /* Initial hash value H for SHA-512 */
 const static u_int64_t sha512_initial_hash_value[8] = {
 	0x6a09e667f3bcc908ULL,
@@ -283,12 +270,23 @@ const static u_int64_t sha512_initial_hash_value[8] = {
 	0x5be0cd19137e2179ULL
 };
 
+#if !defined(SHA2_SMALL)
+/* Initial hash value H for SHA-384 */
+const static u_int64_t sha384_initial_hash_value[8] = {
+	0xcbbb9d5dc1059ed8ULL,
+	0x629a292a367cd507ULL,
+	0x9159015a3070dd17ULL,
+	0x152fecd8f70e5939ULL,
+	0x67332667ffc00b31ULL,
+	0x8eb44a8768581511ULL,
+	0xdb0c2e0d64f98fa7ULL,
+	0x47b5481dbefa4fa4ULL
+};
+
 /*** SHA-224: *********************************************************/
 void
 SHA224Init(SHA2_CTX *context)
 {
-	if (context == NULL)
-		return;
 	memcpy(context->state.st32, sha224_initial_hash_value,
 	    sizeof(sha224_initial_hash_value));
 	memset(context->buffer, 0, sizeof(context->buffer));
@@ -304,28 +302,23 @@ SHA224Final(u_int8_t digest[SHA224_DIGEST_LENGTH], SHA2_CTX *context)
 {
 	SHA224Pad(context);
 
-	/* If no digest buffer is passed, we don't bother doing this: */
-	if (digest != NULL) {
 #if BYTE_ORDER == LITTLE_ENDIAN
-		int	i;
+	int	i;
 
-		/* Convert TO host byte order */
-		for (i = 0; i < 7; i++)
-			BE_32_TO_8(digest + i * 4, context->state.st32[i]);
+	/* Convert TO host byte order */
+	for (i = 0; i < 7; i++)
+		BE_32_TO_8(digest + i * 4, context->state.st32[i]);
 #else
-		memcpy(digest, context->state.st32, SHA224_DIGEST_LENGTH);
+	memcpy(digest, context->state.st32, SHA224_DIGEST_LENGTH);
 #endif
-		memset(context, 0, sizeof(*context));
-	}
+	memset(context, 0, sizeof(*context));
 }
-#endif /* SHA256_ONLY */
+#endif /* !defined(SHA2_SMALL) */
 
 /*** SHA-256: *********************************************************/
 void
 SHA256Init(SHA2_CTX *context)
 {
-	if (context == NULL)
-		return;
 	memcpy(context->state.st32, sha256_initial_hash_value,
 	    sizeof(sha256_initial_hash_value));
 	memset(context->buffer, 0, sizeof(context->buffer));
@@ -584,29 +577,23 @@ SHA256Final(u_int8_t digest[SHA256_DIGEST_LENGTH], SHA2_CTX *context)
 {
 	SHA256Pad(context);
 
-	/* If no digest buffer is passed, we don't bother doing this: */
-	if (digest != NULL) {
 #if BYTE_ORDER == LITTLE_ENDIAN
-		int	i;
+	int	i;
 
-		/* Convert TO host byte order */
-		for (i = 0; i < 8; i++)
-			BE_32_TO_8(digest + i * 4, context->state.st32[i]);
+	/* Convert TO host byte order */
+	for (i = 0; i < 8; i++)
+		BE_32_TO_8(digest + i * 4, context->state.st32[i]);
 #else
-		memcpy(digest, context->state.st32, SHA256_DIGEST_LENGTH);
+	memcpy(digest, context->state.st32, SHA256_DIGEST_LENGTH);
 #endif
-		memset(context, 0, sizeof(*context));
-	}
+	memset(context, 0, sizeof(*context));
 }
 
 
-#ifndef SHA256_ONLY
 /*** SHA-512: *********************************************************/
 void
 SHA512Init(SHA2_CTX *context)
 {
-	if (context == NULL)
-		return;
 	memcpy(context->state.st64, sha512_initial_hash_value,
 	    sizeof(sha512_initial_hash_value));
 	memset(context->buffer, 0, sizeof(context->buffer));
@@ -866,28 +853,24 @@ SHA512Final(u_int8_t digest[SHA512_DIGEST_LENGTH], SHA2_CTX *context)
 {
 	SHA512Pad(context);
 
-	/* If no digest buffer is passed, we don't bother doing this: */
-	if (digest != NULL) {
 #if BYTE_ORDER == LITTLE_ENDIAN
-		int	i;
+	int	i;
 
-		/* Convert TO host byte order */
-		for (i = 0; i < 8; i++)
-			BE_64_TO_8(digest + i * 8, context->state.st64[i]);
+	/* Convert TO host byte order */
+	for (i = 0; i < 8; i++)
+		BE_64_TO_8(digest + i * 8, context->state.st64[i]);
 #else
-		memcpy(digest, context->state.st64, SHA512_DIGEST_LENGTH);
+	memcpy(digest, context->state.st64, SHA512_DIGEST_LENGTH);
 #endif
-		memset(context, 0, sizeof(*context));
-	}
+	memset(context, 0, sizeof(*context));
 }
 
+#if !defined(SHA2_SMALL)
 
 /*** SHA-384: *********************************************************/
 void
 SHA384Init(SHA2_CTX *context)
 {
-	if (context == NULL)
-		return;
 	memcpy(context->state.st64, sha384_initial_hash_value,
 	    sizeof(sha384_initial_hash_value));
 	memset(context->buffer, 0, sizeof(context->buffer));
@@ -903,20 +886,16 @@ SHA384Final(u_int8_t digest[SHA384_DIGEST_LENGTH], SHA2_CTX *context)
 {
 	SHA384Pad(context);
 
-	/* If no digest buffer is passed, we don't bother doing this: */
-	if (digest != NULL) {
 #if BYTE_ORDER == LITTLE_ENDIAN
-		int	i;
+	int	i;
 
-		/* Convert TO host byte order */
-		for (i = 0; i < 6; i++)
-			BE_64_TO_8(digest + i * 8, context->state.st64[i]);
+	/* Convert TO host byte order */
+	for (i = 0; i < 6; i++)
+		BE_64_TO_8(digest + i * 8, context->state.st64[i]);
 #else
-		memcpy(digest, context->state.st64, SHA384_DIGEST_LENGTH);
+	memcpy(digest, context->state.st64, SHA384_DIGEST_LENGTH);
 #endif
-	}
-
 	/* Zero out state data */
 	memset(context, 0, sizeof(*context));
 }
-#endif /* SHA256_ONLY */
+#endif /* !defined(SHA2_SMALL) */

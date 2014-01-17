@@ -1,6 +1,7 @@
-/*
- * Copyright (c) 1983 Regents of the University of California.
- * All rights reserved.
+/*	$OpenBSD: tcgetsid.c,v 1.3 2013/12/17 22:12:07 millert Exp $ */
+/*-
+ * Copyright (c) 1989, 1993
+ *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,13 +28,16 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <unistd.h>
+#include <sys/ioctl.h>
+#include <termios.h>
 
-__warn_references(setruid, "warning: this program uses setruid(), which is deprecated.");
-
-int
-setruid(uid_t ruid)
+pid_t
+tcgetsid(int fd)
 {
-	return (setreuid(ruid, (uid_t)-1));
+	int s;
+
+	if (ioctl(fd, TIOCGSID, &s) < 0)
+		return (-1);
+
+	return (s);
 }

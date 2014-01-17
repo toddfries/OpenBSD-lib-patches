@@ -1,4 +1,4 @@
-/*	$OpenBSD: rthread_sem.c,v 1.13 2013/11/20 23:18:17 tedu Exp $ */
+/*	$OpenBSD: rthread_sem.c,v 1.18 2013/12/11 16:24:16 tedu Exp $ */
 /*
  * Copyright (c) 2004,2005,2013 Ted Unangst <tedu@openbsd.org>
  * All Rights Reserved.
@@ -20,10 +20,10 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sha2.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -40,13 +40,13 @@
 #define SEM_PATH_SIZE (5 + SHA256_DIGEST_STRING_LENGTH + 4)
 
 /* long enough to be hard to guess */
-#define SEM_RANDOM_NAME_LEN	160
+#define SEM_RANDOM_NAME_LEN	10
 
 /*
  * Size of memory to be mmap()'ed by named semaphores.
  * Should be >= SEM_PATH_SIZE and page-aligned.
  */
-#define SEM_MMAP_SIZE	PAGE_SIZE
+#define SEM_MMAP_SIZE	getpagesize()
 
 /*
  * Internal implementation of semaphores
@@ -113,48 +113,46 @@ _sem_post(sem_t sem)
 int
 sem_init(sem_t *semp, int pshared, unsigned int value)
 {
-	sem_t sem, *sempshared;
-	int i, oerrno;
-	char name[SEM_RANDOM_NAME_LEN];
+	sem_t sem;
 
-	if (!semp) {
+	if (value > SEM_VALUE_MAX) {
 		errno = EINVAL;
 		return (-1);
 	}
 
 	if (pshared) {
-		while (1) {
+		errno = EPERM;
+		return (-1);
+#ifdef notyet
+		char name[SEM_RANDOM_NAME_LEN];
+		sem_t *sempshared;
+		int i;
+
+		for (;;) {
 			for (i = 0; i < SEM_RANDOM_NAME_LEN - 1; i++)
 				name[i] = arc4random_uniform(255) + 1;
 			name[SEM_RANDOM_NAME_LEN - 1] = '\0';
-			sempshared = sem_open(name, O_CREAT|O_EXCL);
-			if (sempshared)
+			sempshared = sem_open(name, O_CREAT | O_EXCL, 0, value);
+			if (sempshared != SEM_FAILED)
 				break;
 			if (errno == EEXIST)
 				continue;
-			if (errno != EINVAL && errno != EPERM)
+			if (errno != EPERM)
 				errno = ENOSPC;
 			return (-1);
 		}
 
 		/* unnamed semaphore should not be opened twice */
 		if (sem_unlink(name) == -1) {
-			oerrno = errno;
 			sem_close(sempshared);
-			errno = oerrno;
+			errno = ENOSPC;
 			return (-1);
 		}
 
-		sem = *sempshared;
-		sem->value = value;
-		*semp = sem;
+		*semp = *sempshared;
 		free(sempshared);
 		return (0);
-	}
-
-	if (value > SEM_VALUE_MAX) {
-		errno = EINVAL;
-		return (-1);
+#endif
 	}
 
 	sem = calloc(1, sizeof(*sem));
@@ -312,66 +310,79 @@ sem_open(const char *name, int oflag, ...)
 {
 	char sempath[SEM_PATH_SIZE];
 	struct stat sb;
-	int created = 0, fd, oerrno;
-	sem_t sem;
-	sem_t *semp = SEM_FAILED;
+	sem_t sem, *semp;
+	unsigned int value = 0;
+	int created = 0, fd;
 
 	if (oflag & ~(O_CREAT | O_EXCL)) {
 		errno = EINVAL;
-		return (semp);
+		return (SEM_FAILED);
+	}
+
+	if (oflag & O_CREAT) {
+		va_list ap;
+		va_start(ap, oflag);
+		/* 3rd parameter mode is not used */
+		va_arg(ap, mode_t);
+		value = va_arg(ap, unsigned);
+		va_end(ap);
+
+		if (value > SEM_VALUE_MAX) {
+			errno = EINVAL;
+			return (SEM_FAILED);
+		}
 	}
 
 	makesempath(name, sempath, sizeof(sempath));
 	fd = open(sempath, O_RDWR | O_NOFOLLOW | oflag, 0600);
 	if (fd == -1)
-		return (semp);
+		return (SEM_FAILED);
 	if (fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
 		close(fd);
 		errno = EINVAL;
-		return (semp);
+		return (SEM_FAILED);
 	}
 	if (sb.st_uid != getuid()) {
 		close(fd);
 		errno = EPERM;
-		return (semp);
+		return (SEM_FAILED);
 	}
 	if (sb.st_size != SEM_MMAP_SIZE) {
 		if (!(oflag & O_CREAT)) {
 			close(fd);
 			errno = EINVAL;
-			return (semp);
+			return (SEM_FAILED);
 		}
 		if (sb.st_size != 0) {
 			close(fd);
 			errno = EINVAL;
-			return (semp);
+			return (SEM_FAILED);
 		}
 		if (ftruncate(fd, SEM_MMAP_SIZE) == -1) {
-			oerrno = errno;
 			close(fd);
-			errno = oerrno;
-			/* XXX can set errno to EIO, ENOTDIR... */
-			return (semp);
+			errno = EINVAL;
+			return (SEM_FAILED);
 		}
+
 		created = 1;
 	}
 	sem = mmap(NULL, SEM_MMAP_SIZE, PROT_READ | PROT_WRITE,
 	    MAP_FILE | MAP_SHARED | MAP_HASSEMAPHORE, fd, 0);
-	oerrno = errno;
 	close(fd);
 	if (sem == MAP_FAILED) {
-		errno = oerrno;
-		return (semp);
+		errno = EINVAL;
+		return (SEM_FAILED);
 	}
-	if (created)
-		sem->lock = _SPINLOCK_UNLOCKED_ASSIGN;
-	sem->shared = 1;
 	semp = malloc(sizeof(*semp));
 	if (!semp) {
-		free(semp);
 		munmap(sem, SEM_MMAP_SIZE);
 		errno = ENOSPC;
 		return (SEM_FAILED);
+	}
+	if (created) {
+		sem->lock = _SPINLOCK_UNLOCKED_ASSIGN;
+		sem->value = value;
+		sem->shared = 1;
 	}
 	*semp = sem;
 
@@ -382,12 +393,13 @@ int
 sem_close(sem_t *semp)
 {
 	sem_t sem;
-	
+
 	if (!semp || !(sem = *semp) || !sem->shared) {
 		errno = EINVAL;
 		return (-1);
 	}
 
+	*semp = NULL;
 	munmap(sem, SEM_MMAP_SIZE);
 	free(semp);
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: fuse_ops.c,v 1.13 2013/10/08 04:57:39 guenther Exp $ */
+/* $OpenBSD: fuse_ops.c,v 1.20 2014/01/16 09:31:44 syl Exp $ */
 /*
  * Copyright (c) 2013 Sylvestre Gallon <ccna.syl@gmail.com>
  *
@@ -84,9 +84,19 @@ update_vattr(struct fuse *f, struct vattr *attr, const char *realname,
 }
 
 static int
-ifuse_ops_init(void)
+ifuse_ops_init(struct fuse *f)
 {
+	struct fuse_conn_info fci;
+
 	DPRINTF("Opcode:\tinit\n");
+
+	if (f->op.init) {
+		bzero(&fci, sizeof fci);
+		fci.proto_minor = FUSE_MINOR_VERSION;
+		fci.proto_major = FUSE_MAJOR_VERSION;
+
+		f->op.init(&fci);
+	}
 	return (0);
 }
 
@@ -227,10 +237,10 @@ ifuse_fill_readdir(void *dh, const char *name, const struct stat *stbuf,
 		dir->d_fileno = 0xffffffff;
 		dir->d_type = DT_UNKNOWN;
 	}
-	dir->d_namlen = namelen;
 	dir->d_reclen = len;
 	dir->d_off = off + len;		/* XXX */
-	memcpy(dir->d_name, name, namelen);
+	strlcpy(dir->d_name, name, sizeof(dir->d_name));
+	dir->d_namlen = strlen(dir->d_name);
 
 	fbuf->fb_len += len;
 	if (fd->isgetdir) {
@@ -276,9 +286,12 @@ ifuse_ops_readdir(struct fuse *f, struct fusebuf *fbuf)
 	size = fbuf->fb_io_len;
 	startsave = 0;
 
-	fbuf->fb_dat = malloc(FUSEBUFMAXSIZE);
-	bzero(fbuf->fb_dat, FUSEBUFMAXSIZE);
-
+	fbuf->fb_dat = calloc(1, size);
+	
+	if (fbuf->fb_dat == NULL) {
+		fbuf->fb_err = errno;
+		return (0);
+	}
 	vn = tree_get(&f->vnode_tree, fbuf->fb_ino);
 
 	if (!vn->fd->filled) {
@@ -312,6 +325,9 @@ ifuse_ops_readdir(struct fuse *f, struct fusebuf *fbuf)
 		fbuf->fb_len = 0;
 		vn->fd->filled = 1;
 	}
+
+	if (fbuf->fb_len == 0)
+		free(fbuf->fb_dat);
 
 	return (0);
 }
@@ -416,6 +432,10 @@ ifuse_ops_read(struct fuse *f, struct fusebuf *fbuf)
 	offset = fbuf->fb_io_off;
 
 	fbuf->fb_dat = malloc(size);
+	if (fbuf->fb_dat == NULL) {
+		fbuf->fb_err = errno;
+		return (0);
+	}
 
 	vn = tree_get(&f->vnode_tree, fbuf->fb_ino);
 
@@ -426,6 +446,9 @@ ifuse_ops_read(struct fuse *f, struct fusebuf *fbuf)
 		fbuf->fb_len = ret;
 	else
 		fbuf->fb_err = ret;
+
+	if (fbuf->fb_len == 0)
+		free(fbuf->fb_dat);
 
 	return (0);
 }
@@ -557,18 +580,16 @@ ifuse_ops_readlink(struct fuse *f, struct fusebuf *fbuf)
 		ret = -ENOSYS;
 	free(realname);
 
-	if (!ret)
-		len = strnlen(name, PATH_MAX);
-	else
-		len = -1;
-
-	fbuf->fb_len = len + 1;
 	fbuf->fb_err = ret;
-
 	if (!ret) {
+		len = strnlen(name, PATH_MAX);
+		fbuf->fb_len = len;
 		fbuf->fb_dat = malloc(fbuf->fb_len);
+		if (fbuf->fb_dat == NULL) {
+			fbuf->fb_err = errno;
+			return (0);
+		}
 		memcpy(fbuf->fb_dat, name, len);
-		fbuf->fb_dat[len] = '\0';
 	} else
 		fbuf->fb_len = 0;
 
@@ -689,6 +710,14 @@ ifuse_ops_setattr(struct fuse *f, struct fusebuf *fbuf)
 			fbuf->fb_err = -ENOSYS;
 	}
 
+	if (!fbuf->fb_err && (io->fi_flags & FUSE_FATTR_SIZE)) {
+		if (f->op.truncate)
+			fbuf->fb_err = f->op.truncate(realname,
+			    fbuf->fb_vattr.va_size);
+		else
+			fbuf->fb_err = -ENOSYS;
+	}
+
 	bzero(&fbuf->fb_vattr, sizeof(fbuf->fb_vattr));
 
 	if (!fbuf->fb_err)
@@ -751,9 +780,59 @@ ifuse_ops_rename(struct fuse *f, struct fusebuf *fbuf)
 static int
 ifuse_ops_destroy(struct fuse *f)
 {
+	struct fuse_context *ctx;
+
 	DPRINTF("Opcode:\tdestroy\n");
 
+	if (f->op.destroy) {
+		ctx = fuse_get_context();
+
+		f->op.destroy((ctx)?ctx->private_data:NULL);
+	}
+
 	f->fc->dead = 1;
+
+	return (0);
+}
+
+static int
+ifuse_ops_reclaim(struct fuse *f, struct fusebuf *fbuf)
+{
+	struct fuse_vnode *vn;
+
+	vn = tree_pop(&f->vnode_tree, fbuf->fb_ino);
+	if (vn) {
+		remove_vnode_from_name_tree(f, vn);
+		free(vn);
+	}
+
+	return (0);
+}
+
+static int
+ifuse_ops_mknod(struct fuse *f, struct fusebuf *fbuf)
+{
+	struct fuse_vnode *vn;
+	char *realname;
+	uint32_t mode;
+	dev_t dev;
+
+	CHECK_OPT(mknod);
+
+	mode = fbuf->fb_io_mode;
+	dev = fbuf->fb_io_rdev;
+	vn = get_vn_by_name_and_parent(f, fbuf->fb_dat, fbuf->fb_ino);
+
+	free(fbuf->fb_dat);
+	realname = build_realname(f, vn->ino);
+	fbuf->fb_err = f->op.mknod(realname, mode, dev);
+
+	if (!fbuf->fb_err) {
+		fbuf->fb_err = update_vattr(f, &fbuf->fb_vattr, realname, vn);
+		fbuf->fb_io_mode = fbuf->fb_vattr.va_mode;
+		fbuf->fb_ino = fbuf->fb_vattr.va_fileid;
+	}
+	free(realname);
 
 	return (0);
 }
@@ -807,7 +886,7 @@ ifuse_exec_opcode(struct fuse *f, struct fusebuf *fbuf)
 		ret = ifuse_ops_release(f, fbuf);
 		break;
 	case FBT_INIT:
-		ret = ifuse_ops_init();
+		ret = ifuse_ops_init(f);
 		break;
 	case FBT_OPENDIR:
 		ret = ifuse_ops_opendir(f, fbuf);
@@ -832,6 +911,12 @@ ifuse_exec_opcode(struct fuse *f, struct fusebuf *fbuf)
 		break;
 	case FBT_DESTROY:
 		ret = ifuse_ops_destroy(f);
+		break;
+	case FBT_RECLAIM:
+		ret = ifuse_ops_reclaim(f, fbuf);
+		break;
+	case FBT_MKNOD:
+		ret = ifuse_ops_mknod(f, fbuf);
 		break;
 	default:
 		DPRINTF("Opcode:\t%i not supported\n", fbuf->fb_type);

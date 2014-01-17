@@ -1,5 +1,7 @@
-.\" Copyright (c) 1983, 1991, 1993
-.\"	The Regents of the University of California.  All rights reserved.
+.\"	$OpenBSD: tcgetsid.3,v 1.1 2013/12/17 16:31:36 millert Exp $
+.\"
+.\" Copyright (c) 1991 The Regents of the University of California.
+.\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -25,74 +27,46 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     @(#)stty.3	8.1 (Berkeley) 6/4/93
-.\"
-.Dd $Mdocdate: July 17 2013 $
-.Dt STTY 3
+.Dd $Mdocdate: December 17 2013 $
+.Dt TCGETSID 3
 .Os
 .Sh NAME
-.Nm stty ,
-.Nm gtty
-.Nd set and get terminal state (defunct)
+.Nm tcgetsid
+.Nd get session ID associated with a controlling terminal
 .Sh SYNOPSIS
-.In sgtty.h
-.Ft int
-.Fn stty "int fd" "struct sgttyb *buf"
-.Ft int
-.Fn gtty "int fd" "struct sgttyb *buf"
+.In termios.h
+.Ft pid_t
+.Fn tcgetsid "int fd"
 .Sh DESCRIPTION
-.Bf -symbolic
-These interfaces are obsoleted by
-.Xr ioctl 2 .
-They are available from the compatibility library, libcompat.
-.Ef
-.Pp
 The
-.Fn stty
-function
-sets the state of the terminal associated with
-.Fa fd .
-The
-.Fn gtty
-function
-retrieves the state of the terminal associated
-with
-.Fa fd .
-To set the state of a terminal the call must have
-write permission.
-.Pp
-The
-.Fn stty
-call is actually
-.Ql ioctl(fd, TIOCSETP, buf) ,
-while
-the
-.Fn gtty
-call is
-.Ql ioctl(fd, TIOCGETP, buf) .
-See
-.Xr ioctl 2
-and
-.Xr tty 4
-for an explanation.
-.Sh DIAGNOSTICS
-If the call is successful 0 is returned, otherwise \-1 is
-returned and the global variable
+.Fn tcgetsid
+function returns the value of the session ID associated with the specified
+controlling terminal device.
+The session ID is defined as the process group ID of the session leader.
+.Sh ERRORS
+If an error occurs,
+.Fn tcgetsid
+returns \-1 and the global variable
 .Va errno
-contains the reason for the failure.
+is set to indicate the error, as follows:
+.Bl -tag -width Er
+.It Bq Er EBADF
+The
+.Fa fd
+argument is not a valid file descriptor.
+.It Bq Er ENOTTY
+The calling process does not have a controlling terminal or the
+underlying terminal device represented by
+.Fa fd
+is not the controlling terminal.
+.El
 .Sh SEE ALSO
-.Xr ioctl 2 ,
-.Xr tty 4
-.Sh HISTORY
-The systems calls
-.Fn stty
-and
-.Fn gtty
-existed since
-.At v1 .
-They were implemented in terms of
-.Xr ioctl 2
-since
-.At v7
-and finally moved as functions into the C library in
-.Bx 4.1c .
+.Xr getsid 2 ,
+.Xr setsid 2 ,
+.Xr tcgetpgrp 3
+.Sh STANDARDS
+The
+.Fn tcgetsid
+function is expected to be compliant with the
+.St -p1003.1-2008
+specification.
