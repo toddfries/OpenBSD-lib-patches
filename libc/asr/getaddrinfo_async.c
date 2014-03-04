@@ -1,4 +1,4 @@
-/*	$OpenBSD: getaddrinfo_async.c,v 1.20 2014/02/17 11:04:23 eric Exp $	*/
+/*	$OpenBSD: getaddrinfo_async.c,v 1.23 2014/03/03 08:37:37 eric Exp $	*/
 /*
  * Copyright (c) 2012 Eric Faurot <eric@openbsd.org>
  *
@@ -17,6 +17,8 @@
 
 #include <sys/types.h>
 #include <sys/uio.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/nameser.h>
 #ifdef YP
 #include <rpc/rpc.h>
@@ -27,6 +29,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <resolv.h> /* for res_hnok */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -79,14 +82,19 @@ getaddrinfo_async(const char *hostname, const char *servname,
 {
 	struct asr_ctx	*ac;
 	struct async	*as;
+	char		 alias[MAXDNAME];
 
 	ac = asr_use_resolver(asr);
 	if ((as = asr_async_new(ac, ASR_GETADDRINFO)) == NULL)
 		goto abort; /* errno set */
 	as->as_run = getaddrinfo_async_run;
 
-	if (hostname && (as->as.ai.hostname = strdup(hostname)) == NULL)
-		goto abort; /* errno set */
+	if (hostname) {
+		if (asr_hostalias(ac, hostname, alias, sizeof(alias)))
+			hostname = alias;
+		if ((as->as.ai.hostname = strdup(hostname)) == NULL)
+			goto abort; /* errno set */
+	}
 	if (servname && (as->as.ai.servname = strdup(servname)) == NULL)
 		goto abort; /* errno set */
 	if (hints)
@@ -112,7 +120,7 @@ getaddrinfo_async_run(struct async *as, struct async_res *ar)
 	static char	*domain = NULL;
 	char		*res;
 	int		 len;
-	char		 alias[MAXDNAME], *name;
+	char		 *name;
 #endif
 	char		 fqdn[MAXDNAME];
 	const char	*str;
@@ -385,10 +393,7 @@ getaddrinfo_async_run(struct async *as, struct async_res *ar)
 			family = (as->as.ai.hints.ai_family == AF_UNSPEC) ?
 			    AS_FAMILY(as) : as->as.ai.hints.ai_family;
 
-			name = asr_hostalias(as->as_ctx, as->as.ai.hostname,
-			    alias, sizeof(alias));
-			if (name == NULL)
-				name = as->as.ai.hostname;
+			name = as->as.ai.hostname;
 
 			/* XXX
 			 * ipnodes.byname could also contain IPv4 address
@@ -703,7 +708,7 @@ addrinfo_add(struct async *as, const struct sockaddr *sa, const char *cname)
 static int
 addrinfo_from_file(struct async *as, int family, FILE *f)
 {
-	char		*tokens[MAXTOKEN], buf[MAXDNAME], *name, *c;
+	char		*tokens[MAXTOKEN], *c;
 	int		 n, i;
 	union {
 		struct sockaddr		sa;
@@ -711,17 +716,13 @@ addrinfo_from_file(struct async *as, int family, FILE *f)
 		struct sockaddr_in6	sain6;
 	} u;
 
-	name = asr_hostalias(as->as_ctx, as->as.ai.hostname, buf, sizeof(buf));
-	if (name == NULL)
-		name = as->as.ai.hostname;
-
 	for (;;) {
 		n = asr_parse_namedb_line(f, tokens, MAXTOKEN);
 		if (n == -1)
 			break; /* ignore errors reading the file */
 
 		for (i = 1; i < n; i++) {
-			if (strcasecmp(name, tokens[i]))
+			if (strcasecmp(as->as.ai.hostname, tokens[i]))
 				continue;
 			if (asr_sockaddr_from_str(&u.sa, family, tokens[0]) == -1)
 				continue;
@@ -767,14 +768,6 @@ addrinfo_from_pkt(struct async *as, char *pkt, size_t pktlen)
 		    rr.rr_class != q.q_class)
 			continue;
 
-		if (as->as.ai.fqdn == NULL) {
-			asr_strdname(q.q_dname, buf, sizeof buf);
-			buf[strlen(buf) - 1] = '\0';
-			as->as.ai.fqdn = strdup(buf);
-			if (as->as.ai.fqdn == NULL)
-				return (-1); /* errno set */
-		}
-
 		memset(&u, 0, sizeof u);
 		if (rr.rr_type == T_A) {
 			u.sain.sin_len = sizeof u.sain;
@@ -792,7 +785,7 @@ addrinfo_from_pkt(struct async *as, char *pkt, size_t pktlen)
 		if (as->as.ai.hints.ai_flags & AI_CANONNAME) {
 			asr_strdname(rr.rr_dname, buf, sizeof buf);
 			buf[strlen(buf) - 1] = '\0';
-			c = buf;
+			c = res_hnok(buf) ? buf : NULL;
 		} else if (as->as.ai.hints.ai_flags & AI_FQDN)
 			c = as->as.ai.fqdn;
 		else
