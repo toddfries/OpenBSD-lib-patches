@@ -1,4 +1,4 @@
-/*	$OpenBSD: getnetnamadr.c,v 1.6 2013/07/12 14:36:22 eric Exp $	*/
+/*	$OpenBSD: getnetnamadr.c,v 1.8 2014/03/26 18:13:15 eric Exp $	*/
 /*
  * Copyright (c) 2012 Eric Faurot <eric@openbsd.org>
  *
@@ -16,14 +16,15 @@
  */
 
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
+#include <netdb.h>
 
+#include <asr.h>
 #include <errno.h>
 #include <resolv.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "asr.h"
 
 static void _fillnetent(const struct netent *, struct netent *, char *buf,
     size_t);
@@ -80,8 +81,8 @@ _fillnetent(const struct netent *e, struct netent *r, char *buf, size_t len)
 struct netent *
 getnetbyname(const char *name)
 {
-	struct async	*as;
-	struct async_res ar;
+	struct asr_query *as;
+	struct asr_result ar;
 
 	res_init();
 
@@ -91,7 +92,7 @@ getnetbyname(const char *name)
 		return (NULL);
 	}
 
-	asr_async_run_sync(as, &ar);
+	asr_run_sync(as, &ar);
 
 	errno = ar.ar_errno;
 	h_errno = ar.ar_h_errno;
@@ -107,8 +108,8 @@ getnetbyname(const char *name)
 struct netent *
 getnetbyaddr(in_addr_t net, int type)
 {
-	struct async	*as;
-	struct async_res ar;
+	struct asr_query *as;
+	struct asr_result ar;
 
 	res_init();
 
@@ -118,7 +119,7 @@ getnetbyaddr(in_addr_t net, int type)
 		return (NULL);
 	}
 
-	asr_async_run_sync(as, &ar);
+	asr_run_sync(as, &ar);
 
 	errno = ar.ar_errno;
 	h_errno = ar.ar_h_errno;

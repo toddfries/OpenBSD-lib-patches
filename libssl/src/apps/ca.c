@@ -318,7 +318,7 @@ int MAIN(int argc, char **argv)
 	STACK_OF(OPENSSL_STRING) *sigopts = NULL;
 #undef BSIZE
 #define BSIZE 256
-	MS_STATIC char buf[3][BSIZE];
+	char buf[3][BSIZE];
 	char *randfile=NULL;
 #ifndef OPENSSL_NO_ENGINE
 	char *engine = NULL;
@@ -1408,6 +1408,7 @@ bad:
 			if (!NCONF_get_number(conf,section,
 				ENV_DEFAULT_CRL_HOURS, &crlhours))
 				crlhours = 0;
+			ERR_clear_error();
 			}
 		if ((crldays == 0) && (crlhours == 0) && (crlsec == 0))
 			{

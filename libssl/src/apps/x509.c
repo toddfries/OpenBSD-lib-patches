@@ -153,7 +153,7 @@ static const char *x509_usage[]={
 NULL
 };
 
-static int MS_CALLBACK callb(int ok, X509_STORE_CTX *ctx);
+static int callb(int ok, X509_STORE_CTX *ctx);
 static int sign (X509 *x, EVP_PKEY *pkey,int days,int clrext, const EVP_MD *digest,
 						CONF *conf, char *section);
 static int x509_certify (X509_STORE *ctx,char *CAfile,const EVP_MD *digest,
@@ -288,7 +288,7 @@ int MAIN(int argc, char **argv)
 			days=atoi(*(++argv));
 			if (days == 0)
 				{
-				BIO_printf(STDout,"bad number of days\n");
+				BIO_printf(bio_err,"bad number of days\n");
 				goto bad;
 				}
 			}
@@ -912,7 +912,7 @@ bad:
 				}
 			else if (text == i)
 				{
-				X509_print_ex(out,x,nmflag, certflag);
+				X509_print_ex(STDout,x,nmflag, certflag);
 				}
 			else if (startdate == i)
 				{
@@ -1219,7 +1219,7 @@ end:
 	return ret;
 	}
 
-static int MS_CALLBACK callb(int ok, X509_STORE_CTX *ctx)
+static int callb(int ok, X509_STORE_CTX *ctx)
 	{
 	int err;
 	X509 *err_cert;

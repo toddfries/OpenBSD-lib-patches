@@ -2071,7 +2071,6 @@ PKCS7_ATTR_SIGN_it                      2632	EXIST:EXPORT_VAR_AS_FUNCTION:FUNCTI
 UI_add_error_string                     2633	EXIST::FUNCTION:
 KRB5_CHECKSUM_free                      2634	EXIST::FUNCTION:
 OCSP_REQUEST_get_ext                    2635	EXIST::FUNCTION:
-ENGINE_load_ubsec                       2636	EXIST::FUNCTION:ENGINE,STATIC_ENGINE
 ENGINE_register_all_digests             2637	EXIST::FUNCTION:ENGINE
 PKEY_USAGE_PERIOD_it                    2638	EXIST:!EXPORT_VAR_AS_FUNCTION:VARIABLE:
 PKEY_USAGE_PERIOD_it                    2638	EXIST:EXPORT_VAR_AS_FUNCTION:FUNCTION:
@@ -2772,7 +2771,6 @@ OPENSSL_load_builtin_modules            3214	EXIST::FUNCTION:
 AES_ofb128_encrypt                      3215	EXIST::FUNCTION:AES
 AES_ctr128_encrypt                      3216	EXIST::FUNCTION:AES
 AES_cfb128_encrypt                      3217	EXIST::FUNCTION:AES
-ENGINE_load_4758cca                     3218	EXIST::FUNCTION:ENGINE,STATIC_ENGINE
 _ossl_096_des_random_seed               3219	EXIST::FUNCTION:DES
 EVP_aes_256_ofb                         3220	EXIST::FUNCTION:AES
 EVP_aes_192_ofb                         3221	EXIST::FUNCTION:AES
@@ -3510,6 +3508,8 @@ BIO_get_callback_arg                    3902	EXIST::FUNCTION:
 BIO_set_callback                        3903	EXIST::FUNCTION:
 d2i_ASIdOrRange                         3904	EXIST::FUNCTION:RFC3779
 i2d_ASIdentifiers                       3905	EXIST::FUNCTION:RFC3779
+CRYPTO_memcmp                           3906	EXIST::FUNCTION:
+BN_consttime_swap                       3907	EXIST::FUNCTION:
 SEED_decrypt                            3908	EXIST::FUNCTION:SEED
 SEED_encrypt                            3909	EXIST::FUNCTION:SEED
 SEED_cbc_encrypt                        3910	EXIST::FUNCTION:SEED
@@ -3687,7 +3687,7 @@ FIPS_dh_new                             4073	NOEXIST::FUNCTION:
 FIPS_corrupt_dsa_keygen                 4074	NOEXIST::FUNCTION:
 FIPS_dh_free                            4075	NOEXIST::FUNCTION:
 fips_pkey_signature_test                4076	NOEXIST::FUNCTION:
-EVP_add_alg_module                      4077	NOEXIST::FUNCTION:
+EVP_add_alg_module                      4077	EXIST::FUNCTION:
 int_RAND_init_engine_callbacks          4078	NOEXIST::FUNCTION:
 int_EVP_CIPHER_set_engine_callbacks     4079	NOEXIST::FUNCTION:
 int_EVP_MD_init_engine_callbacks        4080	NOEXIST::FUNCTION:

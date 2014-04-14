@@ -1,4 +1,4 @@
-/*	$OpenBSD: getaddrinfo_async.c,v 1.23 2014/03/03 08:37:37 eric Exp $	*/
+/*	$OpenBSD: getaddrinfo_async.c,v 1.26 2014/03/26 18:13:15 eric Exp $	*/
 /*
  * Copyright (c) 2012 Eric Faurot <eric@openbsd.org>
  *
@@ -16,6 +16,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <sys/uio.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -26,7 +27,9 @@
 #include <rpcsvc/ypclnt.h>
 #include "ypinternal.h"
 #endif
+#include <netdb.h>
 
+#include <asr.h>
 #include <err.h>
 #include <errno.h>
 #include <resolv.h> /* for res_hnok */
@@ -34,7 +37,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "asr.h"
 #include "asr_private.h"
 
 struct match {
@@ -43,15 +45,15 @@ struct match {
 	int protocol;
 };
 
-static int getaddrinfo_async_run(struct async *, struct async_res *);
+static int getaddrinfo_async_run(struct asr_query *, struct asr_result *);
 static int get_port(const char *, const char *, int);
-static int iter_family(struct async *, int);
-static int iter_domain(struct async *, const char *, char *, size_t);
-static int addrinfo_add(struct async *, const struct sockaddr *, const char *);
-static int addrinfo_from_file(struct async *, int,  FILE *);
-static int addrinfo_from_pkt(struct async *, char *, size_t);
+static int iter_family(struct asr_query *, int);
+static int iter_domain(struct asr_query *, const char *, char *, size_t);
+static int addrinfo_add(struct asr_query *, const struct sockaddr *, const char *);
+static int addrinfo_from_file(struct asr_query *, int,  FILE *);
+static int addrinfo_from_pkt(struct asr_query *, char *, size_t);
 #ifdef YP
-static int addrinfo_from_yp(struct async *, int, char *);
+static int addrinfo_from_yp(struct asr_query *, int, char *);
 #endif
 
 static const struct match matches[] = {
@@ -76,13 +78,13 @@ enum {
 	DOM_DONE
 };
 
-struct async *
+struct asr_query *
 getaddrinfo_async(const char *hostname, const char *servname,
-	const struct addrinfo *hints, struct asr *asr)
+	const struct addrinfo *hints, void *asr)
 {
-	struct asr_ctx	*ac;
-	struct async	*as;
-	char		 alias[MAXDNAME];
+	struct asr_ctx		*ac;
+	struct asr_query	*as;
+	char			 alias[MAXDNAME];
 
 	ac = asr_use_resolver(asr);
 	if ((as = asr_async_new(ac, ASR_GETADDRINFO)) == NULL)
@@ -114,7 +116,7 @@ getaddrinfo_async(const char *hostname, const char *servname,
 }
 
 static int
-getaddrinfo_async_run(struct async *as, struct async_res *ar)
+getaddrinfo_async_run(struct asr_query *as, struct asr_result *ar)
 {
 #ifdef YP
 	static char	*domain = NULL;
@@ -422,8 +424,9 @@ getaddrinfo_async_run(struct async *as, struct async_res *ar)
 		break;
 
 	case ASR_STATE_SUBQUERY:
-		if ((r = asr_async_run(as->as.ai.subq, ar)) == ASYNC_COND)
+		if ((r = asr_run(as->as.ai.subq, ar)) == ASYNC_COND)
 			return (ASYNC_COND);
+
 		as->as.ai.subq = NULL;
 
 		if (ar->ar_datalen == -1) {
@@ -512,7 +515,7 @@ get_port(const char *servname, const char *proto, int numonly)
  * list on the async context, unless a specific family was given in hints.
  */
 static int
-iter_family(struct async *as, int first)
+iter_family(struct asr_query *as, int first)
 {
 	if (first) {
 		as->as_family_idx = 0;
@@ -561,7 +564,7 @@ domcat(const char *name, const char *domain, char *buf, size_t buflen)
  * error generating the next name, or the resulting name length.
  */
 static int
-iter_domain(struct async *as, const char *name, char * buf, size_t len)
+iter_domain(struct asr_query *as, const char *name, char * buf, size_t len)
 {
 	const char	*c;
 	int		 dots;
@@ -644,7 +647,7 @@ iter_domain(struct async *as, const char *name, char * buf, size_t len)
  * entry per protocol/socktype match.
  */
 static int
-addrinfo_add(struct async *as, const struct sockaddr *sa, const char *cname)
+addrinfo_add(struct asr_query *as, const struct sockaddr *sa, const char *cname)
 {
 	struct addrinfo		*ai;
 	int			 i, port, proto;
@@ -706,7 +709,7 @@ addrinfo_add(struct async *as, const struct sockaddr *sa, const char *cname)
 }
 
 static int
-addrinfo_from_file(struct async *as, int family, FILE *f)
+addrinfo_from_file(struct asr_query *as, int family, FILE *f)
 {
 	char		*tokens[MAXTOKEN], *c;
 	int		 n, i;
@@ -743,13 +746,13 @@ addrinfo_from_file(struct async *as, int family, FILE *f)
 }
 
 static int
-addrinfo_from_pkt(struct async *as, char *pkt, size_t pktlen)
+addrinfo_from_pkt(struct asr_query *as, char *pkt, size_t pktlen)
 {
-	struct unpack	 p;
-	struct header	 h;
-	struct query	 q;
-	struct rr	 rr;
-	int		 i;
+	struct asr_unpack	 p;
+	struct asr_dns_header	 h;
+	struct asr_dns_query	 q;
+	struct asr_dns_rr	 rr;
+	int			 i;
 	union {
 		struct sockaddr		sa;
 		struct sockaddr_in	sain;
@@ -815,7 +818,7 @@ strsplit(char *line, char **tokens, int ntokens)
 }
 
 static int
-addrinfo_from_yp(struct async *as, int family, char *line)
+addrinfo_from_yp(struct asr_query *as, int family, char *line)
 {
 	char		*next, *tokens[MAXTOKEN], *c;
 	int		 ntok;

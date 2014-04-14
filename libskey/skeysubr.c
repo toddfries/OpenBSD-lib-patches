@@ -9,7 +9,7 @@
  *
  * S/Key misc routines.
  *
- * $OpenBSD: skeysubr.c,v 1.31 2013/11/29 19:00:51 deraadt Exp $
+ * $OpenBSD: skeysubr.c,v 1.33 2014/03/25 04:28:28 lteo Exp $
  */
 
 #include <stdio.h>
@@ -19,19 +19,17 @@
 #include <signal.h>
 #include <termios.h>
 #include <unistd.h>
-#include <md4.h>
 #include <md5.h>
 #include <sha1.h>
 #include <rmd160.h>
 
 #include "skey.h"
 
-/* Default hash function to use (index into skey_hash_types array) */
+/* Default hash function to use (index into skey_algorithm_table array) */
 #ifndef SKEY_HASH_DEFAULT
-#define SKEY_HASH_DEFAULT	1
+#define SKEY_HASH_DEFAULT	0	/* md5 */
 #endif
 
-static int keycrunch_md4(char *, char *, char *);
 static int keycrunch_md5(char *, char *, char *);
 static int keycrunch_sha1(char *, char *, char *);
 static int keycrunch_rmd160(char *, char *, char *);
@@ -39,23 +37,22 @@ static void lowcase(char *);
 static void skey_echo(int);
 static void trapped(int);
 
-/* Current hash type (index into skey_hash_types array) */
+/* Current hash type (index into skey_algorithm_table array) */
 static int skey_hash_type = SKEY_HASH_DEFAULT;
 
 /*
  * Hash types we support.
  * Each has an associated keycrunch() and f() function.
  */
-#define SKEY_ALGORITH_LAST	4
 struct skey_algorithm_table {
 	const char *name;
 	int (*keycrunch)(char *, char *, char *);
 };
 static struct skey_algorithm_table skey_algorithm_table[] = {
-	{ "md4", keycrunch_md4 },
 	{ "md5", keycrunch_md5 },
 	{ "sha1", keycrunch_sha1 },
-	{ "rmd160", keycrunch_rmd160 }
+	{ "rmd160", keycrunch_rmd160 },
+	{ NULL }
 };
 
 
@@ -70,48 +67,6 @@ int
 keycrunch(char *result, char *seed, char *passwd)
 {
 	return(skey_algorithm_table[skey_hash_type].keycrunch(result, seed, passwd));
-}
-
-static int
-keycrunch_md4(char *result, char *seed, char *passwd)
-{
-	char *buf = NULL;
-	MD4_CTX md;
-	u_int32_t results[4];
-	unsigned int buflen;
-
-	/*
-	 * If seed and passwd are defined we are in keycrunch() mode,
-	 * else we are in f() mode.
-	 */
-	if (seed && passwd) {
-		buflen = strlen(seed) + strlen(passwd);
-		if ((buf = malloc(buflen + 1)) == NULL)
-			return(-1);
-		(void)strlcpy(buf, seed, buflen + 1);
-		lowcase(buf);
-		(void)strlcat(buf, passwd, buflen + 1);
-		sevenbit(buf);
-	} else {
-		buf = result;
-		buflen = SKEY_BINKEY_SIZE;
-	}
-
-	/* Crunch the key through MD4 */
-	MD4Init(&md);
-	MD4Update(&md, (unsigned char *)buf, buflen);
-	MD4Final((unsigned char *)results, &md);
-
-	/* Fold result from 128 to 64 bits */
-	results[0] ^= results[2];
-	results[1] ^= results[3];
-
-	(void)memcpy((void *)result, (void *)results, SKEY_BINKEY_SIZE);
-
-	if (buf != result)
-		(void)free(buf);
-
-	return(0);
 }
 
 static int
@@ -435,7 +390,7 @@ skey_set_algorithm(char *new)
 {
 	int i;
 
-	for (i = 0; i < SKEY_ALGORITH_LAST; i++) {
+	for (i = 0; skey_algorithm_table[i].name; i++) {
 		if (strcmp(new, skey_algorithm_table[i].name) == 0) {
 			skey_hash_type = i;
 			return(new);

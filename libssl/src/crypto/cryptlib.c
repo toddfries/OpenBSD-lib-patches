@@ -182,19 +182,19 @@ static STACK_OF(OPENSSL_STRING) *app_locks=NULL;
 static STACK_OF(CRYPTO_dynlock) *dyn_locks=NULL;
 
 
-static void (MS_FAR *locking_callback)(int mode,int type,
+static void (*locking_callback)(int mode,int type,
 	const char *file,int line)=0;
-static int (MS_FAR *add_lock_callback)(int *pointer,int amount,
+static int (*add_lock_callback)(int *pointer,int amount,
 	int type,const char *file,int line)=0;
 #ifndef OPENSSL_NO_DEPRECATED
-static unsigned long (MS_FAR *id_callback)(void)=0;
+static unsigned long (*id_callback)(void)=0;
 #endif
-static void (MS_FAR *threadid_callback)(CRYPTO_THREADID *)=0;
-static struct CRYPTO_dynlock_value *(MS_FAR *dynlock_create_callback)
+static void (*threadid_callback)(CRYPTO_THREADID *)=0;
+static struct CRYPTO_dynlock_value *(*dynlock_create_callback)
 	(const char *file,int line)=0;
-static void (MS_FAR *dynlock_lock_callback)(int mode,
+static void (*dynlock_lock_callback)(int mode,
 	struct CRYPTO_dynlock_value *l, const char *file,int line)=0;
-static void (MS_FAR *dynlock_destroy_callback)(struct CRYPTO_dynlock_value *l,
+static void (*dynlock_destroy_callback)(struct CRYPTO_dynlock_value *l,
 	const char *file,int line)=0;
 
 int CRYPTO_get_new_lockid(char *name)
@@ -504,7 +504,7 @@ void CRYPTO_THREADID_current(CRYPTO_THREADID *id)
 	CRYPTO_THREADID_set_numeric(id, (unsigned long)find_thread(NULL));
 #else
 	/* For everything else, default to using the address of 'errno' */
-	CRYPTO_THREADID_set_pointer(id, &errno);
+	CRYPTO_THREADID_set_pointer(id, (void*)&errno);
 #endif
 	}
 
@@ -704,6 +704,7 @@ void OPENSSL_cpuid_setup(void)
     }
     else
 	vec = OPENSSL_ia32_cpuid();
+
     /*
      * |(1<<10) sets a reserved bit to signal that variable
      * was initialized already... This is to avoid interference
@@ -888,7 +889,7 @@ void OPENSSL_showfatal (const char *fmta,...)
 
 #if defined(_WIN32_WINNT) && _WIN32_WINNT>=0x0333
     /* this -------------v--- guards NT-specific calls */
-    if (GetVersion() < 0x80000000 && OPENSSL_isservice() > 0)
+    if (check_winnt() && OPENSSL_isservice() > 0)
     {	HANDLE h = RegisterEventSource(0,_T("OPENSSL"));
 	const TCHAR *pmsg=buf;
 	ReportEvent(h,EVENTLOG_ERROR_TYPE,0,0,0,1,0,&pmsg,0);
@@ -924,3 +925,16 @@ void OpenSSLDie(const char *file,int line,const char *assertion)
 	}
 
 void *OPENSSL_stderr(void)	{ return stderr; }
+
+int CRYPTO_memcmp(const void *in_a, const void *in_b, size_t len)
+	{
+	size_t i;
+	const unsigned char *a = in_a;
+	const unsigned char *b = in_b;
+	unsigned char x = 0;
+
+	for (i = 0; i < len; i++)
+		x |= a[i] ^ b[i];
+
+	return x;
+	}

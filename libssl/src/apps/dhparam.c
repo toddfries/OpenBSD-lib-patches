@@ -143,7 +143,7 @@
  * -C
  */
 
-static int MS_CALLBACK dh_cb(int p, int n, BN_GENCB *cb);
+static int dh_cb(int p, int n, BN_GENCB *cb);
 
 int MAIN(int, char **);
 
@@ -332,7 +332,6 @@ bad:
 			BIO_printf(bio_err,"This is going to take a long time\n");
 			if(!dh || !DH_generate_parameters_ex(dh, num, g, &cb))
 				{
-				if(dh) DH_free(dh);
 				ERR_print_errors(bio_err);
 				goto end;
 				}
@@ -535,7 +534,7 @@ end:
 	}
 
 /* dh_cb is identical to dsa_cb in apps/dsaparam.c */
-static int MS_CALLBACK dh_cb(int p, int n, BN_GENCB *cb)
+static int dh_cb(int p, int n, BN_GENCB *cb)
 	{
 	char c='*';
 

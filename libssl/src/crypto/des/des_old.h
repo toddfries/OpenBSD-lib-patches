@@ -88,8 +88,8 @@
  *
  */
 
-#ifndef HEADER_DES_OLD_H
-#define HEADER_DES_OLD_H
+#ifndef HEADER_DES_H
+#define HEADER_DES_H
 
 #include <openssl/e_os2.h>	/* OPENSSL_EXTERN, OPENSSL_NO_DES, DES_LONG */
 
@@ -97,15 +97,13 @@
 #error DES is disabled.
 #endif
 
-#ifndef HEADER_DES_H
+#ifndef HEADER_NEW_DES_H
 #error You must include des.h, not des_old.h directly.
 #endif
 
 #ifdef _KERBEROS_DES_H
 #error <openssl/des_old.h> replaces <kerberos/des.h>.
 #endif
-
-#include <openssl/symhacks.h>
 
 #ifdef OPENSSL_BUILD_SHLIBCRYPTO
 # undef OPENSSL_EXTERN

@@ -1,4 +1,4 @@
-/*	$OpenBSD: getrrsetbyname.c,v 1.3 2013/07/12 14:36:22 eric Exp $	*/
+/*	$OpenBSD: getrrsetbyname.c,v 1.5 2014/03/26 18:13:15 eric Exp $	*/
 /*
  * Copyright (c) 2012 Eric Faurot <eric@openbsd.org>
  *
@@ -16,21 +16,22 @@
  */
 
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
+#include <netdb.h>
 
+#include <asr.h>
 #include <errno.h>
 #include <resolv.h>
 #include <stdlib.h>
-
-#include "asr.h"
 
 int
 getrrsetbyname(const char *name, unsigned int class, unsigned int type,
     unsigned int flags, struct rrsetinfo **res)
 {
-	struct async	*as;
-	struct async_res ar;
-	int		 r, saved_errno = errno;
+	struct asr_query *as;
+	struct asr_result ar;
+	int r, saved_errno = errno;
 
 	res_init();
 
@@ -41,7 +42,7 @@ getrrsetbyname(const char *name, unsigned int class, unsigned int type,
 		return (r);
 	}
 
-	asr_async_run_sync(as, &ar);
+	asr_run_sync(as, &ar);
 
 	*res = ar.ar_rrsetinfo;
 

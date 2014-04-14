@@ -365,12 +365,14 @@ static void sc_usage(void)
 	BIO_printf(bio_err," -tlsextdebug      - hex dump of all TLS extensions received\n");
 	BIO_printf(bio_err," -status           - request certificate status from server\n");
 	BIO_printf(bio_err," -no_ticket        - disable use of RFC4507bis session tickets\n");
-# if !defined(OPENSSL_NO_NEXTPROTONEG)
+# ifndef OPENSSL_NO_NEXTPROTONEG
 	BIO_printf(bio_err," -nextprotoneg arg - enable NPN extension, considering named protocols supported (comma-separated list)\n");
 # endif
 #endif
 	BIO_printf(bio_err," -legacy_renegotiation - enable use of legacy renegotiation (dangerous)\n");
+#ifndef OPENSSL_NO_SRTP
 	BIO_printf(bio_err," -use_srtp profiles - Offer SRTP key management with a colon-separated profile list\n");
+#endif
  	BIO_printf(bio_err," -keymatexport label   - Export keying material using label\n");
  	BIO_printf(bio_err," -keymatexportlen len  - Export len bytes of keying material (default 20)\n");
 	}
@@ -384,7 +386,7 @@ typedef struct tlsextctx_st {
 } tlsextctx;
 
 
-static int MS_CALLBACK ssl_servername_cb(SSL *s, int *ad, void *arg)
+static int ssl_servername_cb(SSL *s, int *ad, void *arg)
 	{
 	tlsextctx * p = (tlsextctx *) arg;
 	const char * hn= SSL_get_servername(s, TLSEXT_NAMETYPE_host_name);
@@ -454,7 +456,7 @@ static int srp_Verify_N_and_g(BIGNUM *N, BIGNUM *g)
    primality tests are rather cpu consuming.
 */
 
-static int MS_CALLBACK ssl_srp_verify_param_cb(SSL *s, void *arg)
+static int ssl_srp_verify_param_cb(SSL *s, void *arg)
 	{
 	SRP_ARG *srp_arg = (SRP_ARG *)arg;
 	BIGNUM *N = NULL, *g = NULL;
@@ -489,7 +491,7 @@ static int MS_CALLBACK ssl_srp_verify_param_cb(SSL *s, void *arg)
 
 #define PWD_STRLEN 1024
 
-static char * MS_CALLBACK ssl_give_srp_client_pwd_cb(SSL *s, void *arg)
+static char * ssl_give_srp_client_pwd_cb(SSL *s, void *arg)
 	{
 	SRP_ARG *srp_arg = (SRP_ARG *)arg;
 	char *pass = (char *)OPENSSL_malloc(PWD_STRLEN+1);
@@ -510,7 +512,9 @@ static char * MS_CALLBACK ssl_give_srp_client_pwd_cb(SSL *s, void *arg)
 	}
 
 #endif
+#ifndef OPENSSL_NO_SRTP
 	char *srtp_profiles = NULL;
+#endif
 
 # ifndef OPENSSL_NO_NEXTPROTONEG
 /* This the context that we pass to next_proto_cb */
@@ -544,7 +548,7 @@ static int next_proto_cb(SSL *s, unsigned char **out, unsigned char *outlen, con
 	ctx->status = SSL_select_next_proto(out, outlen, in, inlen, ctx->data, ctx->len);
 	return SSL_TLSEXT_ERR_OK;
 	}
-# endif
+# endif  /* ndef OPENSSL_NO_NEXTPROTONEG */
 #endif
 
 enum
@@ -955,11 +959,13 @@ int MAIN(int argc, char **argv)
 			jpake_secret = *++argv;
 			}
 #endif
+#ifndef OPENSSL_NO_SRTP
 		else if (strcmp(*argv,"-use_srtp") == 0)
 			{
 			if (--argc < 1) goto bad;
 			srtp_profiles = *(++argv);
 			}
+#endif
 		else if (strcmp(*argv,"-keymatexport") == 0)
 			{
 			if (--argc < 1) goto bad;
@@ -1140,6 +1146,8 @@ bad:
 			BIO_printf(bio_c_out, "PSK key given or JPAKE in use, setting client callback\n");
 		SSL_CTX_set_psk_client_callback(ctx, psk_client_cb);
 		}
+#endif
+#ifndef OPENSSL_NO_SRTP
 	if (srtp_profiles != NULL)
 		SSL_CTX_set_tlsext_use_srtp(ctx, srtp_profiles);
 #endif
@@ -1264,8 +1272,9 @@ re_start:
 
 	if (init_client(&s,host,port,socket_type,af) == 0)
 		{
-		BIO_printf(bio_err,"connect:errno=%d\n",get_last_socket_error());
-		SHUTDOWN(s);
+		BIO_printf(bio_err,"connect:errno=%d\n",errno);
+		shutdown(s, SHUT_RD);
+		close(s);
 		goto end;
 		}
 	BIO_printf(bio_c_out,"CONNECTED(%08X)\n",s);
@@ -1291,8 +1300,9 @@ re_start:
 		if (getsockname(s, &peer, (void *)&peerlen) < 0)
 			{
 			BIO_printf(bio_err, "getsockname:errno=%d\n",
-				get_last_socket_error());
-			SHUTDOWN(s);
+				errno);
+			shutdown(s, SHUT_RD);
+			close(s);
 			goto end;
 			}
 
@@ -1559,7 +1569,8 @@ SSL_set_tlsext_status_ids(con, ids);
 					BIO_printf(bio_c_out,"drop connection and then reconnect\n");
 					SSL_shutdown(con);
 					SSL_set_connect_state(con);
-					SHUTDOWN(SSL_get_fd(con));
+					shutdown(SSL_get_fd(con), SHUT_RD);
+					close(SSL_get_fd(con));
 					goto re_start;
 					}
 				}
@@ -1655,7 +1666,7 @@ SSL_set_tlsext_status_ids(con, ids);
 			if ( i < 0)
 				{
 				BIO_printf(bio_err,"bad select %d\n",
-				get_last_socket_error());
+				    errno);
 				goto shut;
 				/* goto end; */
 				}
@@ -1720,7 +1731,7 @@ SSL_set_tlsext_status_ids(con, ids);
 				if ((k != 0) || (cbuf_len != 0))
 					{
 					BIO_printf(bio_err,"write:errno=%d\n",
-						get_last_socket_error());
+						errno);
 					goto shut;
 					}
 				else
@@ -1804,7 +1815,7 @@ printf("read=%d pending=%d peek=%d\n",k,SSL_pending(con),SSL_peek(con,zbuf,10240
 				BIO_printf(bio_c_out,"read X BLOCK\n");
 				break;
 			case SSL_ERROR_SYSCALL:
-				ret=get_last_socket_error();
+				ret=errno;
 				BIO_printf(bio_err,"read:errno=%d\n",ret);
 				goto shut;
 			case SSL_ERROR_ZERO_RETURN:
@@ -1897,7 +1908,8 @@ shut:
 	if (in_init)
 		print_stuff(bio_c_out,con,full_log);
 	SSL_shutdown(con);
-	SHUTDOWN(SSL_get_fd(con));
+	shutdown(SSL_get_fd(con), SHUT_RD);
+	close(SSL_get_fd(con));
 end:
 	if (con != NULL)
 		{
@@ -1905,6 +1917,10 @@ end:
 			print_stuff(bio_c_out,con,1);
 		SSL_free(con);
 		}
+#if !defined(OPENSSL_NO_TLSEXT) && !defined(OPENSSL_NO_NEXTPROTONEG)
+	if (next_proto.data)
+		OPENSSL_free(next_proto.data);
+#endif
 	if (ctx != NULL) SSL_CTX_free(ctx);
 	if (cert)
 		X509_free(cert);
@@ -1912,6 +1928,8 @@ end:
 		EVP_PKEY_free(key);
 	if (pass)
 		OPENSSL_free(pass);
+	if (vpm)
+		X509_VERIFY_PARAM_free(vpm);
 	if (cbuf != NULL) { OPENSSL_cleanse(cbuf,BUFSIZZ); OPENSSL_free(cbuf); }
 	if (sbuf != NULL) { OPENSSL_cleanse(sbuf,BUFSIZZ); OPENSSL_free(sbuf); }
 	if (mbuf != NULL) { OPENSSL_cleanse(mbuf,BUFSIZZ); OPENSSL_free(mbuf); }
@@ -2076,6 +2094,7 @@ static void print_stuff(BIO *bio, SSL *s, int full)
 	}
 #endif
 
+#ifndef OPENSSL_NO_SRTP
  	{
  	SRTP_PROTECTION_PROFILE *srtp_profile=SSL_get_selected_srtp_profile(s);
  
@@ -2083,6 +2102,7 @@ static void print_stuff(BIO *bio, SSL *s, int full)
 		BIO_printf(bio,"SRTP Extension negotiated, profile=%s\n",
 			   srtp_profile->name);
 	}
+#endif
  
 	SSL_SESSION_print(bio,SSL_get_session(s));
 	if (keymatexportlabel != NULL)

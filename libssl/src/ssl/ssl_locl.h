@@ -142,13 +142,17 @@
 
 #ifndef HEADER_SSL_LOCL_H
 #define HEADER_SSL_LOCL_H
+
+#include <sys/types.h>
+
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
 
-#include "e_os.h"
-
+#include <openssl/opensslconf.h>
+#include <openssl/e_os2.h>
 #include <openssl/buffer.h>
 #ifndef OPENSSL_NO_COMP
 #include <openssl/comp.h>
@@ -163,7 +167,6 @@
 #endif
 #include <openssl/err.h>
 #include <openssl/ssl.h>
-#include <openssl/symhacks.h>
 
 #ifdef OPENSSL_BUILD_SHLIBSSL
 # undef OPENSSL_EXTERN
@@ -841,13 +844,15 @@ int ssl_verify_cert_chain(SSL *s,STACK_OF(X509) *sk);
 int ssl_undefined_function(SSL *s);
 int ssl_undefined_void_function(void);
 int ssl_undefined_const_function(const SSL *s);
-X509 *ssl_get_server_send_cert(SSL *);
+CERT_PKEY *ssl_get_server_send_pkey(const SSL *s);
+X509 *ssl_get_server_send_cert(const SSL *);
 EVP_PKEY *ssl_get_sign_pkey(SSL *s,const SSL_CIPHER *c, const EVP_MD **pmd);
 int ssl_cert_type(X509 *x,EVP_PKEY *pkey);
 void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher);
 STACK_OF(SSL_CIPHER) *ssl_get_ciphers_by_id(SSL *s);
 int ssl_verify_alarm_type(long type);
 void ssl_load_ciphers(void);
+int ssl_fill_hello_random(SSL *s, int server, unsigned char *field, int len);
 
 int ssl2_enc_init(SSL *s, int client);
 int ssl2_generate_key_material(SSL *s);
@@ -1099,7 +1104,8 @@ int ssl_parse_clienthello_tlsext(SSL *s, unsigned char **data, unsigned char *d,
 int ssl_parse_serverhello_tlsext(SSL *s, unsigned char **data, unsigned char *d, int n, int *al);
 int ssl_prepare_clienthello_tlsext(SSL *s);
 int ssl_prepare_serverhello_tlsext(SSL *s);
-int ssl_check_clienthello_tlsext(SSL *s);
+int ssl_check_clienthello_tlsext_early(SSL *s);
+int ssl_check_clienthello_tlsext_late(SSL *s);
 int ssl_check_serverhello_tlsext(SSL *s);
 
 #ifndef OPENSSL_NO_HEARTBEATS

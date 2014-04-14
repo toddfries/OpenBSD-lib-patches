@@ -1,4 +1,4 @@
-/*	$OpenBSD: getpwent.c,v 1.48 2013/11/15 22:32:55 benno Exp $ */
+/*	$OpenBSD: getpwent.c,v 1.52 2014/03/12 10:54:36 schwarze Exp $ */
 /*
  * Copyright (c) 2008 Theo de Raadt
  * Copyright (c) 1988, 1993
@@ -708,8 +708,12 @@ getpwnam_r(const char *name, struct passwd *pw, char *buf, size_t buflen,
 {
 	struct passwd *pwret = NULL;
 	int flags = 0, *flagsp;
+	int my_errno = 0;
+	int saved_errno, tmp_errno;
 
 	_THREAD_PRIVATE_MUTEX_LOCK(pw);
+	saved_errno = errno;
+	errno = 0;
 	if (!_pw_db && !__initdb())
 		goto fail;
 
@@ -727,23 +731,33 @@ getpwnam_r(const char *name, struct passwd *pw, char *buf, size_t buflen,
 		pwret = _pwhashbyname(name, buf, buflen, pw, flagsp);
 
 	if (!_pw_stayopen) {
+		tmp_errno = errno;
 		(void)(_pw_db->close)(_pw_db);
 		_pw_db = NULL;
+		errno = tmp_errno;
 	}
 fail:
 	if (pwretp)
 		*pwretp = pwret;
+	if (pwret == NULL)
+		my_errno = errno;
+	errno = saved_errno;
 	_THREAD_PRIVATE_MUTEX_UNLOCK(pw);
-	return (pwret ? 0 : 1);
+	return (my_errno);
 }
 
 struct passwd *
 getpwnam(const char *name)
 {
 	struct passwd *pw = NULL;
+	int my_errno;
 
-	if (getpwnam_r(name, &_pw_passwd, _pw_string, sizeof _pw_string, &pw))
+	my_errno = getpwnam_r(name, &_pw_passwd, _pw_string,
+	    sizeof _pw_string, &pw);
+	if (my_errno) {
 		pw = NULL;
+		errno = my_errno;
+	}
 	return (pw);
 }
 
@@ -753,8 +767,12 @@ getpwuid_r(uid_t uid, struct passwd *pw, char *buf, size_t buflen,
 {
 	struct passwd *pwret = NULL;
 	int flags = 0, *flagsp;
+	int my_errno = 0;
+	int saved_errno, tmp_errno;
 
 	_THREAD_PRIVATE_MUTEX_LOCK(pw);
+	saved_errno = errno;
+	errno = 0;
 	if (!_pw_db && !__initdb())
 		goto fail;
 
@@ -772,23 +790,33 @@ getpwuid_r(uid_t uid, struct passwd *pw, char *buf, size_t buflen,
 		pwret = _pwhashbyuid(uid, buf, buflen, pw, flagsp);
 
 	if (!_pw_stayopen) {
+		tmp_errno = errno;
 		(void)(_pw_db->close)(_pw_db);
 		_pw_db = NULL;
+		errno = tmp_errno;
 	}
 fail:
 	if (pwretp)
 		*pwretp = pwret;
+	if (pwret == NULL)
+		my_errno = errno;
+	errno = saved_errno;
 	_THREAD_PRIVATE_MUTEX_UNLOCK(pw);
-	return (pwret ? 0 : 1);
+	return (my_errno);
 }
 
 struct passwd *
 getpwuid(uid_t uid)
 {
 	struct passwd *pw = NULL;
+	int my_errno;
 
-	if (getpwuid_r(uid, &_pw_passwd, _pw_string, sizeof _pw_string, &pw))
+	my_errno = getpwuid_r(uid, &_pw_passwd, _pw_string,
+	    sizeof _pw_string, &pw);
+	if (my_errno) {
 		pw = NULL;
+		errno = my_errno;
+	}
 	return (pw);
 }
 
@@ -819,7 +847,10 @@ setpwent(void)
 void
 endpwent(void)
 {
+	int saved_errno;
+
 	_THREAD_PRIVATE_MUTEX_LOCK(pw);
+	saved_errno = errno;
 	_pw_keynum = 0;
 	if (_pw_db) {
 		(void)(_pw_db->close)(_pw_db);
@@ -833,6 +864,7 @@ endpwent(void)
 	__ypexclude_free(&__ypexhead);
 	__ypproto = NULL;
 #endif
+	errno = saved_errno;
 	_THREAD_PRIVATE_MUTEX_UNLOCK(pw);
 }
 
@@ -851,9 +883,12 @@ __initdb(void)
 		errno = saved_errno;
 		return (1);
 	}
-	if (!warned)
+	if (!warned) {
+		saved_errno = errno;
 		syslog(LOG_ERR, "%s: %m", _PATH_MP_DB);
-	warned = 1;
+		errno = saved_errno;
+		warned = 1;
+	}
 	return (0);
 }
 
@@ -867,8 +902,10 @@ __hashpw(DBT *key, char *buf, size_t buflen, struct passwd *pw,
 	if ((_pw_db->get)(_pw_db, key, &data, 0))
 		return (0);
 	p = (char *)data.data;
-	if (data.size > buflen)
+	if (data.size > buflen) {
+		errno = ERANGE;
 		return (0);
+	}
 
 	t = buf;
 #define	EXPAND(e)	e = t; while ((*t++ = *p++));
