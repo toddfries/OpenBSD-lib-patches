@@ -87,7 +87,7 @@ int EVP_OpenInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *type,
                 }
 
 	size=RSA_size(priv->pkey.rsa);
-	key=(unsigned char *)OPENSSL_malloc(size+2);
+	key=(unsigned char *)malloc(size+2);
 	if (key == NULL)
 		{
 		/* ERROR */
@@ -106,7 +106,7 @@ int EVP_OpenInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *type,
 	ret=1;
 err:
 	if (key != NULL) OPENSSL_cleanse(key,size);
-	OPENSSL_free(key);
+	free(key);
 	return(ret);
 	}
 
@@ -119,10 +119,4 @@ int EVP_OpenFinal(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl)
 		i = EVP_DecryptInit_ex(ctx,NULL,NULL,NULL,NULL);
 	return(i);
 	}
-#else /* !OPENSSL_NO_RSA */
-
-# ifdef PEDANTIC
-static void *dummy=&dummy;
-# endif
-
 #endif

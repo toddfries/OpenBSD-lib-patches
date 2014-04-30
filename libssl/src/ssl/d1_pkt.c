@@ -115,6 +115,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <machine/endian.h>
 #include "ssl_locl.h"
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
@@ -129,13 +130,9 @@ satsub64be(const unsigned char *v1, const unsigned char *v2)
 
 	if (sizeof(long) == 8)
 		do {
-			const union {
-				long one;
-				char little;
-			} is_endian = {1};
 			long l;
 
-			if (is_endian.little)
+			if (_BYTE_ORDER == _LITTLE_ENDIAN)
 				break;
 			/* not reached on little-endians */
 			/* following test is redundant, because input is
@@ -200,7 +197,7 @@ dtls1_copy_record(SSL *s, pitem *item)
 	rdata = (DTLS1_RECORD_DATA *)item->data;
 
 	if (s->s3->rbuf.buf != NULL)
-		OPENSSL_free(s->s3->rbuf.buf);
+		free(s->s3->rbuf.buf);
 
 	s->packet = rdata->packet;
 	s->packet_length = rdata->packet_length;
@@ -224,11 +221,11 @@ dtls1_buffer_record(SSL *s, record_pqueue *queue, unsigned char *priority)
 	if (pqueue_size(queue->q) >= 100)
 		return 0;
 
-	rdata = OPENSSL_malloc(sizeof(DTLS1_RECORD_DATA));
+	rdata = malloc(sizeof(DTLS1_RECORD_DATA));
 	item = pitem_new(priority, rdata);
 	if (rdata == NULL || item == NULL) {
 		if (rdata != NULL)
-			OPENSSL_free(rdata);
+			free(rdata);
 		if (item != NULL)
 			pitem_free(item);
 
@@ -253,7 +250,7 @@ dtls1_buffer_record(SSL *s, record_pqueue *queue, unsigned char *priority)
 
 	/* insert should not fail, since duplicates are dropped */
 	if (pqueue_insert(queue->q, item) == NULL) {
-		OPENSSL_free(rdata);
+		free(rdata);
 		pitem_free(item);
 		return (0);
 	}
@@ -265,7 +262,7 @@ dtls1_buffer_record(SSL *s, record_pqueue *queue, unsigned char *priority)
 
 	if (!ssl3_setup_buffers(s)) {
 		SSLerr(SSL_F_DTLS1_BUFFER_RECORD, ERR_R_INTERNAL_ERROR);
-		OPENSSL_free(rdata);
+		free(rdata);
 		pitem_free(item);
 		return (0);
 	}
@@ -283,7 +280,7 @@ dtls1_retrieve_buffered_record(SSL *s, record_pqueue *queue)
 	if (item) {
 		dtls1_copy_record(s, item);
 
-		OPENSSL_free(item->data);
+		free(item->data);
 		pitem_free(item);
 
 		return (1);
@@ -360,14 +357,14 @@ dtls1_get_buffered_record(SSL *s)
 		rdata = (DTLS1_RECORD_DATA *)item->data;
 
 		if (s->s3->rbuf.buf != NULL)
-			OPENSSL_free(s->s3->rbuf.buf);
+			free(s->s3->rbuf.buf);
 
 		s->packet = rdata->packet;
 		s->packet_length = rdata->packet_length;
 		memcpy(&(s->s3->rbuf), &(rdata->rbuf), sizeof(SSL3_BUFFER));
 		memcpy(&(s->s3->rrec), &(rdata->rrec), sizeof(SSL3_RECORD));
 
-		OPENSSL_free(item->data);
+		free(item->data);
 		pitem_free(item);
 
 		/* s->d1->next_expected_seq_num++; */
@@ -810,7 +807,7 @@ start:
 
 			dtls1_copy_record(s, item);
 
-			OPENSSL_free(item->data);
+			free(item->data);
 			pitem_free(item);
 		}
 	}
@@ -937,18 +934,6 @@ start:
 			dest = s->d1->alert_fragment;
 			dest_len = &s->d1->alert_fragment_len;
 		}
-#ifndef OPENSSL_NO_HEARTBEATS
-		else if (rr->type == TLS1_RT_HEARTBEAT) {
-			dtls1_process_heartbeat(s);
-
-			/* Exit and notify application to read again */
-			rr->length = 0;
-			s->rwstate = SSL_READING;
-			BIO_clear_retry_flags(SSL_get_rbio(s));
-			BIO_set_retry_read(SSL_get_rbio(s));
-			return (-1);
-		}
-#endif
 		/* else it's a CCS message, or application data or wrong */
 		else if (rr->type != SSL3_RT_CHANGE_CIPHER_SPEC) {
 			/* Application data while renegotiating
@@ -1124,13 +1109,11 @@ start:
 #endif
 		} else if (alert_level == 2) /* fatal */
 		{
-			char tmp[16];
-
 			s->rwstate = SSL_NOTHING;
 			s->s3->fatal_alert = alert_descr;
 			SSLerr(SSL_F_DTLS1_READ_BYTES, SSL_AD_REASON_OFFSET + alert_descr);
-			BIO_snprintf(tmp, sizeof tmp, "%d", alert_descr);
-			ERR_add_error_data(2, "SSL alert number ", tmp);
+			ERR_asprintf_error_data("SSL alert number %d",
+			    alert_descr);
 			s->shutdown|=SSL_RECEIVED_SHUTDOWN;
 			SSL_CTX_remove_session(s->ctx, s->session);
 			return (0);
@@ -1232,14 +1215,7 @@ start:
 
 		if (((s->state&SSL_ST_MASK) == SSL_ST_OK) &&
 		    !(s->s3->flags & SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS)) {
-#if 0 /* worked only because C operator preferences are not as expected (and
-			* because this is not really needed for clients except for detecting
-       * protocol violations): */
-			s->state = SSL_ST_BEFORE |
-			    (s->server) ? SSL_ST_ACCEPT : SSL_ST_CONNECT;
-#else
 			s->state = s->server ? SSL_ST_ACCEPT : SSL_ST_CONNECT;
-#endif
 			s->renegotiate = 1;
 			s->new_session = 1;
 		}

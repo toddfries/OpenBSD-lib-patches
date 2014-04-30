@@ -66,7 +66,6 @@
 #include <openssl/objects.h>
 #include "ssl_locl.h"
 
-static void get_current_time(struct timeval *t);
 const char dtls1_version_str[]="DTLSv1" OPENSSL_VERSION_PTEXT;
 int dtls1_listen(SSL *s, struct sockaddr *client);
 
@@ -100,8 +99,8 @@ dtls1_new(SSL *s)
 
 	if (!ssl3_new(s))
 		return (0);
-	if ((d1 = OPENSSL_malloc(sizeof *d1)) == NULL) return (0);
-		memset(d1, 0, sizeof *d1);
+	if ((d1 = calloc(1, sizeof *d1)) == NULL)
+		return (0);
 
 	/* d1->handshake_epoch=0; */
 
@@ -128,7 +127,7 @@ dtls1_new(SSL *s)
 			pqueue_free(d1->sent_messages);
 		if (d1->buffered_app_data.q)
 			pqueue_free(d1->buffered_app_data.q);
-		OPENSSL_free(d1);
+		free(d1);
 		return (0);
 	}
 
@@ -147,39 +146,39 @@ dtls1_clear_queues(SSL *s)
 	while ((item = pqueue_pop(s->d1->unprocessed_rcds.q)) != NULL) {
 		rdata = (DTLS1_RECORD_DATA *) item->data;
 		if (rdata->rbuf.buf) {
-			OPENSSL_free(rdata->rbuf.buf);
+			free(rdata->rbuf.buf);
 		}
-		OPENSSL_free(item->data);
+		free(item->data);
 		pitem_free(item);
 	}
 
 	while ((item = pqueue_pop(s->d1->processed_rcds.q)) != NULL) {
 		rdata = (DTLS1_RECORD_DATA *) item->data;
 		if (rdata->rbuf.buf) {
-			OPENSSL_free(rdata->rbuf.buf);
+			free(rdata->rbuf.buf);
 		}
-		OPENSSL_free(item->data);
+		free(item->data);
 		pitem_free(item);
 	}
 
 	while ((item = pqueue_pop(s->d1->buffered_messages)) != NULL) {
 		frag = (hm_fragment *)item->data;
-		OPENSSL_free(frag->fragment);
-		OPENSSL_free(frag);
+		free(frag->fragment);
+		free(frag);
 		pitem_free(item);
 	}
 
 	while ((item = pqueue_pop(s->d1->sent_messages)) != NULL) {
 		frag = (hm_fragment *)item->data;
-		OPENSSL_free(frag->fragment);
-		OPENSSL_free(frag);
+		free(frag->fragment);
+		free(frag);
 		pitem_free(item);
 	}
 
 	while ((item = pqueue_pop(s->d1->buffered_app_data.q)) != NULL) {
 		frag = (hm_fragment *)item->data;
-		OPENSSL_free(frag->fragment);
-		OPENSSL_free(frag);
+		free(frag->fragment);
+		free(frag);
 		pitem_free(item);
 	}
 }
@@ -197,7 +196,7 @@ dtls1_free(SSL *s)
 	pqueue_free(s->d1->sent_messages);
 	pqueue_free(s->d1->buffered_app_data.q);
 
-	OPENSSL_free(s->d1);
+	free(s->d1);
 	s->d1 = NULL;
 }
 
@@ -277,8 +276,8 @@ dtls1_ctrl(SSL *s, int cmd, long larg, void *parg)
  * to explicitly list their SSL_* codes. Currently RC4 is the only one
  * available, but if new ones emerge, they will have to be added...
  */
-const SSL_CIPHER
-*dtls1_get_cipher(unsigned int u)
+const SSL_CIPHER *
+dtls1_get_cipher(unsigned int u)
 {
 	const SSL_CIPHER *ciph = ssl3_get_cipher(u);
 
@@ -307,7 +306,7 @@ dtls1_start_timer(SSL *s)
 	}
 
 	/* Set timeout to current time */
-	get_current_time(&(s->d1->next_timeout));
+	gettimeofday(&(s->d1->next_timeout), NULL);
 
 	/* Add duration to current time */
 	s->d1->next_timeout.tv_sec += s->d1->timeout_duration;
@@ -324,7 +323,7 @@ dtls1_get_timeout(SSL *s, struct timeval* timeleft) {
 	}
 
 	/* Get current time */
-	get_current_time(&timenow);
+	gettimeofday(&timenow, NULL);
 
 	/* If timer already expired, set remaining time to 0 */
 	if (s->d1->next_timeout.tv_sec < timenow.tv_sec ||
@@ -433,21 +432,8 @@ dtls1_handle_timeout(SSL *s)
 		s->d1->timeout.read_timeouts = 1;
 	}
 
-#ifndef OPENSSL_NO_HEARTBEATS
-	if (s->tlsext_hb_pending) {
-		s->tlsext_hb_pending = 0;
-		return dtls1_heartbeat(s);
-	}
-#endif
-
 	dtls1_start_timer(s);
 	return dtls1_retransmit_buffered_messages(s);
-}
-
-static void
-get_current_time(struct timeval *t)
-{
-	gettimeofday(t, NULL);
 }
 
 int

@@ -37,11 +37,10 @@
 
 #include "wp_locl.h"
 #include <string.h>
+#include <machine/endian.h>
 
 typedef unsigned char		u8;
-#if (defined(_WIN32) || defined(_WIN64)) && !defined(__MINGW32)
-typedef unsigned __int64	u64;
-#elif defined(__arch64__)
+#if defined(_LP64)
 typedef unsigned long		u64;
 #else
 typedef unsigned long long	u64;
@@ -77,30 +76,15 @@ typedef unsigned long long	u64;
 #endif
 
 #undef ROTATE
-#if defined(_MSC_VER)
-#  if defined(_WIN64)	/* applies to both IA-64 and AMD64 */
-#    pragma intrinsic(_rotl64)
-#    define ROTATE(a,n)	_rotl64((a),n)
-#  endif
-#elif defined(__GNUC__) && __GNUC__>=2
+#if defined(__GNUC__) && __GNUC__>=2
 #  if defined(__x86_64) || defined(__x86_64__)
-#    if defined(L_ENDIAN)
 #      define ROTATE(a,n)	({ u64 ret; asm ("rolq %1,%0"	\
 				   : "=r"(ret) : "J"(n),"0"(a) : "cc"); ret; })
-#    elif defined(B_ENDIAN)
-       /* Most will argue that x86_64 is always little-endian. Well,
-        * yes, but then we have stratus.com who has modified gcc to
-	* "emulate" big-endian on x86. Is there evidence that they
-	* [or somebody else] won't do same for x86_64? Naturally no.
-	* And this line is waiting ready for that brave soul:-) */
-#      define ROTATE(a,n)	({ u64 ret; asm ("rorq %1,%0"	\
-				   : "=r"(ret) : "J"(n),"0"(a) : "cc"); ret; })
-#    endif
 #  elif defined(__ia64) || defined(__ia64__)
-#    if defined(L_ENDIAN)
+#    if _BYTE_ORDER == _LITTLE_ENDIAN
 #      define ROTATE(a,n)	({ u64 ret; asm ("shrp %0=%1,%1,%2"	\
 				   : "=r"(ret) : "r"(a),"M"(64-(n))); ret; })
-#    elif defined(B_ENDIAN)
+#    else
 #      define ROTATE(a,n)	({ u64 ret; asm ("shrp %0=%1,%1,%2"	\
 				   : "=r"(ret) : "r"(a),"M"(n)); ret; })
 #    endif
@@ -109,9 +93,9 @@ typedef unsigned long long	u64;
 
 #if defined(OPENSSL_SMALL_FOOTPRINT)
 #  if !defined(ROTATE)
-#    if defined(L_ENDIAN)	/* little-endians have to rotate left */
+#    if _BYTE_ORDER == _LITTLE_ENDIAN	/* little-endians have to rotate left */
 #      define ROTATE(i,n)	((i)<<(n) ^ (i)>>(64-n))
-#    elif defined(B_ENDIAN)	/* big-endians have to rotate right */
+#    else				/* big-endians have to rotate right */
 #      define ROTATE(i,n)	((i)>>(n) ^ (i)<<(64-n))
 #    endif
 #  endif

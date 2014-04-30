@@ -57,10 +57,6 @@
 #include "cryptlib.h"
 #include <openssl/cmac.h>
 
-#ifdef OPENSSL_FIPS
-#include <openssl/fips.h>
-#endif
-
 struct CMAC_CTX_st
 	{
 	/* Cipher context to use */
@@ -97,7 +93,7 @@ static void make_kn(unsigned char *k1, unsigned char *l, int bl)
 CMAC_CTX *CMAC_CTX_new(void)
 	{
 	CMAC_CTX *ctx;
-	ctx = OPENSSL_malloc(sizeof(CMAC_CTX));
+	ctx = malloc(sizeof(CMAC_CTX));
 	if (!ctx)
 		return NULL;
 	EVP_CIPHER_CTX_init(&ctx->cctx);
@@ -107,13 +103,6 @@ CMAC_CTX *CMAC_CTX_new(void)
 
 void CMAC_CTX_cleanup(CMAC_CTX *ctx)
 	{
-#ifdef OPENSSL_FIPS
-	if (FIPS_mode() && !ctx->cctx.engine)
-		{
-		FIPS_cmac_ctx_cleanup(ctx);
-		return;
-		}
-#endif
 	EVP_CIPHER_CTX_cleanup(&ctx->cctx);
 	OPENSSL_cleanse(ctx->tbl, EVP_MAX_BLOCK_LENGTH);
 	OPENSSL_cleanse(ctx->k1, EVP_MAX_BLOCK_LENGTH);
@@ -130,7 +119,7 @@ EVP_CIPHER_CTX *CMAC_CTX_get0_cipher_ctx(CMAC_CTX *ctx)
 void CMAC_CTX_free(CMAC_CTX *ctx)
 	{
 	CMAC_CTX_cleanup(ctx);
-	OPENSSL_free(ctx);
+	free(ctx);
 	}
 
 int CMAC_CTX_copy(CMAC_CTX *out, const CMAC_CTX *in)
@@ -153,24 +142,6 @@ int CMAC_Init(CMAC_CTX *ctx, const void *key, size_t keylen,
 			const EVP_CIPHER *cipher, ENGINE *impl)
 	{
 	static unsigned char zero_iv[EVP_MAX_BLOCK_LENGTH];
-#ifdef OPENSSL_FIPS
-	if (FIPS_mode())
-		{
-		/* If we have an ENGINE need to allow non FIPS */
-		if ((impl || ctx->cctx.engine)
-			&& !(ctx->cctx.flags & EVP_CIPH_FLAG_NON_FIPS_ALLOW))
-
-			{
-			EVPerr(EVP_F_CMAC_INIT, EVP_R_DISABLED_FOR_FIPS);
-			return 0;
-			}
-		/* Other algorithm blocking will be done in FIPS_cmac_init,
-		 * via FIPS_cipherinit().
-		 */
-		if (!impl && !ctx->cctx.engine)
-			return FIPS_cmac_init(ctx, key, keylen, cipher, NULL);
-		}
-#endif
 	/* All zeros means restart */
 	if (!key && !cipher && !impl && keylen == 0)
 		{
@@ -216,10 +187,7 @@ int CMAC_Update(CMAC_CTX *ctx, const void *in, size_t dlen)
 	{
 	const unsigned char *data = in;
 	size_t bl;
-#ifdef OPENSSL_FIPS
-	if (FIPS_mode() && !ctx->cctx.engine)
-		return FIPS_cmac_update(ctx, in, dlen);
-#endif
+
 	if (ctx->nlast_block == -1)
 		return 0;
 	if (dlen == 0)
@@ -261,10 +229,7 @@ int CMAC_Update(CMAC_CTX *ctx, const void *in, size_t dlen)
 int CMAC_Final(CMAC_CTX *ctx, unsigned char *out, size_t *poutlen)
 	{
 	int i, bl, lb;
-#ifdef OPENSSL_FIPS
-	if (FIPS_mode() && !ctx->cctx.engine)
-		return FIPS_cmac_final(ctx, out, poutlen);
-#endif
+
 	if (ctx->nlast_block == -1)
 		return 0;
 	bl = EVP_CIPHER_CTX_block_size(&ctx->cctx);
@@ -301,7 +266,7 @@ int CMAC_resume(CMAC_CTX *ctx)
 	/* The buffer "tbl" containes the last fully encrypted block
 	 * which is the last IV (or all zeroes if no last encrypted block).
 	 * The last block has not been modified since CMAC_final().
-	 * So reinitliasing using the last decrypted block will allow
+	 * So reinitialising using the last decrypted block will allow
 	 * CMAC to continue after calling CMAC_Final(). 
 	 */
 	return EVP_EncryptInit_ex(&ctx->cctx, NULL, NULL, NULL, ctx->tbl);

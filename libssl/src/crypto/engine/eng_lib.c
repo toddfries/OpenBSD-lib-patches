@@ -65,7 +65,7 @@ ENGINE *ENGINE_new(void)
 	{
 	ENGINE *ret;
 
-	ret = (ENGINE *)OPENSSL_malloc(sizeof(ENGINE));
+	ret = (ENGINE *)malloc(sizeof(ENGINE));
 	if(ret == NULL)
 		{
 		ENGINEerr(ENGINE_F_ENGINE_NEW, ERR_R_MALLOC_FAILURE);
@@ -118,13 +118,7 @@ int engine_free_util(ENGINE *e, int locked)
 		i = --e->struct_ref;
 	engine_ref_debug(e, 0, -1)
 	if (i > 0) return 1;
-#ifdef REF_CHECK
-	if (i < 0)
-		{
-		fprintf(stderr,"ENGINE_free, bad structural reference count\n");
-		abort();
-		}
-#endif
+
 	/* Free up any dynamically allocated public key methods */
 	engine_pkey_meths_free(e);
 	engine_pkey_asn1_meths_free(e);
@@ -133,7 +127,7 @@ int engine_free_util(ENGINE *e, int locked)
 	if(e->destroy)
 		e->destroy(e);
 	CRYPTO_free_ex_data(CRYPTO_EX_INDEX_ENGINE, e, &e->ex_data);
-	OPENSSL_free(e);
+	free(e);
 	return 1;
 	}
 
@@ -158,7 +152,7 @@ static int int_cleanup_check(int create)
 	}
 static ENGINE_CLEANUP_ITEM *int_cleanup_item(ENGINE_CLEANUP_CB *cb)
 	{
-	ENGINE_CLEANUP_ITEM *item = OPENSSL_malloc(sizeof(
+	ENGINE_CLEANUP_ITEM *item = malloc(sizeof(
 					ENGINE_CLEANUP_ITEM));
 	if(!item) return NULL;
 	item->cb = cb;
@@ -184,7 +178,7 @@ void engine_cleanup_add_last(ENGINE_CLEANUP_CB *cb)
 static void engine_cleanup_cb_free(ENGINE_CLEANUP_ITEM *item)
 	{
 	(*(item->cb))();
-	OPENSSL_free(item);
+	free(item);
 	}
 void ENGINE_cleanup(void)
 	{

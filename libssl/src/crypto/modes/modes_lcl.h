@@ -6,13 +6,10 @@
  */
 
 #include <openssl/modes.h>
+#include <machine/endian.h>
 
 
-#if (defined(_WIN32) || defined(_WIN64)) && !defined(__MINGW32__)
-typedef __int64 i64;
-typedef unsigned __int64 u64;
-#define U64(C) C##UI64
-#elif defined(__arch64__)
+#if defined(_LP64)
 typedef long i64;
 typedef unsigned long u64;
 #define U64(C) C##UL
@@ -33,7 +30,7 @@ typedef unsigned char u8;
 # undef STRICT_ALIGNMENT
 #endif
 
-#if !defined(PEDANTIC) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_NO_INLINE_ASM)
+#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_NO_INLINE_ASM)
 #if defined(__GNUC__) && __GNUC__>=2
 # if defined(__x86_64) || defined(__x86_64__)
 #  define BSWAP8(x) ({	u64 ret=(x);			\
@@ -59,18 +56,6 @@ typedef unsigned char u8;
 			asm ("rev %0,%1"		\
 			: "=r"(ret) : "r"((u32)(x)));	\
 			ret;				})
-# endif
-#elif defined(_MSC_VER)
-# if _MSC_VER>=1300
-#  pragma intrinsic(_byteswap_uint64,_byteswap_ulong)
-#  define BSWAP8(x)	_byteswap_uint64((u64)(x))
-#  define BSWAP4(x)	_byteswap_ulong((u32)(x))
-# elif defined(_M_IX86)
-   __inline u32 _bswap4(u32 val) {
-	_asm mov eax,val
-	_asm bswap eax
-   }
-#  define BSWAP4(x)	_bswap4(x)
 # endif
 #endif
 #endif

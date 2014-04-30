@@ -64,17 +64,9 @@
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
 #endif
-#ifdef OPENSSL_FIPS
-#include <openssl/fips.h>
-#endif
 #include "evp_locl.h"
 
-#ifdef OPENSSL_FIPS
-#define M_do_cipher(ctx, out, in, inl) FIPS_cipher(ctx, out, in, inl)
-#else
 #define M_do_cipher(ctx, out, in, inl) ctx->cipher->do_cipher(ctx, out, in, inl)
-#endif
-
 
 const char EVP_version[]="EVP" OPENSSL_VERSION_PTEXT;
 
@@ -86,7 +78,7 @@ void EVP_CIPHER_CTX_init(EVP_CIPHER_CTX *ctx)
 
 EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void)
 	{
-	EVP_CIPHER_CTX *ctx=OPENSSL_malloc(sizeof *ctx);
+	EVP_CIPHER_CTX *ctx=malloc(sizeof *ctx);
 	if (ctx)
 		EVP_CIPHER_CTX_init(ctx);
 	return ctx;
@@ -169,14 +161,10 @@ int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher, ENGINE *imp
 			ctx->engine = NULL;
 #endif
 
-#ifdef OPENSSL_FIPS
-		if (FIPS_mode())
-			return FIPS_cipherinit(ctx, cipher, key, iv, enc);
-#endif
 		ctx->cipher=cipher;
 		if (ctx->cipher->ctx_size)
 			{
-			ctx->cipher_data=OPENSSL_malloc(ctx->cipher->ctx_size);
+			ctx->cipher_data=malloc(ctx->cipher->ctx_size);
 			if (!ctx->cipher_data)
 				{
 				EVPerr(EVP_F_EVP_CIPHERINIT_EX, ERR_R_MALLOC_FAILURE);
@@ -205,10 +193,6 @@ int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher, ENGINE *imp
 		}
 #ifndef OPENSSL_NO_ENGINE
 skip_to_init:
-#endif
-#ifdef OPENSSL_FIPS
-	if (FIPS_mode())
-		return FIPS_cipherinit(ctx, cipher, key, iv, enc);
 #endif
 	/* we assume block size is a power of 2 in *cryptUpdate */
 	OPENSSL_assert(ctx->cipher->block_size == 1
@@ -562,13 +546,12 @@ void EVP_CIPHER_CTX_free(EVP_CIPHER_CTX *ctx)
 	if (ctx)
 		{
 		EVP_CIPHER_CTX_cleanup(ctx);
-		OPENSSL_free(ctx);
+		free(ctx);
 		}
 	}
 
 int EVP_CIPHER_CTX_cleanup(EVP_CIPHER_CTX *c)
 	{
-#ifndef OPENSSL_FIPS
 	if (c->cipher != NULL)
 		{
 		if(c->cipher->cleanup && !c->cipher->cleanup(c))
@@ -578,16 +561,12 @@ int EVP_CIPHER_CTX_cleanup(EVP_CIPHER_CTX *c)
 			OPENSSL_cleanse(c->cipher_data, c->cipher->ctx_size);
 		}
 	if (c->cipher_data)
-		OPENSSL_free(c->cipher_data);
-#endif
+		free(c->cipher_data);
 #ifndef OPENSSL_NO_ENGINE
 	if (c->engine)
 		/* The EVP_CIPHER we used belongs to an ENGINE, release the
 		 * functional reference we held for this reason. */
 		ENGINE_finish(c->engine);
-#endif
-#ifdef OPENSSL_FIPS
-	FIPS_cipher_ctx_cleanup(c);
 #endif
 	memset(c,0,sizeof(EVP_CIPHER_CTX));
 	return 1;
@@ -665,7 +644,7 @@ int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out, const EVP_CIPHER_CTX *in)
 
 	if (in->cipher_data && in->cipher->ctx_size)
 		{
-		out->cipher_data=OPENSSL_malloc(in->cipher->ctx_size);
+		out->cipher_data=malloc(in->cipher->ctx_size);
 		if (!out->cipher_data)
 			{
 			EVPerr(EVP_F_EVP_CIPHER_CTX_COPY,ERR_R_MALLOC_FAILURE);

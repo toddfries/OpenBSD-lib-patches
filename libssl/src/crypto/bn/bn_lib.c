@@ -160,7 +160,7 @@ int BN_num_bits_word(BN_ULONG l)
 		8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,
 		};
 
-#if defined(SIXTY_FOUR_BIT_LONG)
+#ifdef _LP64
 	if (l & 0xffffffff00000000L)
 		{
 		if (l & 0xffff000000000000L)
@@ -181,32 +181,8 @@ int BN_num_bits_word(BN_ULONG l)
 			}
 		}
 	else
-#else
-#ifdef SIXTY_FOUR_BIT
-	if (l & 0xffffffff00000000LL)
-		{
-		if (l & 0xffff000000000000LL)
-			{
-			if (l & 0xff00000000000000LL)
-				{
-				return(bits[(int)(l>>56)]+56);
-				}
-			else	return(bits[(int)(l>>48)]+48);
-			}
-		else
-			{
-			if (l & 0x0000ff0000000000LL)
-				{
-				return(bits[(int)(l>>40)]+40);
-				}
-			else	return(bits[(int)(l>>32)]+32);
-			}
-		}
-	else
-#endif
 #endif
 		{
-#if defined(THIRTY_TWO_BIT) || defined(SIXTY_FOUR_BIT) || defined(SIXTY_FOUR_BIT_LONG)
 		if (l & 0xffff0000L)
 			{
 			if (l & 0xff000000L)
@@ -214,13 +190,10 @@ int BN_num_bits_word(BN_ULONG l)
 			else	return(bits[(int)(l>>16L)]+16);
 			}
 		else
-#endif
 			{
-#if defined(THIRTY_TWO_BIT) || defined(SIXTY_FOUR_BIT) || defined(SIXTY_FOUR_BIT_LONG)
 			if (l & 0xff00L)
 				return(bits[(int)(l>>8)]+8);
 			else	
-#endif
 				return(bits[(int)(l   )]  );
 			}
 		}
@@ -245,12 +218,12 @@ void BN_clear_free(BIGNUM *a)
 		{
 		OPENSSL_cleanse(a->d,a->dmax*sizeof(a->d[0]));
 		if (!(BN_get_flags(a,BN_FLG_STATIC_DATA)))
-			OPENSSL_free(a->d);
+			free(a->d);
 		}
 	i=BN_get_flags(a,BN_FLG_MALLOCED);
 	OPENSSL_cleanse(a,sizeof(BIGNUM));
 	if (i)
-		OPENSSL_free(a);
+		free(a);
 	}
 
 void BN_free(BIGNUM *a)
@@ -258,9 +231,9 @@ void BN_free(BIGNUM *a)
 	if (a == NULL) return;
 	bn_check_top(a);
 	if ((a->d != NULL) && !(BN_get_flags(a,BN_FLG_STATIC_DATA)))
-		OPENSSL_free(a->d);
+		free(a->d);
 	if (a->flags & BN_FLG_MALLOCED)
-		OPENSSL_free(a);
+		free(a);
 	else
 		{
 #ifndef OPENSSL_NO_DEPRECATED
@@ -280,7 +253,7 @@ BIGNUM *BN_new(void)
 	{
 	BIGNUM *ret;
 
-	if ((ret=(BIGNUM *)OPENSSL_malloc(sizeof(BIGNUM))) == NULL)
+	if ((ret=(BIGNUM *)malloc(sizeof(BIGNUM))) == NULL)
 		{
 		BNerr(BN_F_BN_NEW,ERR_R_MALLOC_FAILURE);
 		return(NULL);
@@ -314,7 +287,7 @@ static BN_ULONG *bn_expand_internal(const BIGNUM *b, int words)
 		BNerr(BN_F_BN_EXPAND_INTERNAL,BN_R_EXPAND_ON_STATIC_BIGNUM_DATA);
 		return(NULL);
 		}
-	a=A=(BN_ULONG *)OPENSSL_malloc(sizeof(BN_ULONG)*words);
+	a=A=(BN_ULONG *)malloc(sizeof(BN_ULONG)*words);
 	if (A == NULL)
 		{
 		BNerr(BN_F_BN_EXPAND_INTERNAL,ERR_R_MALLOC_FAILURE);
@@ -345,10 +318,6 @@ static BN_ULONG *bn_expand_internal(const BIGNUM *b, int words)
 		case 3:	A[2]=B[2];
 		case 2:	A[1]=B[1];
 		case 1:	A[0]=B[0];
-		case 0: /* workaround for ultrix cc: without 'case 0', the optimizer does
-		         * the switch table by doing a=top&3; a--; goto jump_table[a];
-		         * which fails for top== 0 */
-			;
 			}
 		}
 
@@ -401,7 +370,7 @@ BIGNUM *bn_dup_expand(const BIGNUM *b, int words)
 			else
 				{
 				/* r == NULL, BN_new failure */
-				OPENSSL_free(a);
+				free(a);
 				}
 			}
 		/* If a == NULL, there was an error in allocation in
@@ -431,7 +400,7 @@ BIGNUM *bn_expand2(BIGNUM *b, int words)
 		{
 		BN_ULONG *a = bn_expand_internal(b, words);
 		if(!a) return NULL;
-		if(b->d) OPENSSL_free(b->d);
+		if(b->d) free(b->d);
 		b->d=a;
 		b->dmax=words;
 		}
@@ -500,7 +469,6 @@ BIGNUM *BN_copy(BIGNUM *a, const BIGNUM *b)
 		case 3: A[2]=B[2];
 		case 2: A[1]=B[1];
 		case 1: A[0]=B[0];
-		case 0: ; /* ultrix cc workaround, see comments in bn_expand_internal */
 		}
 #else
 	memcpy(a->d,b->d,sizeof(b->d[0])*b->top);

@@ -81,7 +81,7 @@ typedef struct
 static int pkey_dsa_init(EVP_PKEY_CTX *ctx)
 	{
 	DSA_PKEY_CTX *dctx;
-	dctx = OPENSSL_malloc(sizeof(DSA_PKEY_CTX));
+	dctx = malloc(sizeof(DSA_PKEY_CTX));
 	if (!dctx)
 		return 0;
 	dctx->nbits = 1024;
@@ -114,7 +114,7 @@ static void pkey_dsa_cleanup(EVP_PKEY_CTX *ctx)
 	{
 	DSA_PKEY_CTX *dctx = ctx->data;
 	if (dctx)
-		OPENSSL_free(dctx);
+		free(dctx);
 	}
 
 static int pkey_dsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
@@ -281,38 +281,22 @@ static int pkey_dsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 	return DSA_generate_key(pkey->pkey.dsa);
 	}
 
-const EVP_PKEY_METHOD dsa_pkey_meth = 
-	{
-	EVP_PKEY_DSA,
-	EVP_PKEY_FLAG_AUTOARGLEN,
-	pkey_dsa_init,
-	pkey_dsa_copy,
-	pkey_dsa_cleanup,
+const EVP_PKEY_METHOD dsa_pkey_meth = {
+	.pkey_id = EVP_PKEY_DSA,
+	.flags = EVP_PKEY_FLAG_AUTOARGLEN,
 
-	0,
-	pkey_dsa_paramgen,
+	.init = pkey_dsa_init,
+	.copy = pkey_dsa_copy,
+	.cleanup = pkey_dsa_cleanup,
 
-	0,
-	pkey_dsa_keygen,
+	.paramgen = pkey_dsa_paramgen,
 
-	0,
-	pkey_dsa_sign,
+	.keygen = pkey_dsa_keygen,
 
-	0,
-	pkey_dsa_verify,
+	.sign = pkey_dsa_sign,
 
-	0,0,
+	.verify = pkey_dsa_verify,
 
-	0,0,0,0,
-
-	0,0,
-
-	0,0,
-
-	0,0,
-
-	pkey_dsa_ctrl,
-	pkey_dsa_ctrl_str
-
-
-	};
+	.ctrl = pkey_dsa_ctrl,
+	.ctrl_str = pkey_dsa_ctrl_str
+};

@@ -654,7 +654,7 @@ xcrypt_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 	unsigned char *ivs = DOALIGN(ivs_store);
 	void *iiv, *iv = NULL, *ivp = NULL;
 	const void *usein = in;
-	void *useout = out, *spare;
+	void *useout = out, *spare = NULL;
 	int cws[4 + 3], *cw = DOALIGN(cws);
 
 	if (!inl)
@@ -1039,19 +1039,7 @@ err:
 }
 
 static RSA_METHOD cryptodev_rsa = {
-	"cryptodev RSA method",
-	NULL,				/* rsa_pub_enc */
-	NULL,				/* rsa_pub_dec */
-	NULL,				/* rsa_priv_enc */
-	NULL,				/* rsa_priv_dec */
-	NULL,
-	NULL,
-	NULL,				/* init */
-	NULL,				/* finish */
-	0,				/* flags */
-	NULL,				/* app_data */
-	NULL,				/* rsa_sign */
-	NULL				/* rsa_verify */
+	.name = "cryptodev RSA method"
 };
 
 static int
@@ -1181,16 +1169,7 @@ err:
 }
 
 static DSA_METHOD cryptodev_dsa = {
-	"cryptodev DSA method",
-	NULL,
-	NULL,				/* dsa_sign_setup */
-	NULL,
-	NULL,				/* dsa_mod_exp */
-	NULL,
-	NULL,				/* init */
-	NULL,				/* finish */
-	0,	/* flags */
-	NULL	/* app_data */
+	.name = "cryptodev DSA method"
 };
 
 static int
@@ -1244,14 +1223,7 @@ err:
 }
 
 static DH_METHOD cryptodev_dh = {
-	"cryptodev DH method",
-	NULL,				/* cryptodev_dh_generate_key */
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	0,	/* flags */
-	NULL	/* app_data */
+	.name = "cryptodev DH method"
 };
 
 /*

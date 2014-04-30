@@ -83,7 +83,7 @@ EVP_PKEY *EVP_PKCS82PKEY(PKCS8_PRIV_KEY_INFO *p8)
 		{
 		EVPerr(EVP_F_EVP_PKCS82PKEY, EVP_R_UNSUPPORTED_PRIVATE_KEY_ALGORITHM);
 		i2t_ASN1_OBJECT(obj_tmp, 80, algoid);
-		ERR_add_error_data(2, "TYPE=", obj_tmp);
+		ERR_asprintf_error_data("TYPE=%s", obj_tmp);
 		goto error;
 		}
 
@@ -150,8 +150,6 @@ PKCS8_PRIV_KEY_INFO *EVP_PKEY2PKCS8_broken(EVP_PKEY *pkey, int broken)
 				EVP_R_UNSUPPORTED_PRIVATE_KEY_ALGORITHM);
 		goto error;
 		}
-	RAND_add(p8->pkey->value.octet_string->data,
-		 p8->pkey->value.octet_string->length, 0.0);
 	return p8;
 	error:
 	PKCS8_PRIV_KEY_INFO_free(p8);

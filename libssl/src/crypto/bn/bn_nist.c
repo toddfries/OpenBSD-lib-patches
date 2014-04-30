@@ -59,6 +59,8 @@
 #include "bn_lcl.h"
 #include "cryptlib.h"
 
+#include <machine/endian.h>
+
 
 #define BN_NIST_192_TOP	(192+BN_BITS2-1)/BN_BITS2
 #define BN_NIST_224_TOP	(224+BN_BITS2-1)/BN_BITS2
@@ -318,8 +320,8 @@ static void nist_cp_bn(BN_ULONG *dst, const BN_ULONG *src, int top)
 						:(to[(n)/2] =((m)&1)?(from[(m)/2]>>32):(from[(m)/2]&BN_MASK2l)))
 #define bn_32_set_0(to, n)		(((n)&1)?(to[(n)/2]&=BN_MASK2l):(to[(n)/2]=0));
 #define bn_cp_32(to,n,from,m)		((m)>=0)?bn_cp_32_naked(to,n,from,m):bn_32_set_0(to,n)
-# if defined(L_ENDIAN)
-#  if defined(__arch64__)
+# if _BYTE_ORDER == _LITTLE_ENDIAN
+#  if defined(_LP64)
 #   define NIST_INT64 long
 #  else
 #   define NIST_INT64 long long
@@ -338,9 +340,7 @@ static void nist_cp_bn(BN_ULONG *dst, const BN_ULONG *src, int top)
 	}
 #define bn_cp_32(to, n, from, m)	(to)[n] = (m>=0)?((from)[m]):0;
 #define bn_32_set_0(to, n)		(to)[n] = (BN_ULONG)0;
-# if defined(_WIN32) && !defined(__GNUC__)
-#  define NIST_INT64 __int64
-# elif defined(BN_LLONG)
+# if defined(BN_LLONG)
 #  define NIST_INT64 long long
 # endif
 #endif /* BN_BITS2 != 64 */
@@ -592,7 +592,7 @@ int BN_nist_mod_224(BIGNUM *r, const BIGNUM *a, const BIGNUM *field,
 		}
 	else if (carry < 0)
 		{
-		/* it's a bit more comlicated logic in this case.
+		/* it's a bit more complicated logic in this case.
 		 * if bn_add_words yields no carry, then result
 		 * has to be adjusted by unconditionally *adding*
 		 * the modulus. but if it does, then result has

@@ -128,22 +128,17 @@ static int RSA_eay_private_decrypt(int flen, const unsigned char *from,
 static int RSA_eay_mod_exp(BIGNUM *r0, const BIGNUM *i, RSA *rsa, BN_CTX *ctx);
 static int RSA_eay_init(RSA *rsa);
 static int RSA_eay_finish(RSA *rsa);
-static RSA_METHOD rsa_pkcs1_eay_meth={
-	"Eric Young's PKCS#1 RSA",
-	RSA_eay_public_encrypt,
-	RSA_eay_public_decrypt, /* signature verification */
-	RSA_eay_private_encrypt, /* signing */
-	RSA_eay_private_decrypt,
-	RSA_eay_mod_exp,
-	BN_mod_exp_mont, /* XXX probably we should not use Montgomery if  e == 3 */
-	RSA_eay_init,
-	RSA_eay_finish,
-	0, /* flags */
-	NULL,
-	0, /* rsa_sign */
-	0, /* rsa_verify */
-	NULL /* rsa_keygen */
-	};
+static RSA_METHOD rsa_pkcs1_eay_meth = {
+	.name = "Eric Young's PKCS#1 RSA",
+	.rsa_pub_enc = RSA_eay_public_encrypt,
+	.rsa_pub_dec = RSA_eay_public_decrypt, /* signature verification */
+	.rsa_priv_enc = RSA_eay_private_encrypt, /* signing */
+	.rsa_priv_dec = RSA_eay_private_decrypt,
+	.rsa_mod_exp = RSA_eay_mod_exp,
+	.bn_mod_exp = BN_mod_exp_mont, /* XXX probably we should not use Montgomery if  e == 3 */
+	.init = RSA_eay_init,
+	.finish = RSA_eay_finish,
+};
 
 const RSA_METHOD *RSA_PKCS1_SSLeay(void)
 	{
@@ -185,7 +180,7 @@ static int RSA_eay_public_encrypt(int flen, const unsigned char *from,
 	f = BN_CTX_get(ctx);
 	ret = BN_CTX_get(ctx);
 	num=BN_num_bytes(rsa->n);
-	buf = OPENSSL_malloc(num);
+	buf = malloc(num);
 	if (!f || !ret || !buf)
 		{
 		RSAerr(RSA_F_RSA_EAY_PUBLIC_ENCRYPT,ERR_R_MALLOC_FAILURE);
@@ -247,7 +242,7 @@ err:
 	if (buf != NULL) 
 		{
 		OPENSSL_cleanse(buf,num);
-		OPENSSL_free(buf);
+		free(buf);
 		}
 	return(r);
 	}
@@ -366,7 +361,7 @@ static int RSA_eay_private_encrypt(int flen, const unsigned char *from,
 	f   = BN_CTX_get(ctx);
 	ret = BN_CTX_get(ctx);
 	num = BN_num_bytes(rsa->n);
-	buf = OPENSSL_malloc(num);
+	buf = malloc(num);
 	if(!f || !ret || !buf)
 		{
 		RSAerr(RSA_F_RSA_EAY_PRIVATE_ENCRYPT,ERR_R_MALLOC_FAILURE);
@@ -484,7 +479,7 @@ err:
 	if (buf != NULL)
 		{
 		OPENSSL_cleanse(buf,num);
-		OPENSSL_free(buf);
+		free(buf);
 		}
 	return(r);
 	}
@@ -509,7 +504,7 @@ static int RSA_eay_private_decrypt(int flen, const unsigned char *from,
 	f   = BN_CTX_get(ctx);
 	ret = BN_CTX_get(ctx);
 	num = BN_num_bytes(rsa->n);
-	buf = OPENSSL_malloc(num);
+	buf = malloc(num);
 	if(!f || !ret || !buf)
 		{
 		RSAerr(RSA_F_RSA_EAY_PRIVATE_DECRYPT,ERR_R_MALLOC_FAILURE);
@@ -624,7 +619,7 @@ err:
 	if (buf != NULL)
 		{
 		OPENSSL_cleanse(buf,num);
-		OPENSSL_free(buf);
+		free(buf);
 		}
 	return(r);
 	}
@@ -666,7 +661,7 @@ static int RSA_eay_public_decrypt(int flen, const unsigned char *from,
 	f = BN_CTX_get(ctx);
 	ret = BN_CTX_get(ctx);
 	num=BN_num_bytes(rsa->n);
-	buf = OPENSSL_malloc(num);
+	buf = malloc(num);
 	if(!f || !ret || !buf)
 		{
 		RSAerr(RSA_F_RSA_EAY_PUBLIC_DECRYPT,ERR_R_MALLOC_FAILURE);
@@ -729,7 +724,7 @@ err:
 	if (buf != NULL)
 		{
 		OPENSSL_cleanse(buf,num);
-		OPENSSL_free(buf);
+		free(buf);
 		}
 	return(r);
 	}

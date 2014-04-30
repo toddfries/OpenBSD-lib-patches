@@ -75,56 +75,24 @@ int RSA_size(const RSA *r)
 int RSA_public_encrypt(int flen, const unsigned char *from, unsigned char *to,
 	     RSA *rsa, int padding)
 	{
-#ifdef OPENSSL_FIPS
-	if (FIPS_mode() && !(rsa->meth->flags & RSA_FLAG_FIPS_METHOD)
-			&& !(rsa->flags & RSA_FLAG_NON_FIPS_ALLOW))
-		{
-		RSAerr(RSA_F_RSA_PUBLIC_ENCRYPT, RSA_R_NON_FIPS_RSA_METHOD);
-		return -1;
-		}
-#endif
 	return(rsa->meth->rsa_pub_enc(flen, from, to, rsa, padding));
 	}
 
 int RSA_private_encrypt(int flen, const unsigned char *from, unsigned char *to,
 	     RSA *rsa, int padding)
 	{
-#ifdef OPENSSL_FIPS
-	if (FIPS_mode() && !(rsa->meth->flags & RSA_FLAG_FIPS_METHOD)
-			&& !(rsa->flags & RSA_FLAG_NON_FIPS_ALLOW))
-		{
-		RSAerr(RSA_F_RSA_PRIVATE_ENCRYPT, RSA_R_NON_FIPS_RSA_METHOD);
-		return -1;
-		}
-#endif
 	return(rsa->meth->rsa_priv_enc(flen, from, to, rsa, padding));
 	}
 
 int RSA_private_decrypt(int flen, const unsigned char *from, unsigned char *to,
 	     RSA *rsa, int padding)
 	{
-#ifdef OPENSSL_FIPS
-	if (FIPS_mode() && !(rsa->meth->flags & RSA_FLAG_FIPS_METHOD)
-			&& !(rsa->flags & RSA_FLAG_NON_FIPS_ALLOW))
-		{
-		RSAerr(RSA_F_RSA_PRIVATE_DECRYPT, RSA_R_NON_FIPS_RSA_METHOD);
-		return -1;
-		}
-#endif
 	return(rsa->meth->rsa_priv_dec(flen, from, to, rsa, padding));
 	}
 
 int RSA_public_decrypt(int flen, const unsigned char *from, unsigned char *to,
 	     RSA *rsa, int padding)
 	{
-#ifdef OPENSSL_FIPS
-	if (FIPS_mode() && !(rsa->meth->flags & RSA_FLAG_FIPS_METHOD)
-			&& !(rsa->flags & RSA_FLAG_NON_FIPS_ALLOW))
-		{
-		RSAerr(RSA_F_RSA_PUBLIC_DECRYPT, RSA_R_NON_FIPS_RSA_METHOD);
-		return -1;
-		}
-#endif
 	return(rsa->meth->rsa_pub_dec(flen, from, to, rsa, padding));
 	}
 
@@ -220,14 +188,6 @@ BN_BLINDING *RSA_setup_blinding(RSA *rsa, BN_CTX *in_ctx)
 		}
 	else
 		e = rsa->e;
-
-	
-	if ((RAND_status() == 0) && rsa->d != NULL && rsa->d->d != NULL)
-		{
-		/* if PRNG is not properly seeded, resort to secret
-		 * exponent as unpredictable seed */
-		RAND_add(rsa->d->d, rsa->d->dmax * sizeof rsa->d->d[0], 0.0);
-		}
 
 	if (!(rsa->flags & RSA_FLAG_NO_CONSTTIME))
 		{

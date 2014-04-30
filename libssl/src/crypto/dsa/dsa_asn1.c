@@ -69,7 +69,7 @@ static int sig_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
 {
 	if(operation == ASN1_OP_NEW_PRE) {
 		DSA_SIG *sig;
-		sig = OPENSSL_malloc(sizeof(DSA_SIG));
+		sig = malloc(sizeof(DSA_SIG));
 		if (!sig)
 			{
 			DSAerr(DSA_F_SIG_CB, ERR_R_MALLOC_FAILURE);
@@ -154,7 +154,6 @@ int DSA_sign(int type, const unsigned char *dgst, int dlen, unsigned char *sig,
 	     unsigned int *siglen, DSA *dsa)
 	{
 	DSA_SIG *s;
-	RAND_seed(dgst, dlen);
 	s=DSA_do_sign(dgst,dlen,dsa);
 	if (s == NULL)
 		{

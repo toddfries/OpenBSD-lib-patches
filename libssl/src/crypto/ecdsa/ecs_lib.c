@@ -60,9 +60,6 @@
 #endif
 #include <openssl/err.h>
 #include <openssl/bn.h>
-#ifdef OPENSSL_FIPS
-#include <openssl/fips.h>
-#endif
 
 const char ECDSA_version[]="ECDSA" OPENSSL_VERSION_PTEXT;
 
@@ -81,14 +78,7 @@ const ECDSA_METHOD *ECDSA_get_default_method(void)
 {
 	if(!default_ECDSA_method) 
 		{
-#ifdef OPENSSL_FIPS
-		if (FIPS_mode())
-			return FIPS_ecdsa_openssl();
-		else
-			return ECDSA_OpenSSL();
-#else
 		default_ECDSA_method = ECDSA_OpenSSL();
-#endif
 		}
 	return default_ECDSA_method;
 }
@@ -118,7 +108,7 @@ static ECDSA_DATA *ECDSA_DATA_new_method(ENGINE *engine)
 {
 	ECDSA_DATA *ret;
 
-	ret=(ECDSA_DATA *)OPENSSL_malloc(sizeof(ECDSA_DATA));
+	ret=(ECDSA_DATA *)malloc(sizeof(ECDSA_DATA));
 	if (ret == NULL)
 	{
 		ECDSAerr(ECDSA_F_ECDSA_DATA_NEW_METHOD, ERR_R_MALLOC_FAILURE);
@@ -139,7 +129,7 @@ static ECDSA_DATA *ECDSA_DATA_new_method(ENGINE *engine)
 		{
 			ECDSAerr(ECDSA_F_ECDSA_DATA_NEW_METHOD, ERR_R_ENGINE_LIB);
 			ENGINE_finish(ret->engine);
-			OPENSSL_free(ret);
+			free(ret);
 			return NULL;
 		}
 	}
@@ -151,7 +141,7 @@ static ECDSA_DATA *ECDSA_DATA_new_method(ENGINE *engine)
 	if ((ret->meth->init != NULL) && !ret->meth->init(ret))
 	{
 		CRYPTO_free_ex_data(CRYPTO_EX_INDEX_ECDSA, ret, &ret->ex_data);
-		OPENSSL_free(ret);
+		free(ret);
 		ret=NULL;
 	}
 #endif	
@@ -186,7 +176,7 @@ static void ecdsa_data_free(void *data)
 
 	OPENSSL_cleanse((void *)r, sizeof(ECDSA_DATA));
 
-	OPENSSL_free(r);
+	free(r);
 }
 
 ECDSA_DATA *ecdsa_check(EC_KEY *key)
@@ -212,14 +202,6 @@ ECDSA_DATA *ecdsa_check(EC_KEY *key)
 	}
 	else
 		ecdsa_data = (ECDSA_DATA *)data;
-#ifdef OPENSSL_FIPS
-	if (FIPS_mode() && !(ecdsa_data->flags & ECDSA_FLAG_FIPS_METHOD)
-			&& !(EC_KEY_get_flags(key) & EC_FLAG_NON_FIPS_ALLOW))
-		{
-		ECDSAerr(ECDSA_F_ECDSA_CHECK, ECDSA_R_NON_FIPS_METHOD);
-		return NULL;
-		}
-#endif
 
 	return ecdsa_data;
 }

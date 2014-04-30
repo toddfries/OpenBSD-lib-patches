@@ -129,13 +129,12 @@
 static const SSL_METHOD *dtls1_get_server_method(int ver);
 static int dtls1_send_hello_verify_request(SSL *s);
 
-static const SSL_METHOD
-*dtls1_get_server_method(int ver)
+static const SSL_METHOD *
+dtls1_get_server_method(int ver)
 {
 	if (ver == DTLS1_VERSION)
 		return (DTLSv1_server_method());
-	else
-		return (NULL);
+	return (NULL);
 }
 
 IMPLEMENT_dtls1_meth_func(DTLSv1_server_method,
@@ -145,7 +144,6 @@ int
 dtls1_accept(SSL *s)
 {
 	BUF_MEM *buf;
-	unsigned long Time = (unsigned long)time(NULL);
 	void (*cb)(const SSL *ssl, int type, int val) = NULL;
 	unsigned long alg_k;
 	int ret = -1;
@@ -156,7 +154,6 @@ dtls1_accept(SSL *s)
 	char labelbuffer[sizeof(DTLS1_SCTP_AUTH_LABEL)];
 #endif
 
-	RAND_add(&Time, sizeof(Time), 0);
 	ERR_clear_error();
 	errno = 0;
 
@@ -186,18 +183,6 @@ dtls1_accept(SSL *s)
 		SSLerr(SSL_F_DTLS1_ACCEPT, SSL_R_NO_CERTIFICATE_SET);
 		return (-1);
 	}
-
-#ifndef OPENSSL_NO_HEARTBEATS
-	/* If we're awaiting a HeartbeatResponse, pretend we
-	 * already got and don't await it anymore, because
-	 * Heartbeats don't make sense during handshakes anyway.
-	 */
-	if (s->tlsext_hb_pending) {
-		dtls1_stop_timer(s);
-		s->tlsext_hb_pending = 0;
-		s->tlsext_hb_seq++;
-	}
-#endif
 
 	for (;;) {
 		state = s->state;
@@ -1014,13 +999,11 @@ dtls1_send_server_done(SSL *s)
 int
 dtls1_send_server_key_exchange(SSL *s)
 {
-#ifndef OPENSSL_NO_RSA
 	unsigned char *q;
 	int j, num;
 	RSA *rsa;
 	unsigned char md_buf[MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH];
 	unsigned int u;
-#endif
 #ifndef OPENSSL_NO_DH
 	DH *dh = NULL, *dhp;
 #endif
@@ -1031,6 +1014,9 @@ dtls1_send_server_key_exchange(SSL *s)
 	int curve_id = 0;
 	BN_CTX *bn_ctx = NULL;
 
+#endif
+#ifndef OPENSSL_NO_PSK
+	size_t pskhintlen = 0;
 #endif
 	EVP_PKEY *pkey;
 	unsigned char *p, *d;
@@ -1052,7 +1038,6 @@ dtls1_send_server_key_exchange(SSL *s)
 
 		r[0] = r[1] = r[2] = r[3] = NULL;
 		n = 0;
-#ifndef OPENSSL_NO_RSA
 		if (type & SSL_kRSA) {
 			rsa = cert->rsa_tmp;
 			if ((rsa == NULL) && (s->cert->rsa_tmp_cb != NULL)) {
@@ -1076,7 +1061,6 @@ dtls1_send_server_key_exchange(SSL *s)
 			r[1] = rsa->e;
 			s->s3->tmp.use_rsa_tmp = 1;
 		} else
-#endif
 #ifndef OPENSSL_NO_DH
 		if (type & SSL_kEDH) {
 			dhp = cert->dh_tmp;
@@ -1198,8 +1182,7 @@ dtls1_send_server_key_exchange(SSL *s)
 			POINT_CONVERSION_UNCOMPRESSED,
 			NULL, 0, NULL);
 
-			encodedPoint = (unsigned char *)
-			OPENSSL_malloc(encodedlen*sizeof(unsigned char));
+			encodedPoint = malloc(encodedlen);
 
 			bn_ctx = BN_CTX_new();
 			if ((encodedPoint == NULL) || (bn_ctx == NULL)) {
@@ -1240,8 +1223,9 @@ dtls1_send_server_key_exchange(SSL *s)
 #endif /* !OPENSSL_NO_ECDH */
 #ifndef OPENSSL_NO_PSK
 		if (type & SSL_kPSK) {
+			pskhintlen = strlen(s->ctx->psk_identity_hint);
 			/* reserve size for record length and PSK identity hint*/
-			n += 2 + strlen(s->ctx->psk_identity_hint);
+			n += 2 + pskhintlen;
 		} else
 #endif /* !OPENSSL_NO_PSK */
 		{
@@ -1299,7 +1283,8 @@ dtls1_send_server_key_exchange(SSL *s)
 			memcpy((unsigned char*)p,
 			(unsigned char *)encodedPoint,
 			encodedlen);
-			OPENSSL_free(encodedPoint);
+			free(encodedPoint);
+			encodedPoint = NULL;
 			p += encodedlen;
 		}
 #endif
@@ -1307,10 +1292,10 @@ dtls1_send_server_key_exchange(SSL *s)
 #ifndef OPENSSL_NO_PSK
 		if (type & SSL_kPSK) {
 			/* copy PSK identity hint */
-			s2n(strlen(s->ctx->psk_identity_hint), p);
+			s2n(pskhintlen, p);
 
-			strncpy((char *)p, s->ctx->psk_identity_hint, strlen(s->ctx->psk_identity_hint));
-			p += strlen(s->ctx->psk_identity_hint);
+			memcpy(p, s->ctx->psk_identity_hint, pskhintlen);
+			p += pskhintlen;
 		}
 #endif
 
@@ -1319,7 +1304,6 @@ dtls1_send_server_key_exchange(SSL *s)
 			/* n is the length of the params, they start at
 			 * &(d[DTLS1_HM_HEADER_LENGTH]) and p points to the space
 			 * at the end. */
-#ifndef OPENSSL_NO_RSA
 			if (pkey->type == EVP_PKEY_RSA) {
 				q = md_buf;
 				j = 0;
@@ -1347,8 +1331,6 @@ dtls1_send_server_key_exchange(SSL *s)
 				s2n(u, p);
 				n += u + 2;
 			} else
-#endif
-#if !defined(OPENSSL_NO_DSA)
 			if (pkey->type == EVP_PKEY_DSA) {
 				/* lets do DSS */
 				EVP_SignInit_ex(&md_ctx, EVP_dss1(), NULL);
@@ -1363,7 +1345,6 @@ dtls1_send_server_key_exchange(SSL *s)
 				s2n(i, p);
 				n += i + 2;
 			} else
-#endif
 #if !defined(OPENSSL_NO_ECDSA)
 			if (pkey->type == EVP_PKEY_EC) {
 				/* let's do ECDSA */
@@ -1407,8 +1388,7 @@ f_err:
 	ssl3_send_alert(s, SSL3_AL_FATAL, al);
 err:
 #ifndef OPENSSL_NO_ECDH
-	if (encodedPoint != NULL)
-		OPENSSL_free(encodedPoint);
+	free(encodedPoint);
 	BN_CTX_free(bn_ctx);
 #endif
 	EVP_MD_CTX_cleanup(&md_ctx);
@@ -1574,7 +1554,7 @@ dtls1_send_newsession_ticket(SSL *s)
 		    DTLS1_HM_HEADER_LENGTH + 22 + EVP_MAX_IV_LENGTH +
 		    EVP_MAX_BLOCK_LENGTH + EVP_MAX_MD_SIZE + slen))
 			return -1;
-		senc = OPENSSL_malloc(slen);
+		senc = malloc(slen);
 		if (!senc)
 			return -1;
 		p = senc;
@@ -1590,7 +1570,7 @@ dtls1_send_newsession_ticket(SSL *s)
 		if (tctx->tlsext_ticket_key_cb) {
 			if (tctx->tlsext_ticket_key_cb(s, key_name, iv, &ctx,
 				&hctx, 1) < 0) {
-				OPENSSL_free(senc);
+				free(senc);
 				return -1;
 			}
 		} else {
@@ -1634,7 +1614,7 @@ dtls1_send_newsession_ticket(SSL *s)
 		s->init_num = len;
 		s->state = SSL3_ST_SW_SESSION_TICKET_B;
 		s->init_off = 0;
-		OPENSSL_free(senc);
+		free(senc);
 
 		/* XDTLS:  set message header ? */
 		msg_len = s->init_num - DTLS1_HM_HEADER_LENGTH;

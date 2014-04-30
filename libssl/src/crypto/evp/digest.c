@@ -117,10 +117,6 @@
 #include <openssl/engine.h>
 #endif
 
-#ifdef OPENSSL_FIPS
-#include <openssl/fips.h>
-#endif
-
 void EVP_MD_CTX_init(EVP_MD_CTX *ctx)
 	{
 	memset(ctx,'\0',sizeof *ctx);
@@ -128,7 +124,7 @@ void EVP_MD_CTX_init(EVP_MD_CTX *ctx)
 
 EVP_MD_CTX *EVP_MD_CTX_create(void)
 	{
-	EVP_MD_CTX *ctx=OPENSSL_malloc(sizeof *ctx);
+	EVP_MD_CTX *ctx=malloc(sizeof *ctx);
 
 	if (ctx)
 		EVP_MD_CTX_init(ctx);
@@ -202,12 +198,12 @@ int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *impl)
 	if (ctx->digest != type)
 		{
 		if (ctx->digest && ctx->digest->ctx_size)
-			OPENSSL_free(ctx->md_data);
+			free(ctx->md_data);
 		ctx->digest=type;
 		if (!(ctx->flags & EVP_MD_CTX_FLAG_NO_INIT) && type->ctx_size)
 			{
 			ctx->update = type->update;
-			ctx->md_data=OPENSSL_malloc(type->ctx_size);
+			ctx->md_data=malloc(type->ctx_size);
 			if (ctx->md_data == NULL)
 				{
 				EVPerr(EVP_F_EVP_DIGESTINIT_EX,
@@ -229,26 +225,12 @@ skip_to_init:
 		}
 	if (ctx->flags & EVP_MD_CTX_FLAG_NO_INIT)
 		return 1;
-#ifdef OPENSSL_FIPS
-	if (FIPS_mode())
-		{
-		if (FIPS_digestinit(ctx, type))
-			return 1;
-		OPENSSL_free(ctx->md_data);
-		ctx->md_data = NULL;
-		return 0;
-		}
-#endif
 	return ctx->digest->init(ctx);
 	}
 
 int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t count)
 	{
-#ifdef OPENSSL_FIPS
-	return FIPS_digestupdate(ctx, data, count);
-#else
 	return ctx->update(ctx,data,count);
-#endif
 	}
 
 /* The caller can assume that this removes any secret data from the context */
@@ -263,9 +245,6 @@ int EVP_DigestFinal(EVP_MD_CTX *ctx, unsigned char *md, unsigned int *size)
 /* The caller can assume that this removes any secret data from the context */
 int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, unsigned char *md, unsigned int *size)
 	{
-#ifdef OPENSSL_FIPS
-	return FIPS_digestfinal(ctx, md, size);
-#else
 	int ret;
 
 	OPENSSL_assert(ctx->digest->md_size <= EVP_MAX_MD_SIZE);
@@ -279,7 +258,6 @@ int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, unsigned char *md, unsigned int *size)
 		}
 	memset(ctx->md_data,0,ctx->digest->ctx_size);
 	return ret;
-#endif
 	}
 
 int EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in)
@@ -320,7 +298,7 @@ int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in)
 			out->md_data = tmp_buf;
 		else
 			{
-			out->md_data=OPENSSL_malloc(out->digest->ctx_size);
+			out->md_data=malloc(out->digest->ctx_size);
 			if (!out->md_data)
 				{
 				EVPerr(EVP_F_EVP_MD_CTX_COPY_EX,ERR_R_MALLOC_FAILURE);
@@ -369,14 +347,13 @@ void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx)
 	if (ctx)
 		{
 		EVP_MD_CTX_cleanup(ctx);
-		OPENSSL_free(ctx);
+		free(ctx);
 		}
 	}
 
 /* This call frees resources associated with the context */
 int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx)
 	{
-#ifndef OPENSSL_FIPS
 	/* Don't assume ctx->md_data was cleaned in EVP_Digest_Final,
 	 * because sometimes only copies of the context are ever finalised.
 	 */
@@ -387,9 +364,8 @@ int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx)
 	    && !EVP_MD_CTX_test_flags(ctx, EVP_MD_CTX_FLAG_REUSE))
 		{
 		OPENSSL_cleanse(ctx->md_data,ctx->digest->ctx_size);
-		OPENSSL_free(ctx->md_data);
+		free(ctx->md_data);
 		}
-#endif
 	if (ctx->pctx)
 		EVP_PKEY_CTX_free(ctx->pctx);
 #ifndef OPENSSL_NO_ENGINE
@@ -397,9 +373,6 @@ int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx)
 		/* The EVP_MD we used belongs to an ENGINE, release the
 		 * functional reference we held for this reason. */
 		ENGINE_finish(ctx->engine);
-#endif
-#ifdef OPENSSL_FIPS
-	FIPS_md_ctx_cleanup(ctx);
 #endif
 	memset(ctx,'\0',sizeof *ctx);
 

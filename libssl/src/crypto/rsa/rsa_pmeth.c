@@ -66,9 +66,6 @@
 #ifndef OPENSSL_NO_CMS
 #include <openssl/cms.h>
 #endif
-#ifdef OPENSSL_FIPS
-#include <openssl/fips.h>
-#endif
 #include "evp_locl.h"
 #include "rsa_locl.h"
 
@@ -96,7 +93,7 @@ typedef struct
 static int pkey_rsa_init(EVP_PKEY_CTX *ctx)
 	{
 	RSA_PKEY_CTX *rctx;
-	rctx = OPENSSL_malloc(sizeof(RSA_PKEY_CTX));
+	rctx = malloc(sizeof(RSA_PKEY_CTX));
 	if (!rctx)
 		return 0;
 	rctx->nbits = 1024;
@@ -138,7 +135,7 @@ static int setup_tbuf(RSA_PKEY_CTX *ctx, EVP_PKEY_CTX *pk)
 	{
 	if (ctx->tbuf)
 		return 1;
-	ctx->tbuf = OPENSSL_malloc(EVP_PKEY_size(pk->pkey));
+	ctx->tbuf = malloc(EVP_PKEY_size(pk->pkey));
 	if (!ctx->tbuf)
 		return 0;
 	return 1;
@@ -152,51 +149,16 @@ static void pkey_rsa_cleanup(EVP_PKEY_CTX *ctx)
 		if (rctx->pub_exp)
 			BN_free(rctx->pub_exp);
 		if (rctx->tbuf)
-			OPENSSL_free(rctx->tbuf);
-		OPENSSL_free(rctx);
+			free(rctx->tbuf);
+		free(rctx);
 		}
 	}
-#ifdef OPENSSL_FIPS
-/* FIP checker. Return value indicates status of context parameters:
- * 1  : redirect to FIPS.
- * 0  : don't redirect to FIPS.
- * -1 : illegal operation in FIPS mode.
- */
-
-static int pkey_fips_check_ctx(EVP_PKEY_CTX *ctx)
-	{
-	RSA_PKEY_CTX *rctx = ctx->data;
-	RSA *rsa = ctx->pkey->pkey.rsa;
-	int rv = -1;
-	if (!FIPS_mode())
-		return 0;
-	if (rsa->flags & RSA_FLAG_NON_FIPS_ALLOW)
-		rv = 0;
-	if (!(rsa->meth->flags & RSA_FLAG_FIPS_METHOD) && rv)
-		return -1;
-	if (rctx->md && !(rctx->md->flags & EVP_MD_FLAG_FIPS))
-		return rv;
-	if (rctx->mgf1md && !(rctx->mgf1md->flags & EVP_MD_FLAG_FIPS))
-		return rv;
-	return 1;
-	}
-#endif
-
 static int pkey_rsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
 					const unsigned char *tbs, size_t tbslen)
 	{
 	int ret;
 	RSA_PKEY_CTX *rctx = ctx->data;
 	RSA *rsa = ctx->pkey->pkey.rsa;
-
-#ifdef OPENSSL_FIPS
-	ret = pkey_fips_check_ctx(ctx);
-	if (ret < 0)
-		{
-		RSAerr(RSA_F_PKEY_RSA_SIGN, RSA_R_OPERATION_NOT_ALLOWED_IN_FIPS_MODE);
-		return -1;
-		}
-#endif
 
 	if (rctx->md)
 		{
@@ -206,22 +168,6 @@ static int pkey_rsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
 					RSA_R_INVALID_DIGEST_LENGTH);
 			return -1;
 			}
-#ifdef OPENSSL_FIPS
-		if (ret > 0)
-			{
-			unsigned int slen;
-			ret = FIPS_rsa_sign_digest(rsa, tbs, tbslen, rctx->md,
-							rctx->pad_mode,
-							rctx->saltlen,
-							rctx->mgf1md,
-							sig, &slen);
-			if (ret > 0)
-				*siglen = slen;
-			else
-				*siglen = 0;
-			return ret;
-			}
-#endif
 
 		if (EVP_MD_type(rctx->md) == NID_mdc2)
 			{
@@ -343,30 +289,8 @@ static int pkey_rsa_verify(EVP_PKEY_CTX *ctx,
 	RSA_PKEY_CTX *rctx = ctx->data;
 	RSA *rsa = ctx->pkey->pkey.rsa;
 	size_t rslen;
-#ifdef OPENSSL_FIPS
-	int rv;
-	rv = pkey_fips_check_ctx(ctx);
-	if (rv < 0)
-		{
-		RSAerr(RSA_F_PKEY_RSA_VERIFY, RSA_R_OPERATION_NOT_ALLOWED_IN_FIPS_MODE);
-		return -1;
-		}
-#endif
 	if (rctx->md)
 		{
-#ifdef OPENSSL_FIPS
-		if (rv > 0)
-			{
-			return FIPS_rsa_verify_digest(rsa,
-							tbs, tbslen,
-							rctx->md,
-							rctx->pad_mode,
-							rctx->saltlen,
-							rctx->mgf1md,
-							sig, siglen);
-							
-			}
-#endif
 		if (rctx->pad_mode == RSA_PKCS1_PADDING)
 			return RSA_verify(EVP_MD_type(rctx->md), tbs, tbslen,
 					sig, siglen, rsa);
@@ -685,41 +609,26 @@ static int pkey_rsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 	return ret;
 	}
 
-const EVP_PKEY_METHOD rsa_pkey_meth = 
-	{
-	EVP_PKEY_RSA,
-	EVP_PKEY_FLAG_AUTOARGLEN,
-	pkey_rsa_init,
-	pkey_rsa_copy,
-	pkey_rsa_cleanup,
+const EVP_PKEY_METHOD rsa_pkey_meth = {
+	.pkey_id = EVP_PKEY_RSA,
+	.flags = EVP_PKEY_FLAG_AUTOARGLEN,
 
-	0,0,
+	.init = pkey_rsa_init,
+	.copy = pkey_rsa_copy,
+	.cleanup = pkey_rsa_cleanup,
 
-	0,
-	pkey_rsa_keygen,
+	.keygen = pkey_rsa_keygen,
 
-	0,
-	pkey_rsa_sign,
+	.sign = pkey_rsa_sign,
 
-	0,
-	pkey_rsa_verify,
+	.verify = pkey_rsa_verify,
 
-	0,
-	pkey_rsa_verifyrecover,
+	.verify_recover = pkey_rsa_verifyrecover,
 
+	.encrypt = pkey_rsa_encrypt,
 
-	0,0,0,0,
+	.decrypt = pkey_rsa_decrypt,
 
-	0,
-	pkey_rsa_encrypt,
-
-	0,
-	pkey_rsa_decrypt,
-
-	0,0,
-
-	pkey_rsa_ctrl,
-	pkey_rsa_ctrl_str
-
-
-	};
+	.ctrl = pkey_rsa_ctrl,
+	.ctrl_str = pkey_rsa_ctrl_str
+};

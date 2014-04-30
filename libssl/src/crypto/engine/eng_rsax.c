@@ -116,22 +116,12 @@ static const ENGINE_CMD_DEFN e_rsax_cmd_defns[] = {
 
 #ifndef OPENSSL_NO_RSA
 /* Our internal RSA_METHOD that we provide pointers to */
-static RSA_METHOD e_rsax_rsa =
-	{
-	"Intel RSA-X method",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	e_rsax_rsa_mod_exp,
-	NULL,
-	NULL,
-	e_rsax_rsa_finish,
-	RSA_FLAG_CACHE_PUBLIC|RSA_FLAG_CACHE_PRIVATE,
-	NULL,
-	NULL,
-	NULL
-	};
+static RSA_METHOD e_rsax_rsa = {
+	.name = "Intel RSA-X method",
+	.rsa_mod_exp = e_rsax_rsa_mod_exp,
+	.finish = e_rsax_rsa_finish,
+	.flags = RSA_FLAG_CACHE_PUBLIC|RSA_FLAG_CACHE_PRIVATE,
+};
 #endif
 
 /* Constants used when creating the ENGINE */
@@ -227,11 +217,7 @@ static int e_rsax_ctrl(ENGINE *e, int cmd, long i, void *p, void (*f)(void))
 
 #ifndef OPENSSL_NO_RSA
 
-#ifdef _WIN32
-typedef unsigned __int64 UINT64;
-#else
 typedef unsigned long long UINT64;
-#endif
 typedef unsigned short UINT16;
 
 /* Table t is interleaved in the following manner:
@@ -282,7 +268,7 @@ static E_RSAX_MOD_CTX *e_rsax_get_ctx(RSA *rsa, int idx, BIGNUM* m)
 
 	hptr = RSA_get_ex_data(rsa, rsax_ex_data_idx);
 	if (!hptr) {
-	    hptr = OPENSSL_malloc(3*sizeof(E_RSAX_MOD_CTX));
+	    hptr = malloc(3*sizeof(E_RSAX_MOD_CTX));
 	    if (!hptr) return NULL;
             hptr[2].type = hptr[1].type= hptr[0].type = 0;
 	    RSA_set_ex_data(rsa, rsax_ex_data_idx, hptr);
@@ -307,7 +293,7 @@ static int e_rsax_rsa_finish(RSA *rsa)
 	E_RSAX_MOD_CTX *hptr = RSA_get_ex_data(rsa, rsax_ex_data_idx);
 	if(hptr)
 		{
-		OPENSSL_free(hptr);
+		free(hptr);
 		RSA_set_ex_data(rsa, rsax_ex_data_idx, NULL);
 		}
 	if (rsa->_method_mod_n)

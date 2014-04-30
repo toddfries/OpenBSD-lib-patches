@@ -67,10 +67,6 @@
 #include <openssl/engine.h>
 #endif
 
-#ifdef OPENSSL_FIPS
-#include <openssl/fips.h>
-#endif
-
 const char RSA_version[]="RSA" OPENSSL_VERSION_PTEXT;
 
 static const RSA_METHOD *default_RSA_meth=NULL;
@@ -91,17 +87,10 @@ const RSA_METHOD *RSA_get_default_method(void)
 	{
 	if (default_RSA_meth == NULL)
 		{
-#ifdef OPENSSL_FIPS
-		if (FIPS_mode())
-			return FIPS_rsa_pkcs1_ssleay();
-		else
-			return RSA_PKCS1_SSLeay();
-#else
 #ifdef RSA_NULL
 		default_RSA_meth=RSA_null_method();
 #else
 		default_RSA_meth=RSA_PKCS1_SSLeay();
-#endif
 #endif
 		}
 
@@ -136,7 +125,7 @@ RSA *RSA_new_method(ENGINE *engine)
 	{
 	RSA *ret;
 
-	ret=(RSA *)OPENSSL_malloc(sizeof(RSA));
+	ret=(RSA *)malloc(sizeof(RSA));
 	if (ret == NULL)
 		{
 		RSAerr(RSA_F_RSA_NEW_METHOD,ERR_R_MALLOC_FAILURE);
@@ -150,7 +139,7 @@ RSA *RSA_new_method(ENGINE *engine)
 		if (!ENGINE_init(engine))
 			{
 			RSAerr(RSA_F_RSA_NEW_METHOD, ERR_R_ENGINE_LIB);
-			OPENSSL_free(ret);
+			free(ret);
 			return NULL;
 			}
 		ret->engine = engine;
@@ -165,7 +154,7 @@ RSA *RSA_new_method(ENGINE *engine)
 			RSAerr(RSA_F_RSA_NEW_METHOD,
 				ERR_R_ENGINE_LIB);
 			ENGINE_finish(ret->engine);
-			OPENSSL_free(ret);
+			free(ret);
 			return NULL;
 			}
 		}
@@ -195,7 +184,7 @@ RSA *RSA_new_method(ENGINE *engine)
 	if (ret->engine)
 		ENGINE_finish(ret->engine);
 #endif
-		OPENSSL_free(ret);
+		free(ret);
 		return(NULL);
 		}
 
@@ -206,7 +195,7 @@ RSA *RSA_new_method(ENGINE *engine)
 			ENGINE_finish(ret->engine);
 #endif
 		CRYPTO_free_ex_data(CRYPTO_EX_INDEX_RSA, ret, &ret->ex_data);
-		OPENSSL_free(ret);
+		free(ret);
 		ret=NULL;
 		}
 	return(ret);
@@ -219,17 +208,7 @@ void RSA_free(RSA *r)
 	if (r == NULL) return;
 
 	i=CRYPTO_add(&r->references,-1,CRYPTO_LOCK_RSA);
-#ifdef REF_PRINT
-	REF_PRINT("RSA",r);
-#endif
 	if (i > 0) return;
-#ifdef REF_CHECK
-	if (i < 0)
-		{
-		fprintf(stderr,"RSA_free, bad reference count\n");
-		abort();
-		}
-#endif
 
 	if (r->meth->finish)
 		r->meth->finish(r);
@@ -251,22 +230,12 @@ void RSA_free(RSA *r)
 	if (r->blinding != NULL) BN_BLINDING_free(r->blinding);
 	if (r->mt_blinding != NULL) BN_BLINDING_free(r->mt_blinding);
 	if (r->bignum_data != NULL) OPENSSL_free_locked(r->bignum_data);
-	OPENSSL_free(r);
+	free(r);
 	}
 
 int RSA_up_ref(RSA *r)
 	{
 	int i = CRYPTO_add(&r->references, 1, CRYPTO_LOCK_RSA);
-#ifdef REF_PRINT
-	REF_PRINT("RSA",r);
-#endif
-#ifdef REF_CHECK
-	if (i < 2)
-		{
-		fprintf(stderr, "RSA_up_ref, bad reference count\n");
-		abort();
-		}
-#endif
 	return ((i > 1) ? 1 : 0);
 	}
 

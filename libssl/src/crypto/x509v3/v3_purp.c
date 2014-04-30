@@ -183,17 +183,17 @@ int X509_PURPOSE_add(int id, int trust, int flags,
 	idx = X509_PURPOSE_get_by_id(id);
 	/* Need a new entry */
 	if(idx == -1) {
-		if(!(ptmp = OPENSSL_malloc(sizeof(X509_PURPOSE)))) {
+		if(!(ptmp = malloc(sizeof(X509_PURPOSE)))) {
 			X509V3err(X509V3_F_X509_PURPOSE_ADD,ERR_R_MALLOC_FAILURE);
 			return 0;
 		}
 		ptmp->flags = X509_PURPOSE_DYNAMIC;
 	} else ptmp = X509_PURPOSE_get0(idx);
 
-	/* OPENSSL_free existing name if dynamic */
+	/* free existing name if dynamic */
 	if(ptmp->flags & X509_PURPOSE_DYNAMIC_NAME) {
-		OPENSSL_free(ptmp->name);
-		OPENSSL_free(ptmp->sname);
+		free(ptmp->name);
+		free(ptmp->sname);
 	}
 	/* dup supplied name */
 	ptmp->name = BUF_strdup(name);
@@ -232,10 +232,10 @@ static void xptable_free(X509_PURPOSE *p)
 	if (p->flags & X509_PURPOSE_DYNAMIC) 
 		{
 		if (p->flags & X509_PURPOSE_DYNAMIC_NAME) {
-			OPENSSL_free(p->name);
-			OPENSSL_free(p->sname);
+			free(p->name);
+			free(p->sname);
 		}
-		OPENSSL_free(p);
+		free(p);
 		}
 	}
 
@@ -389,8 +389,8 @@ static void x509v3_cache_extensions(X509 *x)
 	/* Handle proxy certificates */
 	if((pci=X509_get_ext_d2i(x, NID_proxyCertInfo, NULL, NULL))) {
 		if (x->ex_flags & EXFLAG_CA
-		    || X509_get_ext_by_NID(x, NID_subject_alt_name, 0) >= 0
-		    || X509_get_ext_by_NID(x, NID_issuer_alt_name, 0) >= 0) {
+		    || X509_get_ext_by_NID(x, NID_subject_alt_name, -1) >= 0
+		    || X509_get_ext_by_NID(x, NID_issuer_alt_name, -1) >= 0) {
 			x->ex_flags |= EXFLAG_INVALID;
 		}
 		if (pci->pcPathLengthConstraint) {
@@ -670,7 +670,7 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
 		return 0;
 
 	/* Extended Key Usage MUST be critical */
-	i_ext = X509_get_ext_by_NID((X509 *) x, NID_ext_key_usage, 0);
+	i_ext = X509_get_ext_by_NID((X509 *) x, NID_ext_key_usage, -1);
 	if (i_ext >= 0)
 		{
 		X509_EXTENSION *ext = X509_get_ext((X509 *) x, i_ext);

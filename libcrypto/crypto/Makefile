@@ -1,19 +1,11 @@
-# $OpenBSD: Makefile,v 1.5 2014/04/14 04:27:50 miod Exp $
+# $OpenBSD: Makefile,v 1.28 2014/04/27 16:19:04 jsing Exp $
 
 LIB=	crypto
 
 SSL_SRC=	${.CURDIR}/../../libssl/src
 LCRYPTO_SRC=	${SSL_SRC}/crypto
 
-# arm and sh default to little endian, mips defaults to big endian
-.if ${MACHINE_ARCH} == "alpha" || ${MACHINE_ARCH} == "amd64" || \
-    ${MACHINE_ARCH} == "arm" || ${MACHINE_ARCH} == "i386" || \
-    ${MACHINE_ARCH} == "mips64el" || ${MACHINE_ARCH} == "sh" || \
-    ${MACHINE_ARCH} == "vax"
-CFLAGS+= -DL_ENDIAN
-.else
-CFLAGS+= -DB_ENDIAN
-.endif 
+CFLAGS+= -Wall -Werror
 
 .include <bsd.own.mk>		# for 'NOPIC' definition
 .if !defined(NOPIC)
@@ -24,26 +16,18 @@ CFLAGS+= -DDSO_DLFCN -DHAVE_DLFCN_H
 PICFLAG=-fPIC
 .endif
 
-CFLAGS+= -DTERMIOS -DANSI_SOURCE -DNO_ERR -DNO_WINDOWS_BRAINDEATH
+CFLAGS+= -DTERMIOS
 # Hardware engines
-CFLAGS+= -DOPENSSL_NO_HW_4758_CCA
-CFLAGS+= -DOPENSSL_NO_HW_AEP
-CFLAGS+= -DOPENSSL_NO_HW_ATALLA
-CFLAGS+= -DOPENSSL_NO_CAPIENG
-CFLAGS+= -DOPENSSL_NO_HW_CSWIFT
-CFLAGS+= -DOPENSSL_NO_HW_NCIPHER
-CFLAGS+= -DOPENSSL_NO_HW_NURON
 CFLAGS+= -DOPENSSL_NO_HW_PADLOCK # XXX enable this?
-CFLAGS+= -DOPENSSL_NO_HW_SUREWARE
-CFLAGS+= -DOPENSSL_NO_HW_UBSEC
 
 CFLAGS+= -I${SSL_SRC}
 CFLAGS+= -I${LCRYPTO_SRC}
 CFLAGS+= -I${LCRYPTO_SRC}/modes -I${LCRYPTO_SRC}/asn1 -I${LCRYPTO_SRC}/evp
 
 # crypto/
-SRCS+= cryptlib.c mem.c mem_dbg.c cversion.c ex_data.c cpt_err.c
-SRCS+= ebcdic.c uid.c o_time.c o_str.c o_fips.c o_init.c fips_ers.c
+SRCS+= cryptlib.c malloc-wrapper.c mem_dbg.c cversion.c ex_data.c cpt_err.c
+SRCS+= uid.c o_time.c o_str.c o_init.c
+SRCS+= mem_clr.c
 
 # aes/
 SRCS+= aes_misc.c aes_ecb.c aes_cfb.c aes_ofb.c
@@ -51,7 +35,7 @@ SRCS+= aes_ctr.c aes_ige.c aes_wrap.c
 
 # asn1/
 SRCS+= a_object.c a_bitstr.c a_utctm.c a_gentm.c a_time.c a_int.c a_octet.c
-SRCS+= a_print.c a_type.c a_set.c a_dup.c a_d2i_fp.c a_i2d_fp.c
+SRCS+= a_print.c a_type.c a_dup.c a_d2i_fp.c a_i2d_fp.c
 SRCS+= a_enum.c a_utf8.c a_sign.c a_digest.c a_verify.c a_mbstr.c a_strex.c
 SRCS+= x_algor.c x_val.c x_pubkey.c x_sig.c x_req.c x_attrib.c x_bignum.c
 SRCS+= x_long.c x_name.c x_x509.c x_x509a.c x_crl.c x_info.c x_spki.c nsseq.c
@@ -63,6 +47,7 @@ SRCS+= f_int.c f_string.c n_pkey.c
 SRCS+= f_enum.c x_pkey.c a_bool.c x_exten.c bio_asn1.c bio_ndef.c asn_mime.c
 SRCS+= asn1_gen.c asn1_par.c asn1_lib.c asn1_err.c a_bytes.c a_strnid.c
 SRCS+= evp_asn1.c asn_pack.c p5_pbe.c p5_pbev2.c p8_pkey.c asn_moid.c
+SRCS+= a_set.c
 
 # bf/
 SRCS+= bf_skey.c bf_ecb.c bf_cfb64.c bf_ofb64.c
@@ -111,8 +96,7 @@ SRCS+= cbc_cksm.c cbc_enc.c cfb64enc.c cfb_enc.c
 SRCS+= ecb3_enc.c ecb_enc.c  enc_read.c enc_writ.c
 SRCS+= fcrypt.c ofb64enc.c ofb_enc.c  pcbc_enc.c
 SRCS+= qud_cksm.c rand_key.c rpc_enc.c  set_key.c xcbc_enc.c
-SRCS+= str2key.c  cfb64ede.c ofb64ede.c ede_cbcm_enc.c des_old.c des_old2.c
-SRCS+= read2pwd.c
+SRCS+= str2key.c  cfb64ede.c ofb64ede.c ede_cbcm_enc.c
 
 # dh/
 SRCS+= dh_asn1.c dh_gen.c dh_key.c dh_lib.c dh_check.c dh_err.c dh_depr.c
@@ -123,8 +107,8 @@ SRCS+= dsa_gen.c dsa_key.c dsa_lib.c dsa_asn1.c dsa_vrf.c dsa_sign.c
 SRCS+= dsa_err.c dsa_ossl.c dsa_depr.c dsa_ameth.c dsa_pmeth.c dsa_prn.c
 
 # dso/
-SRCS+= dso_dl.c dso_dlfcn.c dso_err.c dso_lib.c dso_null.c
-SRCS+= dso_openssl.c dso_win32.c dso_vms.c dso_beos.c
+SRCS+= dso_dlfcn.c dso_err.c dso_lib.c dso_null.c
+SRCS+= dso_openssl.c
 
 # ec/
 SRCS+= ec_lib.c ecp_smpl.c ecp_mont.c ecp_nist.c ec_cvt.c ec_mult.c
@@ -155,15 +139,15 @@ SRCS+= err.c err_all.c err_prn.c
 # evp/
 SRCS+= encode.c digest.c evp_enc.c evp_key.c evp_acnf.c
 SRCS+= e_des.c e_bf.c e_idea.c e_des3.c e_camellia.c
-SRCS+= e_rc4.c e_aes.c names.c e_seed.c
+SRCS+= e_rc4.c e_aes.c names.c
 SRCS+= e_xcbc_d.c e_rc2.c e_cast.c e_rc5.c
-SRCS+= m_null.c m_md2.c m_md4.c m_md5.c m_sha.c m_sha1.c m_wp.c
+SRCS+= m_null.c m_md4.c m_md5.c m_sha.c m_sha1.c m_wp.c
 SRCS+= m_dss.c m_dss1.c m_mdc2.c m_ripemd.c m_ecdsa.c
 SRCS+= p_open.c p_seal.c p_sign.c p_verify.c p_lib.c p_enc.c p_dec.c
 SRCS+= bio_md.c bio_b64.c bio_enc.c evp_err.c e_null.c
 SRCS+= c_all.c c_allc.c c_alld.c evp_lib.c bio_ok.c
 SRCS+= evp_pkey.c evp_pbe.c p5_crpt.c p5_crpt2.c
-SRCS+= e_old.c pmeth_lib.c pmeth_fn.c pmeth_gn.c m_sigver.c evp_fips.c
+SRCS+= e_old.c pmeth_lib.c pmeth_fn.c pmeth_gn.c m_sigver.c
 SRCS+= e_aes_cbc_hmac_sha1.c e_rc4_hmac_md5.c
 
 # hmac/
@@ -172,17 +156,11 @@ SRCS+= hmac.c hm_ameth.c hm_pmeth.c
 # idea/
 SRCS+= i_cbc.c i_cfb64.c i_ofb64.c i_ecb.c i_skey.c
 
-# jpake/
-#SRCS+= jpake.c jpake_err.c
-
 # krb5/
 SRCS+= krb5_asn.c
 
 # lhash/
 SRCS+= lhash.c lh_stats.c
-
-# md2
-##SRCS+= md2_dgst.c md2_one.c
 
 # md4/
 SRCS+= md4_dgst.c md4_one.c
@@ -220,8 +198,7 @@ SRCS+= pk7_mime.c bio_pk7.c
 SRCS+= pqueue.c
 
 # rand/
-SRCS+= md_rand.c randfile.c rand_lib.c rand_err.c rand_egd.c
-SRCS+= rand_unix.c
+SRCS+= randfile.c rand_lib.c rand_err.c
 
 # rc2/
 SRCS+= rc2_ecb.c rc2_skey.c rc2_cbc.c rc2cfb64.c rc2ofb64.c
@@ -240,9 +217,6 @@ SRCS+= rsa_eay.c rsa_gen.c rsa_lib.c rsa_sign.c rsa_saos.c rsa_err.c
 SRCS+= rsa_pk1.c rsa_ssl.c rsa_none.c rsa_oaep.c rsa_chk.c rsa_null.c
 SRCS+= rsa_pss.c rsa_x931.c rsa_asn1.c rsa_depr.c rsa_ameth.c rsa_prn.c
 SRCS+= rsa_pmeth.c rsa_crpt.c
-
-# seed/
-#SRCS+= seed.c seed_ecb.c seed_cbc.c seed_cfb.c seed_ofb.c
 
 # sha/
 SRCS+= sha_dgst.c sha1dgst.c sha_one.c sha1_one.c sha256.c sha512.c
@@ -265,7 +239,7 @@ SRCS+= ts_asn1.c
 SRCS+=txt_db.c
 
 # ui/
-SRCS+= ui_err.c ui_lib.c ui_openssl.c ui_util.c ui_compat.c
+SRCS+= ui_err.c ui_lib.c ui_openssl.c ui_util.c
 
 # whrlpool/
 SRCS+= wp_dgst.c
@@ -311,10 +285,8 @@ SRCS+= v3_asid.c v3_addr.c
 	${LCRYPTO_SRC}/engine \
 	${LCRYPTO_SRC}/err \
 	${LCRYPTO_SRC}/evp \
-	${LCRYPTO_SRC}/md2 \
 	${LCRYPTO_SRC}/hmac \
 	${LCRYPTO_SRC}/idea \
-	${LCRYPTO_SRC}/jpake \
 	${LCRYPTO_SRC}/krb5 \
 	${LCRYPTO_SRC}/lhash \
 	${LCRYPTO_SRC}/md4 \
@@ -334,7 +306,6 @@ SRCS+= v3_asid.c v3_addr.c
 	${LCRYPTO_SRC}/rc5 \
 	${LCRYPTO_SRC}/ripemd \
 	${LCRYPTO_SRC}/rsa \
-	${LCRYPTO_SRC}/seed \
 	${LCRYPTO_SRC}/sha \
 	${LCRYPTO_SRC}/stack \
 	${LCRYPTO_SRC}/store \
@@ -365,11 +336,9 @@ HDRS=\
 	crypto/conf/conf_api.h \
 	crypto/crypto.h \
 	crypto/des/des.h \
-	crypto/des/des_old.h \
 	crypto/dh/dh.h \
 	crypto/dsa/dsa.h \
 	crypto/dso/dso.h \
-	crypto/ebcdic.h \
 	crypto/ec/ec.h \
 	crypto/ecdh/ecdh.h \
 	crypto/ecdsa/ecdsa.h \
@@ -380,7 +349,6 @@ HDRS=\
 	crypto/idea/idea.h \
 	crypto/krb5/krb5_asn.h \
 	crypto/lhash/lhash.h \
-	crypto/md2/md2.h \
 	crypto/md4/md4.h \
 	crypto/md5/md5.h \
 	crypto/mdc2/mdc2.h \
@@ -400,7 +368,6 @@ HDRS=\
 	crypto/rc5/rc5.h \
 	crypto/ripemd/ripemd.h \
 	crypto/rsa/rsa.h \
-	crypto/seed/seed.h \
 	crypto/sha/sha.h \
 	crypto/srp/srp.h \
 	crypto/stack/safestack.h \
@@ -452,111 +419,12 @@ obj_mac.h: ${SSL_OBJECTS}/objects.h ${SSL_OBJECTS}/obj_mac.num ${SSL_OBJECTS}/ob
 obj_dat.h: obj_mac.h
 	/usr/bin/perl ${SSL_OBJECTS}/obj_dat.pl obj_mac.h obj_dat.h
 
-.if (${MACHINE_ARCH} == "i386")
-SRCS+= wp_block.c
-SRCS+= bf_cbc.c	
-CFLAGS+= -DOPENSSL_BN_ASM_PART_WORDS
-CFLAGS+= -DOPENSSL_IA32_SSE2
-CFLAGS+= -DOPENSSL_BN_ASM_MONT
-CFLAGS+= -DOPENSSL_BN_ASM_GF2m
-CFLAGS+= -DSHA1_ASM
-CFLAGS+= -DSHA256_ASM
-CFLAGS+= -DSHA512_ASM
-CFLAGS+= -DMD5_ASM
-CFLAGS+= -DRMD160_ASM
-CFLAGS+= -DAES_ASM
-CFLAGS+= -DVPAES_ASM
-CFLAGS+= -DWHIRLPOOL_ASM
-CFLAGS+= -DGHASH_ASM
-CFLAGS+= -DOPENSSL_CPUID_OBJ
-SSLASM=\
-	aes aes-586 \
-	aes vpaes-x86 \
-	aes aesni-x86 \
-	bf bf-586 \
-	bn bn-586 \
-	bn co-586 \
-	bn x86-mont \
-	bn x86-gf2m \
-	des crypt586 \
-	des des-586 \
-	md5 md5-586 \
-	modes ghash-x86 \
-	rc4 rc4-586 \
-	ripemd rmd-586 \
-	sha sha1-586 \
-	sha sha256-586 \
-	sha sha512-586 \
-	whrlpool wp-mmx
-.for dir f in ${SSLASM}
-SRCS+=	${f}.S
-GENERATED+=${f}.S
-${f}.S: ${LCRYPTO_SRC}/${dir}/asm/${f}.pl ${LCRYPTO_SRC}/perlasm/x86gas.pl
-	/usr/bin/perl -I${LCRYPTO_SRC}/perlasm -I${LCRYPTO_SRC}/${dir}/asm \
-		${LCRYPTO_SRC}/${dir}/asm/${f}.pl \
-		    openbsd-elf ${CFLAGS} 386 ${PICFLAG} > ${.TARGET}
-.endfor
-SRCS+=	x86cpuid.S
-GENERATED+=x86cpuid.S
-x86cpuid.S: ${LCRYPTO_SRC}/x86cpuid.pl ${LCRYPTO_SRC}/perlasm/x86gas.pl
-	/usr/bin/perl -I${LCRYPTO_SRC}/perlasm ${LCRYPTO_SRC}/x86cpuid.pl \
-		openbsd-elf ${CFLAGS} 386 ${PICFLAG} > ${.TARGET}
-.elif (${MACHINE_ARCH} == "amd64")
-SRCS+= bf_enc.c des_enc.c fcrypt_b.c
-SRCS+= x86_64-gcc.c
-CFLAGS+= -DOPENSSL_CPUID_OBJ
-CFLAGS+= -DOPENSSL_IA32_SSE2
-CFLAGS+= -DOPENSSL_BN_ASM_MONT
-CFLAGS+= -DOPENSSL_BN_ASM_MONT5
-CFLAGS+= -DOPENSSL_BN_ASM_GF2m
-CFLAGS+= -DSHA1_ASM
-CFLAGS+= -DSHA256_ASM
-CFLAGS+= -DSHA512_ASM
-CFLAGS+= -DMD5_ASM
-CFLAGS+= -DAES_ASM
-CFLAGS+= -DVPAES_ASM
-CFLAGS+= -DBSAES_ASM
-CFLAGS+= -DWHIRLPOOL_ASM
-CFLAGS+= -DGHASH_ASM
-SSLASM=\
-	aes aes-x86_64 \
-	aes aesni-x86_64 \
-	aes aesni-sha1-x86_64 \
-	aes bsaes-x86_64 \
-	aes vpaes-x86_64 \
-	bn x86_64-mont \
-	bn x86_64-mont5 \
-	bn x86_64-gf2m \
-	bn modexp512-x86_64 \
-	md5 md5-x86_64 \
-	modes ghash-x86_64 \
-	rc4 rc4-x86_64 \
-	rc4 rc4-md5-x86_64 \
-	sha sha1-x86_64 \
-	whrlpool wp-x86_64
-.for dir f in ${SSLASM}
-SRCS+=	${f}.S
-GENERATED+=${f}.S
-${f}.S: ${LCRYPTO_SRC}/${dir}/asm/${f}.pl
-	(cd ${LCRYPTO_SRC}/${dir} ; \
-		/usr/bin/perl ./asm/${f}.pl openbsd-elf) > ${.TARGET}
-.endfor
-SRCS+=	x86_64cpuid.S sha256-x86_64.S sha512-x86_64.S
-GENERATED+=x86_64cpuid.S sha256-x86_64.S sha512-x86_64.S
-x86_64cpuid.S: ${LCRYPTO_SRC}/x86_64cpuid.pl
-	(cd ${LCRYPTO_SRC}/${dir} ; \
-		/usr/bin/perl ./x86_64cpuid.pl) > ${.TARGET}
-sha256-x86_64.S: ${LCRYPTO_SRC}/sha/asm/sha512-x86_64.pl
-	cd ${LCRYPTO_SRC}/sha/asm ; \
-		/usr/bin/perl ./sha512-x86_64.pl ${.OBJDIR}/${.TARGET}
-sha512-x86_64.S: ${LCRYPTO_SRC}/sha/asm/sha512-x86_64.pl
-	cd ${LCRYPTO_SRC}/sha/asm ; \
-		/usr/bin/perl ./sha512-x86_64.pl ${.OBJDIR}/${.TARGET}
-.else
-# XXX lots more asm we can turn on for other platforms. Shouldn't require
-# major cranks.
+.if exists (${.CURDIR}/arch/${MACHINE_CPU}/Makefile.inc)
+.include "${.CURDIR}/arch/${MACHINE_CPU}/Makefile.inc"
+.endif
+
+.if !defined(SSLASM)
 CFLAGS+=-DOPENSSL_NO_ASM
-SRCS+= mem_clr.c
 SRCS+= aes_core.c aes_cbc.c 
 SRCS+= bf_enc.c
 SRCS+= bn_asm.c

@@ -87,28 +87,13 @@
 #include <stdlib.h>
 
 /* 32-bit rotations */
-#if !defined(PEDANTIC) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_NO_INLINE_ASM)
-# if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_AMD64) || defined(_M_X64))
-#  define RightRotate(x, s) _lrotr(x, s)
-#  define LeftRotate(x, s)  _lrotl(x, s)
-#  if _MSC_VER >= 1400
-#   define SWAP(x) _byteswap_ulong(x)
-#  else
-#   define SWAP(x) (_lrotl(x, 8) & 0x00ff00ff | _lrotr(x, 8) & 0xff00ff00)
-#  endif
-#  define GETU32(p)   SWAP(*((u32 *)(p)))
-#  define PUTU32(p,v) (*((u32 *)(p)) = SWAP((v)))
-# elif defined(__GNUC__) && __GNUC__>=2
+#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_NO_INLINE_ASM)
+# if defined(__GNUC__) && __GNUC__>=2
 #  if defined(__i386) || defined(__x86_64)
 #   define RightRotate(x,s) ({u32 ret; asm ("rorl %1,%0":"=r"(ret):"I"(s),"0"(x):"cc"); ret; })
 #   define LeftRotate(x,s)  ({u32 ret; asm ("roll %1,%0":"=r"(ret):"I"(s),"0"(x):"cc"); ret; })
-#   if defined(B_ENDIAN) /* stratus.com does it */
-#    define GETU32(p)   (*(u32 *)(p))
-#    define PUTU32(p,v) (*(u32 *)(p)=(v))
-#   else
-#    define GETU32(p)   ({u32 r=*(const u32 *)(p); asm("bswapl %0":"=r"(r):"0"(r)); r; })
-#    define PUTU32(p,v) ({u32 r=(v); asm("bswapl %0":"=r"(r):"0"(r)); *(u32 *)(p)=r; })
-#   endif
+#   define GETU32(p)   ({u32 r=*(const u32 *)(p); asm("bswapl %0":"=r"(r):"0"(r)); r; })
+#   define PUTU32(p,v) ({u32 r=(v); asm("bswapl %0":"=r"(r):"0"(r)); *(u32 *)(p)=r; })
 #  elif defined(_ARCH_PPC) || defined(_ARCH_PPC64) || \
         defined(__powerpc) || defined(__ppc__) || defined(__powerpc64__)
 #   define LeftRotate(x,s)  ({u32 ret; asm ("rlwinm %0,%1,%2,0,31":"=r"(ret):"r"(x),"I"(s)); ret; })

@@ -140,7 +140,7 @@ BN_BLINDING *BN_BLINDING_new(const BIGNUM *A, const BIGNUM *Ai, BIGNUM *mod)
 
 	bn_check_top(mod);
 
-	if ((ret=(BN_BLINDING *)OPENSSL_malloc(sizeof(BN_BLINDING))) == NULL)
+	if ((ret=(BN_BLINDING *)malloc(sizeof(BN_BLINDING))) == NULL)
 		{
 		BNerr(BN_F_BN_BLINDING_NEW,ERR_R_MALLOC_FAILURE);
 		return(NULL);
@@ -176,11 +176,11 @@ void BN_BLINDING_free(BN_BLINDING *r)
 	if(r == NULL)
 	    return;
 
-	if (r->A  != NULL) BN_free(r->A );
-	if (r->Ai != NULL) BN_free(r->Ai);
-	if (r->e  != NULL) BN_free(r->e );
-	if (r->mod != NULL) BN_free(r->mod); 
-	OPENSSL_free(r);
+	if (r->A  != NULL) BN_clear_free(r->A );
+	if (r->Ai != NULL) BN_clear_free(r->Ai);
+	if (r->e  != NULL) BN_clear_free(r->e );
+	if (r->mod != NULL) BN_clear_free(r->mod); 
+	free(r);
 	}
 
 int BN_BLINDING_update(BN_BLINDING *b, BN_CTX *ctx)

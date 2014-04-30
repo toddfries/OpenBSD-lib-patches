@@ -91,18 +91,17 @@ typedef struct b64_struct
 	char tmp[B64_BLOCK_SIZE];
 	} BIO_B64_CTX;
 
-static BIO_METHOD methods_b64=
-	{
-	BIO_TYPE_BASE64,"base64 encoding",
-	b64_write,
-	b64_read,
-	b64_puts,
-	NULL, /* b64_gets, */
-	b64_ctrl,
-	b64_new,
-	b64_free,
-	b64_callback_ctrl,
-	};
+static BIO_METHOD methods_b64= {
+	.type = BIO_TYPE_BASE64,
+	.name = "base64 encoding",
+	.bwrite = b64_write,
+	.bread = b64_read,
+	.bputs = b64_puts,
+	.ctrl = b64_ctrl,
+	.create = b64_new,
+	.destroy = b64_free,
+	.callback_ctrl = b64_callback_ctrl
+};
 
 BIO_METHOD *BIO_f_base64(void)
 	{
@@ -113,7 +112,7 @@ static int b64_new(BIO *bi)
 	{
 	BIO_B64_CTX *ctx;
 
-	ctx=(BIO_B64_CTX *)OPENSSL_malloc(sizeof(BIO_B64_CTX));
+	ctx=(BIO_B64_CTX *)malloc(sizeof(BIO_B64_CTX));
 	if (ctx == NULL) return(0);
 
 	ctx->buf_len=0;
@@ -134,7 +133,7 @@ static int b64_new(BIO *bi)
 static int b64_free(BIO *a)
 	{
 	if (a == NULL) return(0);
-	OPENSSL_free(a->ptr);
+	free(a->ptr);
 	a->ptr=NULL;
 	a->init=0;
 	a->flags=0;

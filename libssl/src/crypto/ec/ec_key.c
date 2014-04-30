@@ -64,15 +64,12 @@
 #include <string.h>
 #include "ec_lcl.h"
 #include <openssl/err.h>
-#ifdef OPENSSL_FIPS
-#include <openssl/fips.h>
-#endif
 
 EC_KEY *EC_KEY_new(void)
 	{
 	EC_KEY *ret;
 
-	ret=(EC_KEY *)OPENSSL_malloc(sizeof(EC_KEY));
+	ret=(EC_KEY *)malloc(sizeof(EC_KEY));
 	if (ret == NULL)
 		{
 		ECerr(EC_F_EC_KEY_NEW, ERR_R_MALLOC_FAILURE);
@@ -112,17 +109,7 @@ void EC_KEY_free(EC_KEY *r)
 	if (r == NULL) return;
 
 	i=CRYPTO_add(&r->references,-1,CRYPTO_LOCK_EC);
-#ifdef REF_PRINT
-	REF_PRINT("EC_KEY",r);
-#endif
 	if (i > 0) return;
-#ifdef REF_CHECK
-	if (i < 0)
-		{
-		fprintf(stderr,"EC_KEY_free, bad reference count\n");
-		abort();
-		}
-#endif
 
 	if (r->group    != NULL) 
 		EC_GROUP_free(r->group);
@@ -135,7 +122,7 @@ void EC_KEY_free(EC_KEY *r)
 
 	OPENSSL_cleanse((void *)r, sizeof(EC_KEY));
 
-	OPENSSL_free(r);
+	free(r);
 	}
 
 EC_KEY *EC_KEY_copy(EC_KEY *dest, const EC_KEY *src)
@@ -221,16 +208,6 @@ EC_KEY *EC_KEY_dup(const EC_KEY *ec_key)
 int EC_KEY_up_ref(EC_KEY *r)
 	{
 	int i = CRYPTO_add(&r->references, 1, CRYPTO_LOCK_EC);
-#ifdef REF_PRINT
-	REF_PRINT("EC_KEY",r);
-#endif
-#ifdef REF_CHECK
-	if (i < 2)
-		{
-		fprintf(stderr, "EC_KEY_up, bad reference count\n");
-		abort();
-		}
-#endif
 	return ((i > 1) ? 1 : 0);
 	}
 
@@ -240,11 +217,6 @@ int EC_KEY_generate_key(EC_KEY *eckey)
 	BN_CTX	*ctx = NULL;
 	BIGNUM	*priv_key = NULL, *order = NULL;
 	EC_POINT *pub_key = NULL;
-
-#ifdef OPENSSL_FIPS
-	if (FIPS_mode())
-		return FIPS_ec_key_generate_key(eckey);
-#endif
 
 	if (!eckey || !eckey->group)
 		{

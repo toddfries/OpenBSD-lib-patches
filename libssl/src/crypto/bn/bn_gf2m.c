@@ -103,7 +103,7 @@ static const BN_ULONG SQR_tb[16] =
   {     0,     1,     4,     5,    16,    17,    20,    21,
        64,    65,    68,    69,    80,    81,    84,    85 };
 /* Platform-specific macros to accelerate squaring. */
-#if defined(SIXTY_FOUR_BIT) || defined(SIXTY_FOUR_BIT_LONG)
+#ifdef _LP64
 #define SQR1(w) \
     SQR_tb[(w) >> 60 & 0xF] << 56 | SQR_tb[(w) >> 56 & 0xF] << 48 | \
     SQR_tb[(w) >> 52 & 0xF] << 40 | SQR_tb[(w) >> 48 & 0xF] << 32 | \
@@ -114,8 +114,7 @@ static const BN_ULONG SQR_tb[16] =
     SQR_tb[(w) >> 20 & 0xF] << 40 | SQR_tb[(w) >> 16 & 0xF] << 32 | \
     SQR_tb[(w) >> 12 & 0xF] << 24 | SQR_tb[(w) >>  8 & 0xF] << 16 | \
     SQR_tb[(w) >>  4 & 0xF] <<  8 | SQR_tb[(w)       & 0xF]
-#endif
-#ifdef THIRTY_TWO_BIT
+#else
 #define SQR1(w) \
     SQR_tb[(w) >> 28 & 0xF] << 24 | SQR_tb[(w) >> 24 & 0xF] << 16 | \
     SQR_tb[(w) >> 20 & 0xF] <<  8 | SQR_tb[(w) >> 16 & 0xF]
@@ -130,9 +129,9 @@ static const BN_ULONG SQR_tb[16] =
  * The caller MUST ensure that the variables have the right amount
  * of space allocated.
  */
-#ifdef THIRTY_TWO_BIT
 static void bn_GF2m_mul_1x1(BN_ULONG *r1, BN_ULONG *r0, const BN_ULONG a, const BN_ULONG b)
 	{
+#ifndef _LP64
 	register BN_ULONG h, l, s;
 	BN_ULONG tab[8], top2b = a >> 30; 
 	register BN_ULONG a1, a2, a4;
@@ -160,11 +159,7 @@ static void bn_GF2m_mul_1x1(BN_ULONG *r1, BN_ULONG *r0, const BN_ULONG a, const 
 	if (top2b & 02) { l ^= b << 31; h ^= b >> 1; } 
 
 	*r1 = h; *r0 = l;
-	} 
-#endif
-#if defined(SIXTY_FOUR_BIT) || defined(SIXTY_FOUR_BIT_LONG)
-static void bn_GF2m_mul_1x1(BN_ULONG *r1, BN_ULONG *r0, const BN_ULONG a, const BN_ULONG b)
-	{
+#else
 	register BN_ULONG h, l, s;
 	BN_ULONG tab[16], top3b = a >> 61;
 	register BN_ULONG a1, a2, a4, a8;
@@ -200,8 +195,8 @@ static void bn_GF2m_mul_1x1(BN_ULONG *r1, BN_ULONG *r0, const BN_ULONG a, const 
 	if (top3b & 04) { l ^= b << 63; h ^= b >> 1; } 
 
 	*r1 = h; *r0 = l;
-	} 
 #endif
+	} 
 
 /* Product of two polynomials a, b each with degree < 2 * BN_BITS2 - 1,
  * result is a polynomial r with degree < 4 * BN_BITS2 - 1
@@ -444,7 +439,7 @@ int	BN_GF2m_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *p
 	bn_check_top(a);
 	bn_check_top(b);
 	bn_check_top(p);
-	if ((arr = (int *)OPENSSL_malloc(sizeof(int) * max)) == NULL) goto err;
+	if ((arr = (int *)malloc(sizeof(int) * max)) == NULL) goto err;
 	ret = BN_GF2m_poly2arr(p, arr, max);
 	if (!ret || ret > max)
 		{
@@ -454,7 +449,7 @@ int	BN_GF2m_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *p
 	ret = BN_GF2m_mod_mul_arr(r, a, b, arr, ctx);
 	bn_check_top(r);
 err:
-	if (arr) OPENSSL_free(arr);
+	if (arr) free(arr);
 	return ret;
 	}
 
@@ -500,7 +495,7 @@ int	BN_GF2m_mod_sqr(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 
 	bn_check_top(a);
 	bn_check_top(p);
-	if ((arr = (int *)OPENSSL_malloc(sizeof(int) * max)) == NULL) goto err;
+	if ((arr = (int *)malloc(sizeof(int) * max)) == NULL) goto err;
 	ret = BN_GF2m_poly2arr(p, arr, max);
 	if (!ret || ret > max)
 		{
@@ -510,7 +505,7 @@ int	BN_GF2m_mod_sqr(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 	ret = BN_GF2m_mod_sqr_arr(r, a, arr, ctx);
 	bn_check_top(r);
 err:
-	if (arr) OPENSSL_free(arr);
+	if (arr) free(arr);
 	return ret;
 	}
 
@@ -861,7 +856,7 @@ int BN_GF2m_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *p
 	bn_check_top(a);
 	bn_check_top(b);
 	bn_check_top(p);
-	if ((arr = (int *)OPENSSL_malloc(sizeof(int) * max)) == NULL) goto err;
+	if ((arr = (int *)malloc(sizeof(int) * max)) == NULL) goto err;
 	ret = BN_GF2m_poly2arr(p, arr, max);
 	if (!ret || ret > max)
 		{
@@ -871,7 +866,7 @@ int BN_GF2m_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *p
 	ret = BN_GF2m_mod_exp_arr(r, a, b, arr, ctx);
 	bn_check_top(r);
 err:
-	if (arr) OPENSSL_free(arr);
+	if (arr) free(arr);
 	return ret;
 	}
 
@@ -919,7 +914,7 @@ int BN_GF2m_mod_sqrt(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 	int *arr=NULL;
 	bn_check_top(a);
 	bn_check_top(p);
-	if ((arr = (int *)OPENSSL_malloc(sizeof(int) * max)) == NULL) goto err;
+	if ((arr = (int *)malloc(sizeof(int) * max)) == NULL) goto err;
 	ret = BN_GF2m_poly2arr(p, arr, max);
 	if (!ret || ret > max)
 		{
@@ -929,7 +924,7 @@ int BN_GF2m_mod_sqrt(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 	ret = BN_GF2m_mod_sqrt_arr(r, a, arr, ctx);
 	bn_check_top(r);
 err:
-	if (arr) OPENSSL_free(arr);
+	if (arr) free(arr);
 	return ret;
 	}
 
@@ -1037,7 +1032,7 @@ int BN_GF2m_mod_solve_quad(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *
 	int *arr=NULL;
 	bn_check_top(a);
 	bn_check_top(p);
-	if ((arr = (int *)OPENSSL_malloc(sizeof(int) *
+	if ((arr = (int *)malloc(sizeof(int) *
 						max)) == NULL) goto err;
 	ret = BN_GF2m_poly2arr(p, arr, max);
 	if (!ret || ret > max)
@@ -1048,7 +1043,7 @@ int BN_GF2m_mod_solve_quad(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *
 	ret = BN_GF2m_mod_solve_quad_arr(r, a, arr, ctx);
 	bn_check_top(r);
 err:
-	if (arr) OPENSSL_free(arr);
+	if (arr) free(arr);
 	return ret;
 	}
 

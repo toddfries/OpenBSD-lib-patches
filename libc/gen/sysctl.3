@@ -1,4 +1,4 @@
-.\"	$OpenBSD: sysctl.3,v 1.228 2014/01/21 03:15:45 schwarze Exp $
+.\"	$OpenBSD: sysctl.3,v 1.232 2014/04/27 16:58:08 jmc Exp $
 .\"
 .\" Copyright (c) 1993
 .\"	The Regents of the University of California.  All rights reserved.
@@ -27,7 +27,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: January 21 2014 $
+.Dd $Mdocdate: April 27 2014 $
 .Dt SYSCTL 3
 .Os
 .Sh NAME
@@ -1476,7 +1476,7 @@ The default is 0.
 .It Li ip.mtudisc
 Returns 1 if Path MTU Discovery is enabled.
 .It Li ip.mtudisctimeout
-Returns the number of seconds in which a route added by the Path MTU
+Number of seconds in which a route added by the Path MTU
 Discovery engine will time out.
 When the route times out, the Path MTU Discovery engine will attempt
 to probe a larger path MTU.
@@ -1671,16 +1671,22 @@ The currently defined protocols and names are:
 .It ip6 Ta accept_rtadv Ta integer Ta yes
 .It ip6 Ta auto_flowlabel Ta integer Ta yes
 .It ip6 Ta dad_count Ta integer Ta yes
+.It ip6 Ta dad_pending Ta integer Ta yes
 .It ip6 Ta defmcasthlim Ta integer Ta yes
 .It ip6 Ta forwarding Ta integer Ta yes
 .It ip6 Ta hdrnestlimit Ta integer Ta yes
 .It ip6 Ta hlim Ta integer Ta yes
 .It ip6 Ta log_interval Ta integer Ta yes
+.It ip6 Ta maxdynroutes Ta integer Ta yes
 .It ip6 Ta maxfragpackets Ta integer Ta yes
 .It ip6 Ta maxfrags Ta integer Ta yes
+.It ip6 Ta maxifprefixes Ta integer Ta yes
+.It ip6 Ta maxifdefrouters Ta integer Ta yes
 .It ip6 Ta mforwarding Ta integer Ta yes
+.It ip6 Ta mtudisctimeout Ta integer Ta yes
 .It ip6 Ta multicast_mtudisc Ta integer Ta yes
 .It ip6 Ta multipath Ta integer Ta yes
+.It ip6 Ta neighborgcthresh Ta integer Ta yes
 .It ip6 Ta redirect Ta integer Ta yes
 .It ip6 Ta rr_prune Ta integer Ta yes
 .It ip6 Ta use_deprecated Ta integer Ta yes
@@ -1799,6 +1805,14 @@ This variable configures the number of IPv6 DAD
 probe packets.
 These packets are generated when IPv6 interfaces are first brought up.
 .Pp
+.It Li ip6.dad_pending
+This variable displays the number of pending IPv6 DAD
+.Pq duplicated address detection
+before completion.
+It is used to make sure that DAD is completed before
+.Xr netstart 8
+is executed.
+.Pp
 .It Li ip6.defmcasthlim
 The default hop limit value for an IPv6 multicast packet sourced by the node.
 This value applies to all the transport protocols on top of IPv6.
@@ -1834,6 +1848,11 @@ IPv6 packet forwarding engine.
 The value indicates the number of
 seconds of interval which must elapse between log output.
 .Pp
+.It Li ip6.maxdynroutes
+Maximum number of routes created by redirect.
+Set to negative to disable.
+The default value is 4096.
+.Pp
 .It Li ip6.maxfragpackets
 The maximum number of fragmented packets the node will accept.
 0 means that the node will not accept any fragmented packets.
@@ -1845,6 +1864,17 @@ The maximum number of fragments the node will accept.
 0 means that the node will not accept any fragments.
 \-1 means that the node will accept as many fragments as it receives.
 The flag is provided basically for avoiding possible DoS attacks.
+.Pp
+.It Li ip6.maxifprefixes
+Maximum number of prefixes created by route advertisements per interface.
+Set to negative to disable.
+The default value is 16.
+.Pp
+.It Li ip6.maxifdefrouters 16
+Maximum number of default routers created by route advertisements per
+interface.
+Set to negative to disable.
+The default value is 16.
 .Pp
 .It Li ip6.mforwarding
 If set to 1, then multicast forwarding is enabled for the host.
@@ -1861,6 +1891,17 @@ If set to 0, the ICMPv6 Too Big message will be suppressed.
 This variable enables multipath routing for IPv6 addresses.
 If set to 0, only the first route selected will be used for a given
 destination regardless of how many routes exist in the routing table.
+.Pp
+.It Li ip6.mtudisctimeout
+Number of seconds in which a route added by the Path MTU
+Discovery engine will time out.
+When the route times out, the Path MTU Discovery engine will attempt
+to probe a larger path MTU.
+.Pp
+.It Li ip6.neighborgcthresh
+Maximum number of entries in neighbor cache.
+Set to negative to disable.
+The default value is 2048.
 .Pp
 .It Li ip6.redirect
 Returns 1 when ICMPv6 redirects may be sent by the node.

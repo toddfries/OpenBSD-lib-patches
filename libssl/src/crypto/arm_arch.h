@@ -43,9 +43,8 @@
 
 #if !__ASSEMBLER__
 extern unsigned int OPENSSL_armcap_P;
-                                     
+
 #define ARMV7_NEON      (1<<0)
-#define ARMV7_TICK      (1<<1)
 #endif
 
 #endif

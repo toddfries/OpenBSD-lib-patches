@@ -60,7 +60,6 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
-#include "e_os.h"
 #include <openssl/asn1.h>
 #include <openssl/ocsp.h>
 #include <openssl/err.h>
@@ -114,8 +113,8 @@ void OCSP_REQ_CTX_free(OCSP_REQ_CTX *rctx)
 	if (rctx->mem)
 		BIO_free(rctx->mem);
 	if (rctx->iobuf)
-		OPENSSL_free(rctx->iobuf);
-	OPENSSL_free(rctx);
+		free(rctx->iobuf);
+	free(rctx);
 	}
 
 int OCSP_REQ_CTX_set1_req(OCSP_REQ_CTX *rctx, OCSP_REQUEST *req)
@@ -157,7 +156,7 @@ OCSP_REQ_CTX *OCSP_sendreq_new(BIO *io, char *path, OCSP_REQUEST *req,
 	static const char post_hdr[] = "POST %s HTTP/1.0\r\n";
 
 	OCSP_REQ_CTX *rctx;
-	rctx = OPENSSL_malloc(sizeof(OCSP_REQ_CTX));
+	rctx = malloc(sizeof(OCSP_REQ_CTX));
 	rctx->state = OHS_ERROR;
 	rctx->mem = BIO_new(BIO_s_mem());
 	rctx->io = io;
@@ -166,17 +165,28 @@ OCSP_REQ_CTX *OCSP_sendreq_new(BIO *io, char *path, OCSP_REQUEST *req,
 		rctx->iobuflen = maxline;
 	else
 		rctx->iobuflen = OCSP_MAX_LINE_LEN;
-	rctx->iobuf = OPENSSL_malloc(rctx->iobuflen);
-	if (!rctx->iobuf)
+	rctx->iobuf = malloc(rctx->iobuflen);
+	if (!rctx->iobuf) {
+		BIO_free(rctx->mem);
+		free(rctx);
 		return 0;
+	}
 	if (!path)
 		path = "/";
 
-        if (BIO_printf(rctx->mem, post_hdr, path) <= 0)
+        if (BIO_printf(rctx->mem, post_hdr, path) <= 0) {
+		free(rctx->iobuf);
+		BIO_free(rctx->mem);
+		free(rctx);
 		return 0;
+	}
 
-	if (req && !OCSP_REQ_CTX_set1_req(rctx, req))
+	if (req && !OCSP_REQ_CTX_set1_req(rctx, req)) {
+		free(rctx->iobuf);
+		BIO_free(rctx->mem);
+		free(rctx);
 		return 0;
+	}
 
 	return rctx;
 	}
@@ -249,9 +259,9 @@ static int parse_http_line1(char *line)
 		{
 		OCSPerr(OCSP_F_PARSE_HTTP_LINE1, OCSP_R_SERVER_RESPONSE_ERROR);
 		if(!*q)
-			ERR_add_error_data(2, "Code=", p);
+			ERR_asprintf_error_data("Code=%s", p);
 		else
-			ERR_add_error_data(4, "Code=", p, ",Reason=", q);
+			ERR_asprintf_error_data("Code=%s,Reason=%s", p, q);
 		return 0;
 		}
 

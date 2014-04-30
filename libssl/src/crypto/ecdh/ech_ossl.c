@@ -84,14 +84,8 @@ static int ecdh_compute_key(void *out, size_t len, const EC_POINT *pub_key,
 	void *(*KDF)(const void *in, size_t inlen, void *out, size_t *outlen));
 
 static ECDH_METHOD openssl_ecdh_meth = {
-	"OpenSSL ECDH method",
-	ecdh_compute_key,
-#if 0
-	NULL, /* init     */
-	NULL, /* finish   */
-#endif
-	0,    /* flags    */
-	NULL  /* app_data */
+	.name = "OpenSSL ECDH method",
+	.compute_key = ecdh_compute_key
 };
 
 const ECDH_METHOD *ECDH_OpenSSL(void)
@@ -175,7 +169,7 @@ static int ecdh_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
 		ECDHerr(ECDH_F_ECDH_COMPUTE_KEY,ERR_R_INTERNAL_ERROR);
 		goto err;
 		}
-	if ((buf = OPENSSL_malloc(buflen)) == NULL)
+	if ((buf = malloc(buflen)) == NULL)
 		{
 		ECDHerr(ECDH_F_ECDH_COMPUTE_KEY,ERR_R_MALLOC_FAILURE);
 		goto err;
@@ -210,6 +204,6 @@ err:
 	if (tmp) EC_POINT_free(tmp);
 	if (ctx) BN_CTX_end(ctx);
 	if (ctx) BN_CTX_free(ctx);
-	if (buf) OPENSSL_free(buf);
+	if (buf) free(buf);
 	return(ret);
 	}

@@ -75,7 +75,7 @@ typedef struct
 static int pkey_hmac_init(EVP_PKEY_CTX *ctx)
 	{
 	HMAC_PKEY_CTX *hctx;
-	hctx = OPENSSL_malloc(sizeof(HMAC_PKEY_CTX));
+	hctx = malloc(sizeof(HMAC_PKEY_CTX));
 	if (!hctx)
 		return 0;
 	hctx->md = NULL;
@@ -119,10 +119,10 @@ static void pkey_hmac_cleanup(EVP_PKEY_CTX *ctx)
 		{
 		if (hctx->ktmp.length)
 			OPENSSL_cleanse(hctx->ktmp.data, hctx->ktmp.length);
-		OPENSSL_free(hctx->ktmp.data);
+		free(hctx->ktmp.data);
 		hctx->ktmp.data = NULL;
 		}
-	OPENSSL_free(hctx);
+	free(hctx);
 	}
 
 static int pkey_hmac_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
@@ -229,43 +229,24 @@ static int pkey_hmac_ctrl_str(EVP_PKEY_CTX *ctx,
 		if (!key)
 			return 0;
 		r = pkey_hmac_ctrl(ctx, EVP_PKEY_CTRL_SET_MAC_KEY, keylen, key);
-		OPENSSL_free(key);
+		free(key);
 		return r;
 		}
 	return -2;
 	}
 
-const EVP_PKEY_METHOD hmac_pkey_meth = 
-	{
-	EVP_PKEY_HMAC,
-	0,
-	pkey_hmac_init,
-	pkey_hmac_copy,
-	pkey_hmac_cleanup,
+const EVP_PKEY_METHOD hmac_pkey_meth = {
+	.pkey_id = EVP_PKEY_HMAC,
 
-	0, 0,
+	.init = pkey_hmac_init,
+	.copy = pkey_hmac_copy,
+	.cleanup = pkey_hmac_cleanup,
 
-	0,
-	pkey_hmac_keygen,
+	.keygen = pkey_hmac_keygen,
 
-	0, 0,
+	.signctx_init = hmac_signctx_init,
+	.signctx = hmac_signctx,
 
-	0, 0,
-
-	0,0,
-
-	hmac_signctx_init,
-	hmac_signctx,
-
-	0,0,
-
-	0,0,
-
-	0,0,
-
-	0,0,
-
-	pkey_hmac_ctrl,
-	pkey_hmac_ctrl_str
-
-	};
+	.ctrl = pkey_hmac_ctrl,
+	.ctrl_str = pkey_hmac_ctrl_str
+};

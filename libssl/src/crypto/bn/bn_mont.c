@@ -207,22 +207,7 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, BN_MONT_CTX *mont)
 #endif
 	for (carry=0, i=0; i<nl; i++, rp++)
 		{
-#ifdef __TANDEM
-                {
-                   long long t1;
-                   long long t2;
-                   long long t3;
-                   t1 = rp[0] * (n0 & 0177777);
-                   t2 = 037777600000l;
-                   t2 = n0 & t2;
-                   t3 = rp[0] & 0177777;
-                   t2 = (t3 * t2) & BN_MASK2;
-                   t1 = t1 + t2;
-                   v=bn_mul_add_words(rp,np,nl,(BN_ULONG) t1);
-                }
-#else
 		v=bn_mul_add_words(rp,np,nl,(rp[0]*n0)&BN_MASK2);
-#endif
 		v = (v+carry+rp[nl])&BN_MASK2;
 		carry |= (v != rp[nl]);
 		carry &= (v <= rp[nl]);
@@ -322,7 +307,7 @@ BN_MONT_CTX *BN_MONT_CTX_new(void)
 	{
 	BN_MONT_CTX *ret;
 
-	if ((ret=(BN_MONT_CTX *)OPENSSL_malloc(sizeof(BN_MONT_CTX))) == NULL)
+	if ((ret=(BN_MONT_CTX *)malloc(sizeof(BN_MONT_CTX))) == NULL)
 		return(NULL);
 
 	BN_MONT_CTX_init(ret);
@@ -345,11 +330,11 @@ void BN_MONT_CTX_free(BN_MONT_CTX *mont)
 	if(mont == NULL)
 	    return;
 
-	BN_free(&(mont->RR));
-	BN_free(&(mont->N));
-	BN_free(&(mont->Ni));
+	BN_clear_free(&(mont->RR));
+	BN_clear_free(&(mont->N));
+	BN_clear_free(&(mont->Ni));
 	if (mont->flags & BN_FLG_MALLOCED)
-		OPENSSL_free(mont);
+		free(mont);
 	}
 
 int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx)

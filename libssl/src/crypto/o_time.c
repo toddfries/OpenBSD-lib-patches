@@ -13,7 +13,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -63,26 +63,6 @@
 #include <string.h>
 #include "o_time.h"
 
-struct tm *OPENSSL_gmtime(const time_t *timer, struct tm *result)
-	{
-	struct tm *ts = NULL;
-
-#if defined(OPENSSL_THREADS) && !defined(OPENSSL_SYS_WIN32) && !defined(OPENSSL_SYS_OS2) && (!defined(OPENSSL_SYS_VMS) || defined(gmtime_r)) && !defined(OPENSSL_SYS_MACOSX) && !defined(OPENSSL_SYS_SUNOS)
-	/* should return &data, but doesn't on some systems,
-	   so we don't even look at the return value */
-	gmtime_r(timer,result);
-	ts = result;
-#else
-	ts = gmtime(timer);
-	if (ts == NULL)
-		return NULL;
-
-	memcpy(result, ts, sizeof(struct tm));
-	ts = result;
-#endif
-	return ts;
-	}
-
 /* Take a tm structure and add an offset to it. This avoids any OS issues
  * with restricted date types and overflows which cause the year 2038
  * problem.
@@ -93,29 +73,27 @@ struct tm *OPENSSL_gmtime(const time_t *timer, struct tm *result)
 static long date_to_julian(int y, int m, int d);
 static void julian_to_date(long jd, int *y, int *m, int *d);
 
-int OPENSSL_gmtime_adj(struct tm *tm, int off_day, long offset_sec)
-	{
+int
+OPENSSL_gmtime_adj(struct tm *tm, int off_day, long offset_sec)
+{
 	int offset_hms, offset_day;
 	long time_jd;
 	int time_year, time_month, time_day;
 	/* split offset into days and day seconds */
 	offset_day = offset_sec / SECS_PER_DAY;
 	/* Avoid sign issues with % operator */
-	offset_hms  = offset_sec - (offset_day * SECS_PER_DAY);
+	offset_hms = offset_sec - (offset_day * SECS_PER_DAY);
 	offset_day += off_day;
 	/* Add current time seconds to offset */
 	offset_hms += tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec;
 	/* Adjust day seconds if overflow */
-	if (offset_hms >= SECS_PER_DAY)
-		{
+	if (offset_hms >= SECS_PER_DAY) {
 		offset_day++;
 		offset_hms -= SECS_PER_DAY;
-		}
-	else if (offset_hms < 0)
-		{
+	} else if (offset_hms < 0) {
 		offset_day--;
 		offset_hms += SECS_PER_DAY;
-		}
+	}
 
 	/* Convert date of time structure into a Julian day number.
 	 */
@@ -150,22 +128,24 @@ int OPENSSL_gmtime_adj(struct tm *tm, int off_day, long offset_sec)
 	tm->tm_sec = offset_hms % 60;
 
 	return 1;
-		
+
 }
 
 /* Convert date to and from julian day
  * Uses Fliegel & Van Flandern algorithm
  */
-static long date_to_julian(int y, int m, int d)
+static long
+date_to_julian(int y, int m, int d)
 {
 	return (1461 * (y + 4800 + (m - 14) / 12)) / 4 +
-		(367 * (m - 2 - 12 * ((m - 14) / 12))) / 12 -
-		(3 * ((y + 4900 + (m - 14) / 12) / 100)) / 4 +
-		d - 32075;
+	    (367 * (m - 2 - 12 * ((m - 14) / 12))) / 12 -
+	    (3 * ((y + 4900 + (m - 14) / 12) / 100)) / 4 +
+	    d - 32075;
 }
 
-static void julian_to_date(long jd, int *y, int *m, int *d)
-	{
+static void
+julian_to_date(long jd, int *y, int *m, int *d)
+{
 	long  L = jd + 68569;
 	long  n = (4 * L) / 146097;
 	long  i, j;
@@ -178,7 +158,7 @@ static void julian_to_date(long jd, int *y, int *m, int *d)
 	L = j / 11;
 	*m = j + 2 - (12 * L);
 	*y = 100 * (n - 49) + i + L;
-	}
+}
 
 #ifdef OPENSSL_TIME_TEST
 
@@ -189,26 +169,27 @@ static void julian_to_date(long jd, int *y, int *m, int *d)
  * trigger the very errors the routines fix.
  */
 
-int main(int argc, char **argv)
-	{
+int
+main(int argc, char **argv)
+{
 	long offset;
-	for (offset = 0; offset < 1000000; offset++)
-		{
+	for (offset = 0; offset < 1000000; offset++) {
 		check_time(offset);
 		check_time(-offset);
 		check_time(offset * 1000);
 		check_time(-offset * 1000);
-		}
 	}
+}
 
-int check_time(long offset)
-	{
+int
+check_time(long offset)
+{
 	struct tm tm1, tm2;
 	time_t t1, t2;
 	time(&t1);
 	t2 = t1 + offset;
-	OPENSSL_gmtime(&t2, &tm2);
-	OPENSSL_gmtime(&t1, &tm1);
+	gmtime_r(&t2, &tm2);
+	gmtime_r(&t1, &tm1);
 	OPENSSL_gmtime_adj(&tm1, 0, offset);
 	if ((tm1.tm_year == tm2.tm_year) &&
 	    (tm1.tm_mon == tm2.tm_mon) &&
@@ -219,12 +200,12 @@ int check_time(long offset)
 		return 1;
 	fprintf(stderr, "TIME ERROR!!\n");
 	fprintf(stderr, "Time1: %d/%d/%d, %d:%02d:%02d\n",
-			tm2.tm_mday, tm2.tm_mon + 1, tm2.tm_year + 1900,
-			tm2.tm_hour, tm2.tm_min, tm2.tm_sec);
+	    tm2.tm_mday, tm2.tm_mon + 1, tm2.tm_year + 1900,
+	    tm2.tm_hour, tm2.tm_min, tm2.tm_sec);
 	fprintf(stderr, "Time2: %d/%d/%d, %d:%02d:%02d\n",
-			tm1.tm_mday, tm1.tm_mon + 1, tm1.tm_year + 1900,
-			tm1.tm_hour, tm1.tm_min, tm1.tm_sec);
+	    tm1.tm_mday, tm1.tm_mon + 1, tm1.tm_year + 1900,
+	    tm1.tm_hour, tm1.tm_min, tm1.tm_sec);
 	return 0;
-	}
+}
 
 #endif

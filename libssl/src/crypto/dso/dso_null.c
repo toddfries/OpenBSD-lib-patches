@@ -10,7 +10,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -64,27 +64,11 @@
 #include <openssl/dso.h>
 
 static DSO_METHOD dso_meth_null = {
-	"NULL shared library method",
-	NULL, /* load */
-	NULL, /* unload */
-	NULL, /* bind_var */
-	NULL, /* bind_func */
-/* For now, "unbind" doesn't exist */
-#if 0
-	NULL, /* unbind_var */
-	NULL, /* unbind_func */
-#endif
-	NULL, /* ctrl */
-	NULL, /* dso_name_converter */
-	NULL, /* dso_merger */
-	NULL, /* init */
-	NULL, /* finish */
-	NULL, /* pathbyaddr */
-	NULL  /* globallookup */
-	};
+	.name = "NULL shared library method"
+};
 
-DSO_METHOD *DSO_METHOD_null(void)
-	{
-	return(&dso_meth_null);
-	}
-
+DSO_METHOD *
+DSO_METHOD_null(void)
+{
+	return (&dso_meth_null);
+}

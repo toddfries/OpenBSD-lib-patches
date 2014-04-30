@@ -30,14 +30,15 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"	$OpenBSD: malloc.3,v 1.73 2013/07/18 10:14:49 schwarze Exp $
+.\"	$OpenBSD: malloc.3,v 1.76 2014/04/22 15:02:16 jmc Exp $
 .\"
-.Dd $Mdocdate: July 18 2013 $
+.Dd $Mdocdate: April 22 2014 $
 .Dt MALLOC 3
 .Os
 .Sh NAME
 .Nm malloc ,
 .Nm calloc ,
+.Nm reallocarray ,
 .Nm realloc ,
 .Nm free ,
 .Nm cfree
@@ -49,12 +50,14 @@
 .Ft void *
 .Fn calloc "size_t nmemb" "size_t size"
 .Ft void *
+.Fn reallocarray "void *ptr" "size_t nmemb" "size_t size"
+.Ft void *
 .Fn realloc "void *ptr" "size_t size"
 .Ft void
 .Fn free "void *ptr"
 .Ft void
 .Fn cfree "void *ptr"
-.Ft char *
+.Ft char * Ns
 .Va malloc_options ;
 .Sh DESCRIPTION
 The
@@ -91,10 +94,18 @@ if ((p = malloc(num * size)) == NULL)
 	err(1, "malloc");
 .Ed
 .Pp
-The multiplication may lead to an integer overflow.
-To avoid this,
+The multiplication may lead to an integer overflow, which can
+be avoided using the extension
+.Fn reallocarray ,
+as follows:
+.Bd -literal -offset indent
+if ((p = reallocarray(NULL, num, size)) == NULL)
+	err(1, "malloc");
+.Ed
+.Pp
+Alternatively
 .Fn calloc
-is recommended.
+is a more portable solution which comes with the cost of clearing memory.
 .Pp
 If
 .Fn malloc
@@ -114,6 +125,8 @@ objects, each of whose size is
 .Fa size .
 The space is initialized to zero.
 The use of
+.Fn reallocarray
+or
 .Fn calloc
 is strongly encouraged when allocating multiple sized objects
 in order to avoid possible integer overflows.
@@ -298,11 +311,6 @@ malloc_options = "X";
 .Pp
 Note that this will cause code that is supposed to handle
 out-of-memory conditions gracefully to abort instead.
-.It Cm Z
-.Dq Zero .
-Fill some junk into the area allocated (see
-.Cm J ) ,
-except for the exact length the user asked for, which is zeroed.
 .It Cm <
 .Dq Half the cache size .
 Decrease the size of the free page cache by a factor of two.
@@ -313,7 +321,7 @@ Increase the size of the free page cache by a factor of two.
 .Pp
 So to set a systemwide reduction of the cache to a quarter of the
 default size and use guard pages:
-.Dl # ln -s 'G\*(Lt\*(Lt' /etc/malloc.conf
+.Dl # ln -s 'G<<' /etc/malloc.conf
 .Pp
 The flags are mostly for testing and debugging.
 If a program changes behavior if any of these options (except
@@ -324,7 +332,8 @@ it is buggy.
 The default number of free pages cached is 64.
 .Sh RETURN VALUES
 The
-.Fn malloc
+.Fn malloc ,
+.Fn reallocarray ,
 and
 .Fn calloc
 functions return a pointer to the allocated space if successful; otherwise,
@@ -482,3 +491,6 @@ random.
 A rewrite by Otto Moerbeek introducing a new central data structure and more
 randomization appeared in
 .Ox 4.4 .
+.Fn reallocarray
+appeared in
+.Ox 5.6 .

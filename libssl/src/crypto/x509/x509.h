@@ -111,13 +111,6 @@
 extern "C" {
 #endif
 
-#ifdef OPENSSL_SYS_WIN32
-/* Under Win32 these are defined in wincrypt.h */
-#undef X509_NAME
-#undef X509_CERT_PAIR
-#undef X509_EXTENSIONS
-#endif
-
 #define X509_FILETYPE_PEM	1
 #define X509_FILETYPE_ASN1	2
 #define X509_FILETYPE_DEFAULT	3
@@ -697,7 +690,6 @@ int i2d_RSA_PUBKEY_fp(FILE *fp,RSA *rsa);
 #ifndef OPENSSL_NO_DSA
 DSA *d2i_DSA_PUBKEY_fp(FILE *fp, DSA **dsa);
 int i2d_DSA_PUBKEY_fp(FILE *fp, DSA *dsa);
-DSA *d2i_DSAPrivateKey_fp(FILE *fp, DSA **dsa);
 int i2d_DSAPrivateKey_fp(FILE *fp, DSA *dsa);
 #endif
 #ifndef OPENSSL_NO_EC
@@ -880,16 +872,6 @@ DECLARE_ASN1_FUNCTIONS(NETSCAPE_CERT_SEQUENCE)
 X509_INFO *	X509_INFO_new(void);
 void		X509_INFO_free(X509_INFO *a);
 char *		X509_NAME_oneline(X509_NAME *a,char *buf,int size);
-
-int ASN1_verify(i2d_of_void *i2d, X509_ALGOR *algor1,
-		ASN1_BIT_STRING *signature,char *data,EVP_PKEY *pkey);
-
-int ASN1_digest(i2d_of_void *i2d,const EVP_MD *type,char *data,
-		unsigned char *md,unsigned int *len);
-
-int ASN1_sign(i2d_of_void *i2d, X509_ALGOR *algor1,
-	      X509_ALGOR *algor2, ASN1_BIT_STRING *signature,
-	      char *data,EVP_PKEY *pkey, const EVP_MD *type);
 
 int ASN1_item_digest(const ASN1_ITEM *it,const EVP_MD *type,void *data,
 	unsigned char *md,unsigned int *len);

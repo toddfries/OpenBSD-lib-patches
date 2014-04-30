@@ -1,7 +1,7 @@
 /* ssl/d1_both.c */
-/* 
+/*
  * DTLS implementation written by Nagendra Modadugu
- * (nagendra@cs.stanford.edu) for the OpenSSL project 2005.  
+ * (nagendra@cs.stanford.edu) for the OpenSSL project 2005.
  */
 /* ====================================================================
  * Copyright (c) 1998-2005 The OpenSSL Project.  All rights reserved.
@@ -11,7 +11,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -62,21 +62,21 @@
  * This package is an SSL implementation written
  * by Eric Young (eay@cryptsoft.com).
  * The implementation was written so as to conform with Netscapes SSL.
- * 
+ *
  * This library is free for commercial and non-commercial use as long as
  * the following conditions are aheared to.  The following conditions
  * apply to all code found in this distribution, be it the RC4, RSA,
  * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
  * included with this distribution is covered by the same copyright terms
  * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- * 
+ *
  * Copyright remains Eric Young's, and as such any Copyright notices in
  * the code are not to be removed.
  * If this package is used in a product, Eric Young should be given attribution
  * as the author of the parts of the library used.
  * This can be in the form of a textual message at program startup or
  * in documentation (online or textual) provided with the package.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -91,10 +91,10 @@
  *     Eric Young (eay@cryptsoft.com)"
  *    The word 'cryptographic' can be left out if the rouines from the library
  *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from 
+ * 4. If you include any Windows specific code (or a derivative thereof) from
  *    the apps directory (application code) you must include an acknowledgement:
  *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -106,7 +106,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * The licence and distribution terms for any publically available version or
  * derivative of this code cannot be changed.  i.e. this code cannot simply be
  * copied and put under another distribution licence
@@ -179,14 +179,14 @@ dtls1_hm_fragment_new(unsigned long frag_len, int reassembly)
 	unsigned char *buf = NULL;
 	unsigned char *bitmask = NULL;
 
-	frag = (hm_fragment *)OPENSSL_malloc(sizeof(hm_fragment));
+	frag = malloc(sizeof(hm_fragment));
 	if (frag == NULL)
 		return NULL;
 
 	if (frag_len) {
-		buf = (unsigned char *)OPENSSL_malloc(frag_len);
+		buf = malloc(frag_len);
 		if (buf == NULL) {
-			OPENSSL_free(frag);
+			free(frag);
 			return NULL;
 		}
 	}
@@ -196,11 +196,11 @@ dtls1_hm_fragment_new(unsigned long frag_len, int reassembly)
 
 	/* Initialize reassembly bitmask if necessary */
 	if (reassembly) {
-		bitmask = (unsigned char *)OPENSSL_malloc(RSMBLY_BITMASK_SIZE(frag_len));
+		bitmask = malloc(RSMBLY_BITMASK_SIZE(frag_len));
 		if (bitmask == NULL) {
 			if (buf != NULL)
-				OPENSSL_free(buf);
-			OPENSSL_free(frag);
+				free(buf);
+			free(frag);
 			return NULL;
 		}
 		memset(bitmask, 0, RSMBLY_BITMASK_SIZE(frag_len));
@@ -216,14 +216,16 @@ dtls1_hm_fragment_free(hm_fragment *frag)
 {
 
 	if (frag->msg_header.is_ccs) {
-		EVP_CIPHER_CTX_free(frag->msg_header.saved_retransmit_state.enc_write_ctx);
-		EVP_MD_CTX_destroy(frag->msg_header.saved_retransmit_state.write_hash);
+		EVP_CIPHER_CTX_free(
+		    frag->msg_header.saved_retransmit_state.enc_write_ctx);
+		EVP_MD_CTX_destroy(
+		    frag->msg_header.saved_retransmit_state.write_hash);
 	}
 	if (frag->fragment)
-		OPENSSL_free(frag->fragment);
+		free(frag->fragment);
 	if (frag->reassembly)
-		OPENSSL_free(frag->reassembly);
-	OPENSSL_free(frag);
+		free(frag->reassembly);
+	free(frag);
 }
 
 /* send s->init_buf in records of type 'type' (SSL3_RT_HANDSHAKE or SSL3_RT_CHANGE_CIPHER_SPEC) */
@@ -235,7 +237,8 @@ dtls1_do_write(SSL *s, int type)
 	unsigned int len, frag_off, mac_size, blocksize;
 
 	/* AHA!  Figure out the MTU, and stick to the right size */
-	if (s->d1->mtu < dtls1_min_mtu() && !(SSL_get_options(s) & SSL_OP_NO_QUERY_MTU)) {
+	if (s->d1->mtu < dtls1_min_mtu() &&
+	    !(SSL_get_options(s) & SSL_OP_NO_QUERY_MTU)) {
 		s->d1->mtu = BIO_ctrl(SSL_get_wbio(s),
 		    BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
 
@@ -245,10 +248,10 @@ dtls1_do_write(SSL *s, int type)
 			s->d1->mtu = 0;
 			s->d1->mtu = dtls1_guess_mtu(s->d1->mtu);
 			BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_SET_MTU,
-			s->d1->mtu, NULL);
+			    s->d1->mtu, NULL);
 		}
 	}
-#if 0 
+#if 0
 	mtu = s->d1->mtu;
 
 	fprintf(stderr, "using MTU = %d\n", mtu);
@@ -266,7 +269,8 @@ dtls1_do_write(SSL *s, int type)
 		ret = BIO_flush(SSL_get_wbio(s));
 		if (ret <= 0)
 			return ret;
-		mtu = s->d1->mtu - (DTLS1_HM_HEADER_LENGTH + DTLS1_RT_HEADER_LENGTH);
+		mtu = s->d1->mtu - (DTLS1_HM_HEADER_LENGTH +
+		    DTLS1_RT_HEADER_LENGTH);
 	}
 #endif
 
@@ -275,7 +279,7 @@ dtls1_do_write(SSL *s, int type)
 
 	if (s->init_off == 0  && type == SSL3_RT_HANDSHAKE)
 		OPENSSL_assert(s->init_num ==
-	(int)s->d1->w_msg_hdr.msg_len + DTLS1_HM_HEADER_LENGTH);
+		    (int)s->d1->w_msg_hdr.msg_len + DTLS1_HM_HEADER_LENGTH);
 
 	if (s->write_hash)
 		mac_size = EVP_MD_CTX_size(s->write_hash);
@@ -283,8 +287,8 @@ dtls1_do_write(SSL *s, int type)
 		mac_size = 0;
 
 	if (s->enc_write_ctx &&
-		(EVP_CIPHER_mode( s->enc_write_ctx->cipher) & EVP_CIPH_CBC_MODE))
-	blocksize = 2 * EVP_CIPHER_block_size(s->enc_write_ctx->cipher);
+	    (EVP_CIPHER_mode( s->enc_write_ctx->cipher) & EVP_CIPH_CBC_MODE))
+		blocksize = 2 * EVP_CIPHER_block_size(s->enc_write_ctx->cipher);
 	else
 		blocksize = 0;
 
@@ -299,7 +303,7 @@ dtls1_do_write(SSL *s, int type)
 			if (ret <= 0)
 				return ret;
 			curr_mtu = s->d1->mtu - DTLS1_RT_HEADER_LENGTH -
-			mac_size - blocksize;
+			    mac_size - blocksize;
 		}
 
 		if (s->init_num > curr_mtu)
@@ -322,9 +326,10 @@ dtls1_do_write(SSL *s, int type)
 			}
 
 			dtls1_fix_message_header(s, frag_off,
-			len - DTLS1_HM_HEADER_LENGTH);
+			    len - DTLS1_HM_HEADER_LENGTH);
 
-			dtls1_write_message_header(s, (unsigned char *)&s->init_buf->data[s->init_off]);
+			dtls1_write_message_header(s,
+			    (unsigned char *)&s->init_buf->data[s->init_off]);
 
 			OPENSSL_assert(len >= DTLS1_HM_HEADER_LENGTH);
 		}
@@ -336,7 +341,7 @@ dtls1_do_write(SSL *s, int type)
 			 * which previous packet caused the failure -- so can't
 			 * really retransmit anything.  continue as if everything
 			 * is fine and wait for an alert to handle the
-			 * retransmit 
+			 * retransmit
 			 */
 			if (BIO_ctrl(SSL_get_wbio(s),
 			    BIO_CTRL_DGRAM_MTU_EXCEEDED, 0, NULL) > 0)
@@ -350,14 +355,16 @@ dtls1_do_write(SSL *s, int type)
 			 * message got sent.  but why would this happen? */
 			OPENSSL_assert(len == (unsigned int)ret);
 
-			if (type == SSL3_RT_HANDSHAKE && ! s->d1->retransmitting) {
+			if (type == SSL3_RT_HANDSHAKE &&
+			    !s->d1->retransmitting) {
 				/* should not be done for 'Hello Request's, but in that case
 				 * we'll ignore the result anyway */
 				unsigned char *p = (unsigned char *)&s->init_buf->data[s->init_off];
 				const struct hm_header_st *msg_hdr = &s->d1->w_msg_hdr;
 				int xlen;
 
-				if (frag_off == 0 && s->version != DTLS1_BAD_VER) {
+				if (frag_off == 0 &&
+				    s->version != DTLS1_BAD_VER) {
 					/* reconstruct message header is if it
 					 * is being sent in single fragment */
 					*p++ = msg_hdr->type;
@@ -416,7 +423,8 @@ dtls1_get_message(SSL *s, int st1, int stn, int mt, long max, int *ok)
 		s->s3->tmp.reuse_message = 0;
 		if ((mt >= 0) && (s->s3->tmp.message_type != mt)) {
 			al = SSL_AD_UNEXPECTED_MESSAGE;
-			SSLerr(SSL_F_DTLS1_GET_MESSAGE, SSL_R_UNEXPECTED_MESSAGE);
+			SSLerr(SSL_F_DTLS1_GET_MESSAGE,
+			    SSL_R_UNEXPECTED_MESSAGE);
 			goto f_err;
 		}
 		*ok = 1;
@@ -472,7 +480,8 @@ f_err:
 
 
 static int
-dtls1_preprocess_fragment(SSL *s, struct hm_header_st *msg_hdr, int max) {
+dtls1_preprocess_fragment(SSL *s, struct hm_header_st *msg_hdr, int max)
+{
 	size_t frag_off, frag_len, msg_len;
 
 	msg_len = msg_hdr->msg_len;
@@ -481,12 +490,14 @@ dtls1_preprocess_fragment(SSL *s, struct hm_header_st *msg_hdr, int max) {
 
 	/* sanity checking */
 	if ((frag_off + frag_len) > msg_len) {
-		SSLerr(SSL_F_DTLS1_PREPROCESS_FRAGMENT, SSL_R_EXCESSIVE_MESSAGE_SIZE);
+		SSLerr(SSL_F_DTLS1_PREPROCESS_FRAGMENT,
+		    SSL_R_EXCESSIVE_MESSAGE_SIZE);
 		return SSL_AD_ILLEGAL_PARAMETER;
 	}
 
 	if ((frag_off + frag_len) > (unsigned long)max) {
-		SSLerr(SSL_F_DTLS1_PREPROCESS_FRAGMENT, SSL_R_EXCESSIVE_MESSAGE_SIZE);
+		SSLerr(SSL_F_DTLS1_PREPROCESS_FRAGMENT,
+		    SSL_R_EXCESSIVE_MESSAGE_SIZE);
 		return SSL_AD_ILLEGAL_PARAMETER;
 	}
 
@@ -494,7 +505,8 @@ dtls1_preprocess_fragment(SSL *s, struct hm_header_st *msg_hdr, int max) {
 	{
 		/* msg_len is limited to 2^24, but is effectively checked
 		 * against max above */
-		if (!BUF_MEM_grow_clean(s->init_buf, msg_len + DTLS1_HM_HEADER_LENGTH)) {
+		if (!BUF_MEM_grow_clean(s->init_buf,
+		    msg_len + DTLS1_HM_HEADER_LENGTH)) {
 			SSLerr(SSL_F_DTLS1_PREPROCESS_FRAGMENT, ERR_R_BUF_LIB);
 			return SSL_AD_INTERNAL_ERROR;
 		}
@@ -507,13 +519,13 @@ dtls1_preprocess_fragment(SSL *s, struct hm_header_st *msg_hdr, int max) {
 	} else if (msg_len != s->d1->r_msg_hdr.msg_len) {
 		/* They must be playing with us! BTW, failure to enforce
 		 * upper limit would open possibility for buffer overrun. */
-		SSLerr(SSL_F_DTLS1_PREPROCESS_FRAGMENT, SSL_R_EXCESSIVE_MESSAGE_SIZE);
+		SSLerr(SSL_F_DTLS1_PREPROCESS_FRAGMENT,
+		    SSL_R_EXCESSIVE_MESSAGE_SIZE);
 		return SSL_AD_ILLEGAL_PARAMETER;
 	}
 
 	return 0; /* no error */
 }
-
 
 static int
 dtls1_retrieve_buffered_fragment(SSL *s, long max, int *ok)
@@ -548,7 +560,7 @@ dtls1_retrieve_buffered_fragment(SSL *s, long max, int *ok)
 		{
 			unsigned char *p = (unsigned char *)s->init_buf->data + DTLS1_HM_HEADER_LENGTH;
 			memcpy(&p[frag->msg_header.frag_off],
-			frag->fragment, frag->msg_header.frag_len);
+			    frag->fragment, frag->msg_header.frag_len);
 		}
 
 		dtls1_hm_fragment_free(frag);
@@ -569,7 +581,8 @@ dtls1_retrieve_buffered_fragment(SSL *s, long max, int *ok)
 
 
 static int
-dtls1_reassemble_fragment(SSL *s, struct hm_header_st* msg_hdr, int *ok) {
+dtls1_reassemble_fragment(SSL *s, struct hm_header_st* msg_hdr, int *ok)
+{
 	hm_fragment *frag = NULL;
 	pitem *item = NULL;
 	int i = -1, is_complete;
@@ -582,7 +595,8 @@ dtls1_reassemble_fragment(SSL *s, struct hm_header_st* msg_hdr, int *ok) {
 	/* Determine maximum allowed message size. Depends on (user set)
 	 * maximum certificate length, but 16k is minimum.
 	 */
-	if (DTLS1_HM_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH < s->max_cert_list)
+	if (DTLS1_HM_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH <
+	    s->max_cert_list)
 		max_len = s->max_cert_list;
 	else
 		max_len = DTLS1_HM_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH;
@@ -615,7 +629,7 @@ dtls1_reassemble_fragment(SSL *s, struct hm_header_st* msg_hdr, int *ok) {
 		while (frag_len) {
 			i = s->method->ssl_read_bytes(s, SSL3_RT_HANDSHAKE,
 			    devnull, frag_len > sizeof(devnull) ?
-			        sizeof(devnull) : frag_len, 0);
+			    sizeof(devnull) : frag_len, 0);
 			if (i <= 0)
 				goto err;
 			frag_len -= i;
@@ -625,18 +639,18 @@ dtls1_reassemble_fragment(SSL *s, struct hm_header_st* msg_hdr, int *ok) {
 
 	/* read the body of the fragment (header has already been read */
 	i = s->method->ssl_read_bytes(s, SSL3_RT_HANDSHAKE,
-	frag->fragment + msg_hdr->frag_off, frag_len, 0);
+	    frag->fragment + msg_hdr->frag_off, frag_len, 0);
 	if (i <= 0 || (unsigned long)i != frag_len)
 		goto err;
 
 	RSMBLY_BITMASK_MARK(frag->reassembly, (long)msg_hdr->frag_off,
-	(long)(msg_hdr->frag_off + frag_len));
+	    (long)(msg_hdr->frag_off + frag_len));
 
 	RSMBLY_BITMASK_IS_COMPLETE(frag->reassembly, (long)msg_hdr->msg_len,
-	is_complete);
+	    is_complete);
 
 	if (is_complete) {
-		OPENSSL_free(frag->reassembly);
+		free(frag->reassembly);
 		frag->reassembly = NULL;
 	}
 
@@ -647,8 +661,8 @@ dtls1_reassemble_fragment(SSL *s, struct hm_header_st* msg_hdr, int *ok) {
 
 		item = pitem_new(seq64be, frag);
 		if (item == NULL) {
-			goto err;
 			i = -1;
+			goto err;
 		}
 
 		pqueue_insert(s->d1->buffered_messages, item);
@@ -660,14 +674,15 @@ err:
 	if (frag != NULL)
 		dtls1_hm_fragment_free(frag);
 	if (item != NULL)
-		OPENSSL_free(item);
+		free(item);
 	*ok = 0;
 	return i;
 }
 
 
 static int
-dtls1_process_out_of_seq_message(SSL *s, struct hm_header_st* msg_hdr, int *ok) {
+dtls1_process_out_of_seq_message(SSL *s, struct hm_header_st* msg_hdr, int *ok)
+{
 	int i = -1;
 	hm_fragment *frag = NULL;
 	pitem *item = NULL;
@@ -696,13 +711,14 @@ dtls1_process_out_of_seq_message(SSL *s, struct hm_header_st* msg_hdr, int *ok) 
 	 */
 	if (msg_hdr->seq <= s->d1->handshake_read_seq ||
 	    msg_hdr->seq > s->d1->handshake_read_seq + 10 || item != NULL ||
-	    (s->d1->handshake_read_seq == 0 && msg_hdr->type == SSL3_MT_FINISHED)) {
+	    (s->d1->handshake_read_seq == 0 &&
+	    msg_hdr->type == SSL3_MT_FINISHED)) {
 		unsigned char devnull [256];
 
 		while (frag_len) {
 			i = s->method->ssl_read_bytes(s, SSL3_RT_HANDSHAKE,
 			    devnull, frag_len > sizeof(devnull) ?
-			        sizeof(devnull) : frag_len, 0);
+			    sizeof(devnull) : frag_len, 0);
 			if (i <= 0)
 				goto err;
 			frag_len -= i;
@@ -742,7 +758,7 @@ err:
 	if (frag != NULL)
 		dtls1_hm_fragment_free(frag);
 	if (item != NULL)
-		OPENSSL_free(item);
+		free(item);
 	*ok = 0;
 	return i;
 }
@@ -765,7 +781,7 @@ dtls1_get_message_fragment(SSL *s, int st1, int stn, long max, int *ok)
 
 	/* read handshake message header */
 	i = s->method->ssl_read_bytes(s, SSL3_RT_HANDSHAKE, wire,
-	DTLS1_HM_HEADER_LENGTH, 0);
+	    DTLS1_HM_HEADER_LENGTH, 0);
 	if (i <= 0) 	/* nbio, or an error */
 	{
 		s->rwstate = SSL_READING;
@@ -775,20 +791,22 @@ dtls1_get_message_fragment(SSL *s, int st1, int stn, long max, int *ok)
 	/* Handshake fails if message header is incomplete */
 	if (i != DTLS1_HM_HEADER_LENGTH) {
 		al = SSL_AD_UNEXPECTED_MESSAGE;
-		SSLerr(SSL_F_DTLS1_GET_MESSAGE_FRAGMENT, SSL_R_UNEXPECTED_MESSAGE);
+		SSLerr(SSL_F_DTLS1_GET_MESSAGE_FRAGMENT,
+		    SSL_R_UNEXPECTED_MESSAGE);
 		goto f_err;
 	}
 
 	/* parse the message fragment header */
 	dtls1_get_message_header(wire, &msg_hdr);
 
-	/* 
+	/*
 	 * if this is a future (or stale) message it gets buffered
 	 * (or dropped)--no further processing at this time
 	 * While listening, we accept seq 1 (ClientHello with cookie)
 	 * although we're still expecting seq 0 (ClientHello)
 	 */
-	if (msg_hdr.seq != s->d1->handshake_read_seq && !(s->d1->listen && msg_hdr.seq == 1))
+	if (msg_hdr.seq != s->d1->handshake_read_seq &&
+	    !(s->d1->listen && msg_hdr.seq == 1))
 		return dtls1_process_out_of_seq_message(s, &msg_hdr, ok);
 
 	len = msg_hdr.msg_len;
@@ -817,7 +835,8 @@ dtls1_get_message_fragment(SSL *s, int st1, int stn, long max, int *ok)
 		else /* Incorrectly formated Hello request */
 		{
 			al = SSL_AD_UNEXPECTED_MESSAGE;
-			SSLerr(SSL_F_DTLS1_GET_MESSAGE_FRAGMENT, SSL_R_UNEXPECTED_MESSAGE);
+			SSLerr(SSL_F_DTLS1_GET_MESSAGE_FRAGMENT,
+			    SSL_R_UNEXPECTED_MESSAGE);
 			goto f_err;
 		}
 	}
@@ -842,11 +861,12 @@ dtls1_get_message_fragment(SSL *s, int st1, int stn, long max, int *ok)
 	} else
 		i = 0;
 
-	/* XDTLS:  an incorrectly formatted fragment should cause the 
+	/* XDTLS:  an incorrectly formatted fragment should cause the
 	 * handshake to fail */
 	if (i != (int)frag_len) {
 		al = SSL3_AD_ILLEGAL_PARAMETER;
-		SSLerr(SSL_F_DTLS1_GET_MESSAGE_FRAGMENT, SSL3_AD_ILLEGAL_PARAMETER);
+		SSLerr(SSL_F_DTLS1_GET_MESSAGE_FRAGMENT,
+		    SSL3_AD_ILLEGAL_PARAMETER);
 		goto f_err;
 	}
 
@@ -878,8 +898,8 @@ dtls1_send_finished(SSL *s, int a, int b, const char *sender, int slen)
 		d = (unsigned char *)s->init_buf->data;
 		p = &(d[DTLS1_HM_HEADER_LENGTH]);
 
-		i = s->method->ssl3_enc->final_finish_mac(s,
-		    sender, slen, s->s3->tmp.finish_md);
+		i = s->method->ssl3_enc->final_finish_mac(s, sender, slen,
+		    s->s3->tmp.finish_md);
 		s->s3->tmp.finish_md_len = i;
 		memcpy(p, s->s3->tmp.finish_md, i);
 		p += i;
@@ -891,12 +911,12 @@ dtls1_send_finished(SSL *s, int a, int b, const char *sender, int slen)
 		if (s->type == SSL_ST_CONNECT) {
 			OPENSSL_assert(i <= EVP_MAX_MD_SIZE);
 			memcpy(s->s3->previous_client_finished,
-			s->s3->tmp.finish_md, i);
+			    s->s3->tmp.finish_md, i);
 			s->s3->previous_client_finished_len = i;
 		} else {
 			OPENSSL_assert(i <= EVP_MAX_MD_SIZE);
 			memcpy(s->s3->previous_server_finished,
-			s->s3->tmp.finish_md, i);
+			    s->s3->tmp.finish_md, i);
 			s->s3->previous_server_finished_len = i;
 		}
 
@@ -942,7 +962,7 @@ dtls1_send_change_cipher_spec(SSL *s, int a, int b)
 		s->init_off = 0;
 
 		dtls1_set_message_header_int(s, SSL3_MT_CCS, 0,
-		s->d1->handshake_write_seq, 0, 0);
+		    s->d1->handshake_write_seq, 0, 0);
 
 		/* buffer the message to handle re-xmits */
 		dtls1_buffer_message(s, 1);
@@ -961,7 +981,7 @@ dtls1_add_cert_to_buf(BUF_MEM *buf, unsigned long *l, X509 *x)
 	unsigned char *p;
 
 	n = i2d_X509(x, NULL);
-	if (!BUF_MEM_grow_clean(buf,(int)(n + (*l) + 3))) {
+	if (!BUF_MEM_grow_clean(buf, (int)(n + (*l) + 3))) {
 		SSLerr(SSL_F_DTLS1_ADD_CERT_TO_BUF, ERR_R_BUF_LIB);
 		return 0;
 	}
@@ -990,7 +1010,8 @@ dtls1_output_cert_chain(SSL *s, X509 *x)
 	if (x != NULL) {
 		X509_STORE_CTX xs_ctx;
 
-		if (!X509_STORE_CTX_init(&xs_ctx, s->ctx->cert_store, x, NULL)) {
+		if (!X509_STORE_CTX_init(&xs_ctx, s->ctx->cert_store,
+		    x, NULL)) {
 			SSLerr(SSL_F_DTLS1_OUTPUT_CERT_CHAIN, ERR_R_X509_LIB);
 			return (0);
 		}
@@ -1031,21 +1052,18 @@ int
 dtls1_read_failed(SSL *s, int code)
 {
 	if (code > 0) {
-		fprintf( stderr, "invalid state reached %s:%d", __FILE__, __LINE__);
+		fprintf(stderr, "invalid state reached %s:%d",
+		    __FILE__, __LINE__);
 		return 1;
 	}
 
 	if (!dtls1_is_timer_expired(s)) {
-		/* not a timeout, none of our business, 
+		/* not a timeout, none of our business,
 		   let higher layers handle this.  in fact it's probably an error */
 		return code;
 	}
 
-#ifndef OPENSSL_NO_HEARTBEATS
-	if (!SSL_in_init(s) && !s->tlsext_hb_pending)  /* done, no need to send a retransmit */
-#else
 	if (!SSL_in_init(s))  /* done, no need to send a retransmit */
-#endif
 	{
 		BIO_set_flags(SSL_get_rbio(s), BIO_FLAGS_READ);
 		return code;
@@ -1061,7 +1079,7 @@ dtls1_read_failed(SSL *s, int code)
 #if 0  /* no more alert sending, just retransmit the last set of messages */
 	if (state->timeout.read_timeouts >= DTLS1_TMO_READ_COUNT)
 		ssl3_send_alert(s, SSL3_AL_WARNING,
-	DTLS1_AD_MISSING_HANDSHAKE_MESSAGE);
+		    DTLS1_AD_MISSING_HANDSHAKE_MESSAGE);
 #endif
 
 	return dtls1_handle_timeout(s);
@@ -1077,7 +1095,7 @@ dtls1_get_queue_priority(unsigned short seq, int is_ccs)
 	 * the sequence number is multiplied by 2. In case of a CCS 1 is subtracted.
 	 * This does not only differ CSS and Finished, it also maintains the order of the
 	 * index (important for priority queues) and fits in the unsigned short variable.
-	 */	
+	 */
 	return seq * 2 - is_ccs;
 }
 
@@ -1092,12 +1110,13 @@ dtls1_retransmit_buffered_messages(SSL *s)
 
 	iter = pqueue_iterator(sent);
 
-	for (item = pqueue_next(&iter); item != NULL; item = pqueue_next(&iter)) {
+	for (item = pqueue_next(&iter); item != NULL;
+	    item = pqueue_next(&iter)) {
 		frag = (hm_fragment *)item->data;
 		if (dtls1_retransmit_message(s,
 		    (unsigned short)dtls1_get_queue_priority(
-		        frag->msg_header.seq, frag->msg_header.is_ccs), 0,
-		        &found) <= 0 && found) {
+		    frag->msg_header.seq, frag->msg_header.is_ccs), 0,
+		    &found) <= 0 && found) {
 			fprintf(stderr, "dtls1_retransmit_message() failed\n");
 			return -1;
 		}
@@ -1113,7 +1132,7 @@ dtls1_buffer_message(SSL *s, int is_ccs)
 	hm_fragment *frag;
 	unsigned char seq64be[8];
 
-	/* this function is called immediately after a message has 
+	/* this function is called immediately after a message has
 	 * been serialized */
 	OPENSSL_assert(s->init_off == 0);
 
@@ -1123,10 +1142,11 @@ dtls1_buffer_message(SSL *s, int is_ccs)
 
 	if (is_ccs) {
 		OPENSSL_assert(s->d1->w_msg_hdr.msg_len +
-		((s->version == DTLS1_VERSION) ? DTLS1_CCS_HEADER_LENGTH : 3) == (unsigned int)s->init_num);
+		    ((s->version == DTLS1_VERSION) ?
+		    DTLS1_CCS_HEADER_LENGTH : 3) == (unsigned int)s->init_num);
 	} else {
 		OPENSSL_assert(s->d1->w_msg_hdr.msg_len +
-		DTLS1_HM_HEADER_LENGTH == (unsigned int)s->init_num);
+		    DTLS1_HM_HEADER_LENGTH == (unsigned int)s->init_num);
 	}
 
 	frag->msg_header.msg_len = s->d1->w_msg_hdr.msg_len;
@@ -1144,10 +1164,10 @@ dtls1_buffer_message(SSL *s, int is_ccs)
 	frag->msg_header.saved_retransmit_state.epoch = s->d1->w_epoch;
 
 	memset(seq64be, 0, sizeof(seq64be));
-	seq64be[6] = (unsigned char)(dtls1_get_queue_priority(frag->msg_header.seq,
-	frag->msg_header.is_ccs) >> 8);
-	seq64be[7] = (unsigned char)(dtls1_get_queue_priority(frag->msg_header.seq,
-	frag->msg_header.is_ccs));
+	seq64be[6] = (unsigned char)(dtls1_get_queue_priority(
+	    frag->msg_header.seq, frag->msg_header.is_ccs) >> 8);
+	seq64be[7] = (unsigned char)(dtls1_get_queue_priority(
+	    frag->msg_header.seq, frag->msg_header.is_ccs));
 
 	item = pitem_new(seq64be, frag);
 	if (item == NULL) {
@@ -1204,19 +1224,18 @@ dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
 		header_length = DTLS1_HM_HEADER_LENGTH;
 
 	memcpy(s->init_buf->data, frag->fragment,
-	frag->msg_header.msg_len + header_length);
+	    frag->msg_header.msg_len + header_length);
 	s->init_num = frag->msg_header.msg_len + header_length;
 
 	dtls1_set_message_header_int(s, frag->msg_header.type,
-	frag->msg_header.msg_len, frag->msg_header.seq, 0,
-	frag->msg_header.frag_len);
+	    frag->msg_header.msg_len, frag->msg_header.seq, 0,
+	    frag->msg_header.frag_len);
 
 	/* save current state */
 	saved_state.enc_write_ctx = s->enc_write_ctx;
 	saved_state.write_hash = s->write_hash;
 	saved_state.compress = s->compress;
 	saved_state.session = s->session;
-	saved_state.epoch = s->d1->w_epoch;
 	saved_state.epoch = s->d1->w_epoch;
 
 	s->d1->retransmitting = 1;
@@ -1228,13 +1247,16 @@ dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
 	s->session = frag->msg_header.saved_retransmit_state.session;
 	s->d1->w_epoch = frag->msg_header.saved_retransmit_state.epoch;
 
-	if (frag->msg_header.saved_retransmit_state.epoch == saved_state.epoch - 1) {
-		memcpy(save_write_sequence, s->s3->write_sequence, sizeof(s->s3->write_sequence));
-		memcpy(s->s3->write_sequence, s->d1->last_write_sequence, sizeof(s->s3->write_sequence));
+	if (frag->msg_header.saved_retransmit_state.epoch ==
+	    saved_state.epoch - 1) {
+		memcpy(save_write_sequence, s->s3->write_sequence,
+		    sizeof(s->s3->write_sequence));
+		memcpy(s->s3->write_sequence, s->d1->last_write_sequence,
+		    sizeof(s->s3->write_sequence));
 	}
 
 	ret = dtls1_do_write(s, frag->msg_header.is_ccs ?
-	SSL3_RT_CHANGE_CIPHER_SPEC : SSL3_RT_HANDSHAKE);
+	    SSL3_RT_CHANGE_CIPHER_SPEC : SSL3_RT_HANDSHAKE);
 
 	/* restore current state */
 	s->enc_write_ctx = saved_state.enc_write_ctx;
@@ -1243,9 +1265,12 @@ dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
 	s->session = saved_state.session;
 	s->d1->w_epoch = saved_state.epoch;
 
-	if (frag->msg_header.saved_retransmit_state.epoch == saved_state.epoch - 1) {
-		memcpy(s->d1->last_write_sequence, s->s3->write_sequence, sizeof(s->s3->write_sequence));
-		memcpy(s->s3->write_sequence, save_write_sequence, sizeof(s->s3->write_sequence));
+	if (frag->msg_header.saved_retransmit_state.epoch ==
+	    saved_state.epoch - 1) {
+		memcpy(s->d1->last_write_sequence, s->s3->write_sequence,
+		    sizeof(s->s3->write_sequence));
+		memcpy(s->s3->write_sequence, save_write_sequence,
+		    sizeof(s->s3->write_sequence));
 	}
 
 	s->d1->retransmitting = 0;
@@ -1267,7 +1292,6 @@ dtls1_clear_record_buffer(SSL *s)
 	}
 }
 
-
 unsigned char *
 dtls1_set_message_header(SSL *s, unsigned char *p, unsigned char mt,
     unsigned long len, unsigned long frag_off, unsigned long frag_len)
@@ -1279,17 +1303,15 @@ dtls1_set_message_header(SSL *s, unsigned char *p, unsigned char mt,
 	}
 
 	dtls1_set_message_header_int(s, mt, len, s->d1->handshake_write_seq,
-	frag_off, frag_len);
+	    frag_off, frag_len);
 
 	return p += DTLS1_HM_HEADER_LENGTH;
 }
 
-
 /* don't actually do the writing, wait till the MTU has been retrieved */
 static void
-dtls1_set_message_header_int(SSL *s, unsigned char mt,
-    unsigned long len, unsigned short seq_num, unsigned long frag_off,
-unsigned long frag_len)
+dtls1_set_message_header_int(SSL *s, unsigned char mt, unsigned long len,
+    unsigned short seq_num, unsigned long frag_off, unsigned long frag_len)
 {
 	struct hm_header_st *msg_hdr = &s->d1->w_msg_hdr;
 
@@ -1301,8 +1323,7 @@ unsigned long frag_len)
 }
 
 static void
-dtls1_fix_message_header(SSL *s, unsigned long frag_off,
-    unsigned long frag_len)
+dtls1_fix_message_header(SSL *s, unsigned long frag_off, unsigned long frag_len)
 {
 	struct hm_header_st *msg_hdr = &s->d1->w_msg_hdr;
 
@@ -1329,7 +1350,7 @@ unsigned int
 dtls1_min_mtu(void)
 {
 	return (g_probable_mtu[(sizeof(g_probable_mtu) /
-	sizeof(g_probable_mtu[0])) - 1]);
+	    sizeof(g_probable_mtu[0])) - 1]);
 }
 
 static unsigned int
@@ -1340,7 +1361,7 @@ dtls1_guess_mtu(unsigned int curr_mtu)
 	if (curr_mtu == 0)
 		return g_probable_mtu[0];
 
-	for (i = 0; i < sizeof(g_probable_mtu)/sizeof(g_probable_mtu[0]); i++)
+	for (i = 0; i < sizeof(g_probable_mtu) / sizeof(g_probable_mtu[0]); i++)
 		if (curr_mtu > g_probable_mtu[i])
 			return g_probable_mtu[i];
 
@@ -1348,7 +1369,8 @@ dtls1_guess_mtu(unsigned int curr_mtu)
 }
 
 void
-dtls1_get_message_header(unsigned char *data, struct hm_header_st *msg_hdr) {
+dtls1_get_message_header(unsigned char *data, struct hm_header_st *msg_hdr)
+{
 	memset(msg_hdr, 0x00, sizeof(struct hm_header_st));
 	msg_hdr->type = *(data++);
 	n2l3(data, msg_hdr->msg_len);
@@ -1359,7 +1381,8 @@ dtls1_get_message_header(unsigned char *data, struct hm_header_st *msg_hdr) {
 }
 
 void
-dtls1_get_ccs_header(unsigned char *data, struct ccs_header_st *ccs_hdr) {
+dtls1_get_ccs_header(unsigned char *data, struct ccs_header_st *ccs_hdr)
+{
 	memset(ccs_hdr, 0x00, sizeof(struct ccs_header_st));
 
 	ccs_hdr->type = *(data++);
@@ -1369,6 +1392,7 @@ int
 dtls1_shutdown(SSL *s)
 {
 	int ret;
+
 #ifndef OPENSSL_NO_SCTP
 	if (BIO_dgram_is_sctp(SSL_get_wbio(s)) &&
 	    !(s->shutdown & SSL_SENT_SHUTDOWN)) {
@@ -1377,7 +1401,8 @@ dtls1_shutdown(SSL *s)
 			return -1;
 
 		if (ret == 0)
-			BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_SCTP_SAVE_SHUTDOWN, 1, NULL);
+			BIO_ctrl(SSL_get_wbio(s),
+			    BIO_CTRL_DGRAM_SCTP_SAVE_SHUTDOWN, 1, NULL);
 	}
 #endif
 	ret = ssl3_shutdown(s);
@@ -1386,152 +1411,3 @@ dtls1_shutdown(SSL *s)
 #endif
 	return ret;
 }
-
-#ifndef OPENSSL_NO_HEARTBEATS
-int
-dtls1_process_heartbeat(SSL *s)
-{
-	unsigned char *p = &s->s3->rrec.data[0], *pl;
-	unsigned short hbtype;
-	unsigned int payload;
-	unsigned int padding = 16; /* Use minimum padding */
-
-	if (s->msg_callback)
-		s->msg_callback(0, s->version, TLS1_RT_HEARTBEAT,
-		    &s->s3->rrec.data[0], s->s3->rrec.length,
-		    s, s->msg_callback_arg);
-
-	/* Read type and payload length first */
-	if (1 + 2 + 16 > s->s3->rrec.length)
-		return 0; /* silently discard */
-	hbtype = *p++;
-	n2s(p, payload);
-	if (1 + 2 + payload + 16 > s->s3->rrec.length)
-		return 0; /* silently discard per RFC 6520 sec. 4 */
-	pl = p;
-
-	if (hbtype == TLS1_HB_REQUEST) {
-		unsigned char *buffer, *bp;
-		unsigned int write_length = 1 /* heartbeat type */ +
-		    2 /* heartbeat length */ +
-		    payload + padding;
-		int r;
-
-		if (write_length > SSL3_RT_MAX_PLAIN_LENGTH)
-			return 0;
-
-		/* Allocate memory for the response, size is 1 byte
-		 * message type, plus 2 bytes payload length, plus
-		 * payload, plus padding
-		 */
-		buffer = OPENSSL_malloc(write_length);
-		bp = buffer;
-
-		/* Enter response type, length and copy payload */
-		*bp++ = TLS1_HB_RESPONSE;
-		s2n(payload, bp);
-		memcpy(bp, pl, payload);
-		bp += payload;
-		/* Random padding */
-		RAND_pseudo_bytes(bp, padding);
-
-		r = dtls1_write_bytes(s, TLS1_RT_HEARTBEAT, buffer, write_length);
-
-		if (r >= 0 && s->msg_callback)
-			s->msg_callback(1, s->version, TLS1_RT_HEARTBEAT,
-			    buffer, write_length,
-			    s, s->msg_callback_arg);
-
-		OPENSSL_free(buffer);
-
-		if (r < 0)
-			return r;
-	} else if (hbtype == TLS1_HB_RESPONSE) {
-		unsigned int seq;
-
-		/* We only send sequence numbers (2 bytes unsigned int),
-		 * and 16 random bytes, so we just try to read the
-		 * sequence number */
-		n2s(pl, seq);
-
-		if (payload == 18 && seq == s->tlsext_hb_seq) {
-			dtls1_stop_timer(s);
-			s->tlsext_hb_seq++;
-			s->tlsext_hb_pending = 0;
-		}
-	}
-
-	return 0;
-}
-
-int
-dtls1_heartbeat(SSL *s)
-{
-	unsigned char *buf, *p;
-	int ret;
-	unsigned int payload = 18; /* Sequence number + random bytes */
-	unsigned int padding = 16; /* Use minimum padding */
-
-	/* Only send if peer supports and accepts HB requests... */
-	if (!(s->tlsext_heartbeat & SSL_TLSEXT_HB_ENABLED) ||
-		s->tlsext_heartbeat & SSL_TLSEXT_HB_DONT_SEND_REQUESTS) {
-		SSLerr(SSL_F_DTLS1_HEARTBEAT, SSL_R_TLS_HEARTBEAT_PEER_DOESNT_ACCEPT);
-		return -1;
-	}
-
-	/* ...and there is none in flight yet... */
-	if (s->tlsext_hb_pending) {
-		SSLerr(SSL_F_DTLS1_HEARTBEAT, SSL_R_TLS_HEARTBEAT_PENDING);
-		return -1;
-	}
-
-	/* ...and no handshake in progress. */
-	if (SSL_in_init(s) || s->in_handshake) {
-		SSLerr(SSL_F_DTLS1_HEARTBEAT, SSL_R_UNEXPECTED_MESSAGE);
-		return -1;
-	}
-
-	/* Check if padding is too long, payload and padding
-	 * must not exceed 2^14 - 3 = 16381 bytes in total.
-	 */
-	OPENSSL_assert(payload + padding <= 16381);
-
-	/* Create HeartBeat message, we just use a sequence number
-	 * as payload to distuingish different messages and add
-	 * some random stuff.
-	 *  - Message Type, 1 byte
-	 *  - Payload Length, 2 bytes (unsigned int)
-	 *  - Payload, the sequence number (2 bytes uint)
-	 *  - Payload, random bytes (16 bytes uint)
-	 *  - Padding
-	 */
-	buf = OPENSSL_malloc(1 + 2 + payload + padding);
-	p = buf;
-	/* Message Type */
-	*p++ = TLS1_HB_REQUEST;
-	/* Payload length (18 bytes here) */
-	s2n(payload, p);
-	/* Sequence number */
-	s2n(s->tlsext_hb_seq, p);
-	/* 16 random bytes */
-	RAND_pseudo_bytes(p, 16);
-	p += 16;
-	/* Random padding */
-	RAND_pseudo_bytes(p, padding);
-
-	ret = dtls1_write_bytes(s, TLS1_RT_HEARTBEAT, buf, 3 + payload + padding);
-	if (ret >= 0) {
-		if (s->msg_callback)
-			s->msg_callback(1, s->version, TLS1_RT_HEARTBEAT,
-		buf, 3 + payload + padding,
-		s, s->msg_callback_arg);
-
-		dtls1_start_timer(s);
-		s->tlsext_hb_pending = 1;
-	}
-
-	OPENSSL_free(buf);
-
-	return ret;
-}
-#endif

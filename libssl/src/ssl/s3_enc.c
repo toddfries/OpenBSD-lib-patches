@@ -170,9 +170,6 @@ ssl3_generate_key_block(SSL *s, unsigned char *km, int num)
 	unsigned char c = 'A';
 	unsigned int i, j, k;
 
-#ifdef CHARSET_EBCDIC
-	c = os_toascii[c]; /*'A' in ASCII */
-#endif
 	k = 0;
 	EVP_MD_CTX_init(&m5);
 	EVP_MD_CTX_set_flags(&m5, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
@@ -246,11 +243,12 @@ ssl3_change_cipher_state(SSL *s, int which)
 	if (which & SSL3_CC_READ) {
 		if (s->enc_read_ctx != NULL)
 			reuse_dd = 1;
-		else if ((s->enc_read_ctx = OPENSSL_malloc(sizeof(EVP_CIPHER_CTX))) == NULL)
+		else if ((s->enc_read_ctx = malloc(sizeof(EVP_CIPHER_CTX))) == NULL)
 			goto err;
-		else
+		else {
 			/* make sure it's intialized in case we exit later with an error */
-		EVP_CIPHER_CTX_init(s->enc_read_ctx);
+			EVP_CIPHER_CTX_init(s->enc_read_ctx);
+		}
 		dd = s->enc_read_ctx;
 
 		ssl_replace_hash(&s->read_hash, m);
@@ -267,8 +265,7 @@ ssl3_change_cipher_state(SSL *s, int which)
 				goto err2;
 			}
 			if (s->s3->rrec.comp == NULL)
-				s->s3->rrec.comp = (unsigned char *)
-			OPENSSL_malloc(SSL3_RT_MAX_PLAIN_LENGTH);
+				s->s3->rrec.comp = malloc(SSL3_RT_MAX_PLAIN_LENGTH);
 			if (s->s3->rrec.comp == NULL)
 				goto err;
 		}
@@ -278,11 +275,12 @@ ssl3_change_cipher_state(SSL *s, int which)
 	} else {
 		if (s->enc_write_ctx != NULL)
 			reuse_dd = 1;
-		else if ((s->enc_write_ctx = OPENSSL_malloc(sizeof(EVP_CIPHER_CTX))) == NULL)
+		else if ((s->enc_write_ctx = malloc(sizeof(EVP_CIPHER_CTX))) == NULL)
 			goto err;
-		else
+		else {
 			/* make sure it's intialized in case we exit later with an error */
-		EVP_CIPHER_CTX_init(s->enc_write_ctx);
+			EVP_CIPHER_CTX_init(s->enc_write_ctx);
+		}
 		dd = s->enc_write_ctx;
 		ssl_replace_hash(&s->write_hash, m);
 #ifndef OPENSSL_NO_COMP
@@ -364,8 +362,6 @@ ssl3_change_cipher_state(SSL *s, int which)
 		}
 	}
 
-	s->session->key_arg_length = 0;
-
 	EVP_CipherInit_ex(dd, c, NULL, key, iv,(which & SSL3_CC_WRITE));
 
 	OPENSSL_cleanse(&(exp_key[0]), sizeof(exp_key));
@@ -413,7 +409,7 @@ ssl3_setup_key_block(SSL *s)
 
 	ssl3_cleanup_key_block(s);
 
-	if ((p = OPENSSL_malloc(num)) == NULL)
+	if ((p = malloc(num)) == NULL)
 		goto err;
 
 	s->s3->tmp.key_block_length = num;
@@ -451,7 +447,7 @@ ssl3_cleanup_key_block(SSL *s)
 	if (s->s3->tmp.key_block != NULL) {
 		OPENSSL_cleanse(s->s3->tmp.key_block,
 		s->s3->tmp.key_block_length);
-		OPENSSL_free(s->s3->tmp.key_block);
+		free(s->s3->tmp.key_block);
 		s->s3->tmp.key_block = NULL;
 	}
 	s->s3->tmp.key_block_length = 0;
@@ -551,7 +547,7 @@ ssl3_free_digest_list(SSL *s)
 		if (s->s3->handshake_dgst[i])
 			EVP_MD_CTX_destroy(s->s3->handshake_dgst[i]);
 	}
-	OPENSSL_free(s->s3->handshake_dgst);
+	free(s->s3->handshake_dgst);
 	s->s3->handshake_dgst = NULL;
 }
 
@@ -582,8 +578,7 @@ ssl3_digest_cached_records(SSL *s)
 
 	/* Allocate handshake_dgst array */
 	ssl3_free_digest_list(s);
-	s->s3->handshake_dgst = OPENSSL_malloc(SSL_MAX_DIGEST * sizeof(EVP_MD_CTX *));
-	memset(s->s3->handshake_dgst, 0, SSL_MAX_DIGEST *sizeof(EVP_MD_CTX *));
+	s->s3->handshake_dgst = calloc(SSL_MAX_DIGEST, sizeof(EVP_MD_CTX *));
 	hdatalen = BIO_get_mem_data(s->s3->handshake_buffer, &hdata);
 	if (hdatalen <= 0) {
 		SSLerr(SSL_F_SSL3_DIGEST_CACHED_RECORDS, SSL_R_BAD_HANDSHAKE_LENGTH);
@@ -594,12 +589,6 @@ ssl3_digest_cached_records(SSL *s)
 	for (i = 0; ssl_get_handshake_digest(i, &mask, &md); i++) {
 		if ((mask & ssl_get_algorithm2(s)) && md) {
 			s->s3->handshake_dgst[i] = EVP_MD_CTX_create();
-#ifdef OPENSSL_FIPS
-			if (EVP_MD_nid(md) == NID_md5) {
-				EVP_MD_CTX_set_flags(s->s3->handshake_dgst[i],
-				EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
-			}
-#endif
 			EVP_DigestInit_ex(s->s3->handshake_dgst[i], md, NULL);
 			EVP_DigestUpdate(s->s3->handshake_dgst[i], hdata, hdatalen);
 		} else {
@@ -796,15 +785,9 @@ ssl3_generate_master_secret(SSL *s, unsigned char *out, unsigned char *p,
     int len)
 {
 	static const unsigned char *salt[3] = {
-#ifndef CHARSET_EBCDIC
 		(const unsigned char *)"A",
 		(const unsigned char *)"BB",
 		(const unsigned char *)"CCC",
-#else
-		(const unsigned char *)"\x41",
-		(const unsigned char *)"\x42\x42",
-		(const unsigned char *)"\x43\x43\x43",
-#endif
 	};
 	unsigned char buf[EVP_MAX_MD_SIZE];
 	EVP_MD_CTX ctx;

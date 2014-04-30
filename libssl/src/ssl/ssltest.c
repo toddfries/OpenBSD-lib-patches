@@ -173,12 +173,8 @@
 #endif
 #include <openssl/err.h>
 #include <openssl/rand.h>
-#ifndef OPENSSL_NO_RSA
 #include <openssl/rsa.h>
-#endif
-#ifndef OPENSSL_NO_DSA
 #include <openssl/dsa.h>
-#endif
 #ifndef OPENSSL_NO_DH
 #include <openssl/dh.h>
 #endif
@@ -187,13 +183,12 @@
 #endif
 #include <openssl/bn.h>
 
-#define _XOPEN_SOURCE_EXTENDED	1 /* Or gethostname won't be declared properly
-on Compaq platforms (at least with DEC C).
-Do not try to put it earlier, or IPv6 includes
-get screwed...
-				  */
+#define _XOPEN_SOURCE_EXTENDED	1
+/* Or gethostname won't be declared properly
+   on Compaq platforms (at least with DEC C).
+   Do not try to put it earlier, or IPv6 includes
+   get screwed... */
 
-#include OPENSSL_UNISTD
 
 #  define TEST_SERVER_CERT "../apps/server.pem"
 #  define TEST_CLIENT_CERT "../apps/client.pem"
@@ -204,10 +199,8 @@ get screwed...
 #define COMP_ZLIB	1
 
 static int verify_callback(int ok, X509_STORE_CTX *ctx);
-#ifndef OPENSSL_NO_RSA
 static RSA *tmp_rsa_cb(SSL *s, int is_export, int keylength);
 static void free_tmp_rsa(void);
-#endif
 static int app_verify_callback(X509_STORE_CTX *ctx, void *arg);
 #define APP_CALLBACK_STRING "Test Callback Argument"
 struct app_verify_arg {
@@ -288,8 +281,6 @@ static int s_nbio = 0;
 #endif
 #endif
 
-static const char rnd_seed[] = "string to make the random number generator think it has entropy";
-
 int doit_biopair(SSL *s_ssl, SSL *c_ssl, long bytes, clock_t *s_time, clock_t *c_time);
 int doit(SSL *s_ssl, SSL *c_ssl, long bytes);
 static int do_test_cipherlist(void);
@@ -299,9 +290,6 @@ sv_usage(void)
 {
 	fprintf(stderr, "usage: ssltest [args ...]\n");
 	fprintf(stderr, "\n");
-#ifdef OPENSSL_FIPS
-	fprintf(stderr, "-F             - run test in FIPS mode\n");
-#endif
 	fprintf(stderr, " -server_auth  - check server certificate\n");
 	fprintf(stderr, " -client_auth  - do client authentication\n");
 	fprintf(stderr, " -proxy        - allow proxy certificates\n");
@@ -327,15 +315,8 @@ sv_usage(void)
 	fprintf(stderr, " -srpuser user  - SRP username to use\n");
 	fprintf(stderr, " -srppass arg   - password for 'user'\n");
 #endif
-#ifndef OPENSSL_NO_SSL2
-	fprintf(stderr, " -ssl2         - use SSLv2\n");
-#endif
-#ifndef OPENSSL_NO_SSL3
 	fprintf(stderr, " -ssl3         - use SSLv3\n");
-#endif
-#ifndef OPENSSL_NO_TLS1
 	fprintf(stderr, " -tls1         - use TLSv1\n");
-#endif
 	fprintf(stderr, " -CApath arg   - PEM format directory of CA's\n");
 	fprintf(stderr, " -CAfile arg   - PEM format file of CA's\n");
 	fprintf(stderr, " -cert arg     - Server certificate file\n");
@@ -372,24 +353,18 @@ print_details(SSL *c_ssl, const char *prefix)
 	if (cert != NULL) {
 		EVP_PKEY *pkey = X509_get_pubkey(cert);
 		if (pkey != NULL) {
-			if (0)
-;
-#ifndef OPENSSL_NO_RSA
-			else if (pkey->type == EVP_PKEY_RSA &&
+			if (pkey->type == EVP_PKEY_RSA &&
 			    pkey->pkey.rsa != NULL &&
 			    pkey->pkey.rsa->n != NULL) {
 				BIO_printf(bio_stdout, ", %d bit RSA",
 				BN_num_bits(pkey->pkey.rsa->n));
 			}
-#endif
-#ifndef OPENSSL_NO_DSA
 			else if (pkey->type == EVP_PKEY_DSA &&
 			    pkey->pkey.dsa != NULL &&
 			    pkey->pkey.dsa->p != NULL) {
 				BIO_printf(bio_stdout, ", %d bit DSA",
 				BN_num_bits(pkey->pkey.dsa->p));
 			}
-#endif
 			EVP_PKEY_free(pkey);
 		}
 		X509_free(cert);
@@ -526,9 +501,6 @@ main(int argc, char *argv[])
 	STACK_OF(SSL_COMP) *ssl_comp_methods = NULL;
 #endif
 	int test_cipherlist = 0;
-#ifdef OPENSSL_FIPS
-	int fips_mode = 0;
-#endif
 
 	verbose = 0;
 	debug = 0;
@@ -549,8 +521,6 @@ main(int argc, char *argv[])
 	}
 	CRYPTO_mem_ctrl(CRYPTO_MEM_CHECK_ON);
 
-	RAND_seed(rnd_seed, sizeof rnd_seed);
-
 	bio_stdout = BIO_new_fp(stdout, BIO_NOCLOSE|BIO_FP_TEXT);
 
 	argc--;
@@ -558,12 +528,8 @@ main(int argc, char *argv[])
 
 	while (argc >= 1) {
 		if (!strcmp(*argv, "-F")) {
-#ifdef OPENSSL_FIPS
-			fips_mode = 1;
-#else
 			fprintf(stderr, "not compiled with FIPS support, so exitting without running.\n");
 			exit(0);
-#endif
 		} else if (strcmp(*argv, "-server_auth") == 0)
 			server_auth = 1;
 		else if (strcmp(*argv, "-client_auth") == 0)
@@ -739,17 +705,6 @@ bad:
 		exit(1);
 	}
 
-#ifdef OPENSSL_FIPS
-	if (fips_mode) {
-		if (!FIPS_mode_set(1)) {
-			ERR_load_crypto_strings();
-			ERR_print_errors(BIO_new_fp(stderr, BIO_NOCLOSE));
-			exit(1);
-		} else
-			fprintf(stderr, "*** IN FIPS MODE ***\n");
-	}
-#endif
-
 	if (print_time) {
 		if (!bio_pair) {
 			fprintf(stderr, "Using BIO pair (-bio_pair)\n");
@@ -799,27 +754,12 @@ bad:
 	}
 #endif
 
-#if !defined(OPENSSL_NO_SSL2) && !defined(OPENSSL_NO_SSL3)
-	if (ssl2)
-		meth = SSLv2_method();
-	else if (tls1)
-		meth = TLSv1_method();
-	else if (ssl3)
-		meth = SSLv3_method();
-	else
-		meth = SSLv23_method();
-#else
-#ifdef OPENSSL_NO_SSL2
 	if (tls1)
 		meth = TLSv1_method();
 	else if (ssl3)
 		meth = SSLv3_method();
 	else
 		meth = SSLv23_method();
-#else
-	meth = SSLv2_method();
-#endif
-#endif
 
 	c_ctx = SSL_CTX_new(meth);
 	s_ctx = SSL_CTX_new(meth);
@@ -881,9 +821,7 @@ bad:
 	(void)no_ecdhe;
 #endif
 
-#ifndef OPENSSL_NO_RSA
 	SSL_CTX_set_tmp_rsa_callback(s_ctx, tmp_rsa_cb);
-#endif
 
 #ifdef TLSEXT_TYPE_opaque_prf_input
 	SSL_CTX_set_tlsext_opaque_prf_input_callback(c_ctx, opaque_prf_input_cb);
@@ -1041,9 +979,7 @@ end:
 	if (bio_stdout != NULL)
 		BIO_free(bio_stdout);
 
-#ifndef OPENSSL_NO_RSA
 	free_tmp_rsa();
-#endif
 #ifndef OPENSSL_NO_ENGINE
 	ENGINE_cleanup();
 #endif
@@ -1645,7 +1581,7 @@ doit(SSL *s_ssl, SSL *c_ssl, long count)
 	ret = 0;
 err:
 	/* We have to set the BIO's to NULL otherwise they will be
-	 * OPENSSL_free()ed twice.  Once when th s_ssl is SSL_free()ed and
+	 * free()ed twice.  Once when th s_ssl is SSL_free()ed and
 	 * again when c_ssl is SSL_free()ed.
 	 * This is a hack required because s_ssl and c_ssl are sharing the same
 	 * BIO structure and SSL_set_bio() and SSL_free() automatically
@@ -1820,8 +1756,8 @@ process_proxy_debug(int indent, const char *format, ...)
 	char my_format[256];
 	va_list args;
 
-	BIO_snprintf(my_format, sizeof(my_format), "%*.*s %s",
-	indent, indent, indentation, format);
+	(void) snprintf(my_format, sizeof(my_format), "%*.*s %s",
+	    indent, indent, indentation, format);
 
 	va_start(args, format);
 	vfprintf(stderr, my_format, args);
@@ -2131,11 +2067,10 @@ app_verify_callback(X509_STORE_CTX *ctx, void *arg)
 	return (ok);
 }
 
-#ifndef OPENSSL_NO_RSA
 static RSA *rsa_tmp = NULL;
 
-static RSA
-*tmp_rsa_cb(SSL *s, int is_export, int keylength)
+static RSA *
+tmp_rsa_cb(SSL *s, int is_export, int keylength)
 {
 	BIGNUM *bn = NULL;
 	if (rsa_tmp == NULL) {
@@ -2169,7 +2104,6 @@ free_tmp_rsa(void)
 		rsa_tmp = NULL;
 	}
 }
-#endif
 
 #ifndef OPENSSL_NO_DH
 /* These DH parameters have been generated as follows:
@@ -2178,8 +2112,8 @@ free_tmp_rsa(void)
  *    $ openssl dhparam -C -noout -dsaparam 1024
  * (The third function has been renamed to avoid name conflicts.)
  */
-static DH
-*get_dh512()
+static DH *
+get_dh512()
 {
 	static unsigned char dh512_p[] = {
 		0xCB, 0xC8, 0xE1, 0x86, 0xD0, 0x1F, 0x94, 0x17, 0xA6, 0x99, 0xF0, 0xC6,
@@ -2204,8 +2138,8 @@ static DH
 	return (dh);
 }
 
-static DH
-*get_dh1024()
+static DH *
+get_dh1024()
 {
 	static unsigned char dh1024_p[] = {
 		0xF8, 0x81, 0x89, 0x7D, 0x14, 0x24, 0xC5, 0xD1, 0xE6, 0xF7, 0xBF, 0x3A,
@@ -2235,8 +2169,8 @@ static DH
 	return (dh);
 }
 
-static DH
-*get_dh1024dsa()
+static DH *
+get_dh1024dsa()
 {
 	static unsigned char dh1024_p[] = {
 		0xC8, 0x00, 0xF7, 0x08, 0x07, 0x89, 0x4D, 0x90, 0x53, 0xF3, 0xD5, 0x00,
@@ -2311,8 +2245,8 @@ psk_client_callback(SSL *ssl, const char *hint, char *identity,
 	int ret;
 	unsigned int psk_len = 0;
 
-	ret = BIO_snprintf(identity, max_identity_len, "Client_identity");
-	if (ret < 0)
+	ret = snprintf(identity, max_identity_len, "Client_identity");
+	if (ret >= max_identity_len || ret == -1)
 		goto out_err;
 	if (debug)
 		fprintf(stderr, "client: created identity '%s' len=%d\n", identity, ret);
@@ -2346,20 +2280,6 @@ do_test_cipherlist(void)
 	const SSL_METHOD *meth;
 	const SSL_CIPHER *ci, *tci = NULL;
 
-#ifndef OPENSSL_NO_SSL2
-	fprintf(stderr, "testing SSLv2 cipher list order: ");
-	meth = SSLv2_method();
-	while ((ci = meth->get_cipher(i++)) != NULL) {
-		if (tci != NULL)
-			if (ci->id >= tci->id) {
-			fprintf(stderr, "failed %lx vs. %lx\n", ci->id, tci->id);
-			return 0;
-		}
-		tci = ci;
-	}
-	fprintf(stderr, "ok\n");
-#endif
-#ifndef OPENSSL_NO_SSL3
 	fprintf(stderr, "testing SSLv3 cipher list order: ");
 	meth = SSLv3_method();
 	tci = NULL;
@@ -2372,8 +2292,6 @@ do_test_cipherlist(void)
 		tci = ci;
 	}
 	fprintf(stderr, "ok\n");
-#endif
-#ifndef OPENSSL_NO_TLS1
 	fprintf(stderr, "testing TLSv1 cipher list order: ");
 	meth = TLSv1_method();
 	tci = NULL;
@@ -2386,7 +2304,6 @@ do_test_cipherlist(void)
 		tci = ci;
 	}
 	fprintf(stderr, "ok\n");
-#endif
 
 	return 1;
 }

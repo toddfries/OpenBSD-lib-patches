@@ -106,18 +106,16 @@ typedef struct bio_ber_struct
 	unsigned char buf[BER_BUF_SIZE];
 	} BIO_BER_CTX;
 
-static BIO_METHOD methods_ber=
-	{
-	BIO_TYPE_CIPHER,"cipher",
-	ber_write,
-	ber_read,
-	NULL, /* ber_puts, */
-	NULL, /* ber_gets, */
-	ber_ctrl,
-	ber_new,
-	ber_free,
-	ber_callback_ctrl,
-	};
+static BIO_METHOD methods_ber = {
+	.type = BIO_TYPE_CIPHER,
+	.name = "cipher",
+	.bwrite = ber_write,
+	.bread = ber_read,
+	.ctrl = ber_ctrl,
+	.create = ber_new,
+	.destroy = ber_free,
+	.callback_ctrl = ber_callback_ctrl
+};
 
 BIO_METHOD *BIO_f_ber(void)
 	{
@@ -128,7 +126,7 @@ static int ber_new(BIO *bi)
 	{
 	BIO_BER_CTX *ctx;
 
-	ctx=(BIO_BER_CTX *)OPENSSL_malloc(sizeof(BIO_BER_CTX));
+	ctx=(BIO_BER_CTX *)malloc(sizeof(BIO_BER_CTX));
 	if (ctx == NULL) return(0);
 
 	memset((char *)ctx,0,sizeof(BIO_BER_CTX));
@@ -146,7 +144,7 @@ static int ber_free(BIO *a)
 	if (a == NULL) return(0);
 	b=(BIO_BER_CTX *)a->ptr;
 	OPENSSL_cleanse(a->ptr,sizeof(BIO_BER_CTX));
-	OPENSSL_free(a->ptr);
+	free(a->ptr);
 	a->ptr=NULL;
 	a->init=0;
 	a->flags=0;
@@ -155,7 +153,6 @@ static int ber_free(BIO *a)
 
 int bio_ber_get_header(BIO *bio, BIO_BER_CTX *ctx)
 	{
-	char buf[64];
 	int i,j,n;
 	int ret;
 	unsigned char *p;
@@ -215,8 +212,7 @@ int bio_ber_get_header(BIO *bio, BIO_BER_CTX *ctx)
 	if ((ctx->tag  >= 0) && (ctx->tag != tag))
 		{
 		BIOerr(BIO_F_BIO_BER_GET_HEADER,BIO_R_TAG_MISMATCH);
-		sprintf(buf,"tag=%d, got %d",ctx->tag,tag);
-		ERR_add_error_data(1,buf);
+		ERR_asprintf_error_data("tag=%d, got %d", ctx->tag, tag);
 		return(-1);
 		}
 	if (ret & 0x01)

@@ -34,18 +34,6 @@ OPENSSL_cpuid_setup
 	nop
 	.PROCEND
 
-	.EXPORT	OPENSSL_rdtsc,ENTRY
-	.ALIGN	8
-OPENSSL_rdtsc
-	.PROC
-	.CALLINFO	NO_CALLS
-	.ENTRY
-	mfctl	%cr16,$rv
-	bv	($rp)
-	.EXIT
-	nop
-	.PROCEND
-
 	.EXPORT	OPENSSL_wipe_cpu,ENTRY
 	.ALIGN	8
 OPENSSL_wipe_cpu
@@ -86,50 +74,6 @@ OPENSSL_wipe_cpu
 	ldo		0($sp),$rv
 	.PROCEND
 ___
-{
-my $inp="%r26";
-my $len="%r25";
-
-$code.=<<___;
-	.EXPORT	OPENSSL_cleanse,ENTRY,ARGW0=GR,ARGW1=GR
-	.ALIGN	8
-OPENSSL_cleanse
-	.PROC
-	.CALLINFO	NO_CALLS
-	.ENTRY
-	cmpib,*=	0,$len,L\$done
-	nop
-	cmpib,*>>=	15,$len,L\$ittle
-	ldi		$SIZE_T-1,%r1
-
-L\$align
-	and,*<>		$inp,%r1,%r28
-	b,n		L\$aligned
-	stb		%r0,0($inp)
-	ldo		-1($len),$len
-	b		L\$align
-	ldo		1($inp),$inp
-
-L\$aligned
-	andcm		$len,%r1,%r28
-L\$ot
-	$ST		%r0,0($inp)
-	addib,*<>	-$SIZE_T,%r28,L\$ot
-	ldo		$SIZE_T($inp),$inp
-
-	and,*<>		$len,%r1,$len
-	b,n		L\$done
-L\$ittle
-	stb		%r0,0($inp)
-	addib,*<>	-1,$len,L\$ittle
-	ldo		1($inp),$inp
-L\$done
-	bv		($rp)
-	.EXIT
-	nop
-	.PROCEND
-___
-}
 {
 my ($out,$cnt,$max)=("%r26","%r25","%r24");
 my ($tick,$lasttick)=("%r23","%r22");

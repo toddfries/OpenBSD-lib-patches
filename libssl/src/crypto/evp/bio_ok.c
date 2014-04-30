@@ -120,6 +120,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <assert.h>
+#include <machine/endian.h>
 #include "cryptlib.h"
 #include <openssl/buffer.h>
 #include <openssl/bio.h>
@@ -156,18 +157,16 @@ typedef struct ok_struct
 	unsigned char buf[IOBS];
 	} BIO_OK_CTX;
 
-static BIO_METHOD methods_ok=
-	{
-	BIO_TYPE_CIPHER,"reliable",
-	ok_write,
-	ok_read,
-	NULL, /* ok_puts, */
-	NULL, /* ok_gets, */
-	ok_ctrl,
-	ok_new,
-	ok_free,
-	ok_callback_ctrl,
-	};
+static BIO_METHOD methods_ok = {
+	.type = BIO_TYPE_CIPHER,
+	.name = "reliable",
+	.bwrite = ok_write,
+	.bread = ok_read,
+	.ctrl = ok_ctrl,
+	.create = ok_new,
+	.destroy = ok_free,
+	.callback_ctrl = ok_callback_ctrl
+};
 
 BIO_METHOD *BIO_f_reliable(void)
 	{
@@ -178,7 +177,7 @@ static int ok_new(BIO *bi)
 	{
 	BIO_OK_CTX *ctx;
 
-	ctx=(BIO_OK_CTX *)OPENSSL_malloc(sizeof(BIO_OK_CTX));
+	ctx=(BIO_OK_CTX *)malloc(sizeof(BIO_OK_CTX));
 	if (ctx == NULL) return(0);
 
 	ctx->buf_len=0;
@@ -203,7 +202,7 @@ static int ok_free(BIO *a)
 	if (a == NULL) return(0);
 	EVP_MD_CTX_cleanup(&((BIO_OK_CTX *)a->ptr)->md);
 	OPENSSL_cleanse(a->ptr,sizeof(BIO_OK_CTX));
-	OPENSSL_free(a->ptr);
+	free(a->ptr);
 	a->ptr=NULL;
 	a->init=0;
 	a->flags=0;
@@ -463,9 +462,8 @@ static long ok_callback_ctrl(BIO *b, int cmd, bio_info_cb *fp)
 	}
 
 static void longswap(void *_ptr, size_t len)
-{	const union { long one; char little; } is_endian = {1};
-
-	if (is_endian.little) {
+{
+	if (_BYTE_ORDER == _LITTLE_ENDIAN) {
 		size_t i;
 		unsigned char *p=_ptr,c;
 
