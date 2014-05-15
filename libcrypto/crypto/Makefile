@@ -1,4 +1,4 @@
-# $OpenBSD: Makefile,v 1.28 2014/04/27 16:19:04 jsing Exp $
+# $OpenBSD: Makefile,v 1.35 2014/05/15 15:09:01 jsing Exp $
 
 LIB=	crypto
 
@@ -76,6 +76,9 @@ SRCS+= buffer.c buf_err.c buf_str.c
 # cast/
 SRCS+= c_skey.c c_ecb.c c_enc.c c_cfb64.c c_ofb64.c
 
+# chacha/
+SRCS+= chacha.c
+
 # cmac/
 SRCS+= cmac.c cm_ameth.c cm_pmeth.c
 
@@ -149,6 +152,7 @@ SRCS+= c_all.c c_allc.c c_alld.c evp_lib.c bio_ok.c
 SRCS+= evp_pkey.c evp_pbe.c p5_crpt.c p5_crpt2.c
 SRCS+= e_old.c pmeth_lib.c pmeth_fn.c pmeth_gn.c m_sigver.c
 SRCS+= e_aes_cbc_hmac_sha1.c e_rc4_hmac_md5.c
+SRCS+= e_chacha.c evp_aead.c e_chacha20poly1305.c
 
 # hmac/
 SRCS+= hmac.c hm_ameth.c hm_pmeth.c
@@ -194,8 +198,8 @@ SRCS+= p12_utl.c p12_npas.c pk12err.c p12_p8d.c p12_p8e.c
 SRCS+= pk7_asn1.c pk7_lib.c pkcs7err.c pk7_doit.c pk7_smime.c pk7_attr.c
 SRCS+= pk7_mime.c bio_pk7.c
 
-# pqueue/
-SRCS+= pqueue.c
+# poly1305/
+SRCS+= poly1305.c
 
 # rand/
 SRCS+= randfile.c rand_lib.c rand_err.c
@@ -271,6 +275,7 @@ SRCS+= v3_asid.c v3_addr.c
 	${LCRYPTO_SRC}/buffer \
 	${LCRYPTO_SRC}/camellia \
 	${LCRYPTO_SRC}/cast \
+	${LCRYPTO_SRC}/chacha \
 	${LCRYPTO_SRC}/cmac \
 	${LCRYPTO_SRC}/cms \
 	${LCRYPTO_SRC}/comp \
@@ -299,7 +304,7 @@ SRCS+= v3_asid.c v3_addr.c
 	${LCRYPTO_SRC}/perlasm \
 	${LCRYPTO_SRC}/pkcs12 \
 	${LCRYPTO_SRC}/pkcs7 \
-	${LCRYPTO_SRC}/pqueue \
+	${LCRYPTO_SRC}/poly1305 \
 	${LCRYPTO_SRC}/rand \
 	${LCRYPTO_SRC}/rc2 \
 	${LCRYPTO_SRC}/rc4 \
@@ -329,6 +334,7 @@ HDRS=\
 	crypto/buffer/buffer.h \
 	crypto/camellia/camellia.h \
 	crypto/cast/cast.h \
+	crypto/chacha/chacha.h \
 	crypto/cmac/cmac.h \
 	crypto/cms/cms.h \
 	crypto/comp/comp.h \
@@ -361,7 +367,7 @@ HDRS=\
 	crypto/pem/pem2.h \
 	crypto/pkcs12/pkcs12.h \
 	crypto/pkcs7/pkcs7.h \
-	crypto/pqueue/pqueue.h \
+	crypto/poly1305/poly1305.h \
 	crypto/rand/rand.h \
 	crypto/rc2/rc2.h \
 	crypto/rc4/rc4.h \
@@ -421,9 +427,7 @@ obj_dat.h: obj_mac.h
 
 .if exists (${.CURDIR}/arch/${MACHINE_CPU}/Makefile.inc)
 .include "${.CURDIR}/arch/${MACHINE_CPU}/Makefile.inc"
-.endif
-
-.if !defined(SSLASM)
+.else
 CFLAGS+=-DOPENSSL_NO_ASM
 SRCS+= aes_core.c aes_cbc.c 
 SRCS+= bf_enc.c

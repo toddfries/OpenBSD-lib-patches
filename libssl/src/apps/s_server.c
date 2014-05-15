@@ -146,6 +146,8 @@
 #undef OPENSSL_NO_DEPRECATED
 #endif
 
+#include <sys/ioctl.h>
+
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -172,9 +174,6 @@
 #endif
 #ifndef OPENSSL_NO_RSA
 #include <openssl/rsa.h>
-#endif
-#ifndef OPENSSL_NO_SRP
-#include <openssl/srp.h>
 #endif
 #include "s_apps.h"
 #include "timeouts.h"
@@ -230,7 +229,6 @@ get_dh512(void)
 
 /* static int load_CA(SSL_CTX *ctx, char *file);*/
 
-#undef BUFSIZZ
 #define BUFSIZZ	16*1024
 static int bufsize = BUFSIZZ;
 static int accept_socket = -1;
@@ -250,9 +248,7 @@ static const char *s_cert_file = TEST_CERT, *s_key_file = NULL;
 static const char *s_cert_file2 = TEST_CERT2, *s_key_file2 = NULL;
 #endif
 static char *s_dcert_file = NULL, *s_dkey_file = NULL;
-#ifdef FIONBIO
 static int s_nbio = 0;
-#endif
 static int s_nbio_test = 0;
 int s_crlf = 0;
 static SSL_CTX *ctx = NULL;
@@ -350,47 +346,6 @@ out_err:
 }
 #endif
 
-#ifndef OPENSSL_NO_SRP
-/* This is a context that we pass to callbacks */
-typedef struct srpsrvparm_st {
-	char *login;
-	SRP_VBASE *vb;
-	SRP_user_pwd *user;
-} srpsrvparm;
-
-/* This callback pretends to require some asynchronous logic in order to obtain
-   a verifier. When the callback is called for a new connection we return
-   with a negative value. This will provoke the accept etc to return with
-   an LOOKUP_X509. The main logic of the reinvokes the suspended call
-   (which would normally occur after a worker has finished) and we
-   set the user parameters.
-*/
-static int 
-ssl_srp_server_param_cb(SSL * s, int *ad, void *arg)
-{
-	srpsrvparm *p = (srpsrvparm *) arg;
-	if (p->login == NULL && p->user == NULL) {
-		p->login = SSL_get_srp_username(s);
-		BIO_printf(bio_err, "SRP username = \"%s\"\n", p->login);
-		return (-1);
-	}
-	if (p->user == NULL) {
-		BIO_printf(bio_err, "User %s doesn't exist\n", p->login);
-		return SSL3_AL_FATAL;
-	}
-	if (SSL_set_srp_server_param(s, p->user->N, p->user->g, p->user->s, p->user->v,
-		p->user->info) < 0) {
-		*ad = SSL_AD_INTERNAL_ERROR;
-		return SSL3_AL_FATAL;
-	}
-	BIO_printf(bio_err, "SRP parameters set: username = \"%s\" info=\"%s\" \n", p->login, p->user->info);
-	/* need to check whether there are memory leaks */
-	p->user = NULL;
-	p->login = NULL;
-	return SSL_ERROR_NONE;
-}
-
-#endif
 
 static void 
 s_server_init(void)
@@ -407,9 +362,7 @@ s_server_init(void)
 	s_key_file2 = NULL;
 	ctx2 = NULL;
 #endif
-#ifdef FIONBIO
 	s_nbio = 0;
-#endif
 	s_nbio_test = 0;
 	ctx = NULL;
 	www = 0;
@@ -457,9 +410,7 @@ sv_usage(void)
 	    "                 Use \"openssl ecparam -list_curves\" for all names\n" \
 	    "                 (default is nistp256).\n");
 #endif
-#ifdef FIONBIO
 	BIO_printf(bio_err, " -nbio         - Run with non-blocking IO\n");
-#endif
 	BIO_printf(bio_err, " -nbio_test    - test with the non-blocking test bio\n");
 	BIO_printf(bio_err, " -crlf         - convert LF from terminal into CRLF\n");
 	BIO_printf(bio_err, " -debug        - Print more output\n");
@@ -475,15 +426,7 @@ sv_usage(void)
 #ifndef OPENSSL_NO_PSK
 	BIO_printf(bio_err, " -psk_hint arg - PSK identity hint to use\n");
 	BIO_printf(bio_err, " -psk arg      - PSK in hex (without 0x)\n");
-#ifndef OPENSSL_NO_JPAKE
-	BIO_printf(bio_err, " -jpake arg    - JPAKE secret to use\n");
 #endif
-#endif
-#ifndef OPENSSL_NO_SRP
-	BIO_printf(bio_err, " -srpvfile file      - The verifier file for SRP\n");
-	BIO_printf(bio_err, " -srpuserseed string - A seed string for a default user salt.\n");
-#endif
-	BIO_printf(bio_err, " -ssl2         - Just talk SSLv2\n");
 	BIO_printf(bio_err, " -ssl3         - Just talk SSLv3\n");
 	BIO_printf(bio_err, " -tls1_2       - Just talk TLSv1.2\n");
 	BIO_printf(bio_err, " -tls1_1       - Just talk TLSv1.1\n");
@@ -729,12 +672,6 @@ next_proto_cb(SSL * s, const unsigned char **data, unsigned int *len, void *arg)
 
 int s_server_main(int, char **);
 
-#ifndef OPENSSL_NO_JPAKE
-static char *jpake_secret = NULL;
-#endif
-#ifndef OPENSSL_NO_SRP
-static srpsrvparm srp_callback_parm;
-#endif
 #ifndef OPENSSL_NO_SRTP
 static char *srtp_profiles = NULL;
 #endif
@@ -780,10 +717,6 @@ s_server_main(int argc, char *argv[])
 	/* by default do not send a PSK identity hint */
 	static char *psk_identity_hint = NULL;
 #endif
-#ifndef OPENSSL_NO_SRP
-	char *srpuserseed = NULL;
-	char *srp_verifier_file = NULL;
-#endif
 	meth = SSLv23_server_method();
 
 	local_argc = argc;
@@ -799,9 +732,7 @@ s_server_main(int argc, char *argv[])
 		goto end;
 
 	verify_depth = 0;
-#ifdef FIONBIO
 	s_nbio = 0;
-#endif
 	s_nbio_test = 0;
 
 	argc--;
@@ -910,15 +841,11 @@ s_server_main(int argc, char *argv[])
 				goto bad;
 			CAfile = *(++argv);
 		}
-#ifdef FIONBIO
 		else if (strcmp(*argv, "-nbio") == 0) {
 			s_nbio = 1;
 		}
-#endif
 		else if (strcmp(*argv, "-nbio_test") == 0) {
-#ifdef FIONBIO
 			s_nbio = 1;
-#endif
 			s_nbio_test = 1;
 		} else if (strcmp(*argv, "-debug") == 0) {
 			s_debug = 1;
@@ -986,19 +913,6 @@ s_server_main(int argc, char *argv[])
 				BIO_printf(bio_err, "Not a hex number '%s'\n", *argv);
 				goto bad;
 			}
-		}
-#endif
-#ifndef OPENSSL_NO_SRP
-		else if (strcmp(*argv, "-srpvfile") == 0) {
-			if (--argc < 1)
-				goto bad;
-			srp_verifier_file = *(++argv);
-			meth = TLSv1_server_method();
-		} else if (strcmp(*argv, "-srpuserseed") == 0) {
-			if (--argc < 1)
-				goto bad;
-			srpuserseed = *(++argv);
-			meth = TLSv1_server_method();
 		}
 #endif
 		else if (strcmp(*argv, "-www") == 0) {
@@ -1088,13 +1002,6 @@ s_server_main(int argc, char *argv[])
 		}
 #endif
 #endif
-#if !defined(OPENSSL_NO_JPAKE) && !defined(OPENSSL_NO_PSK)
-		else if (strcmp(*argv, "-jpake") == 0) {
-			if (--argc < 1)
-				goto bad;
-			jpake_secret = *(++argv);
-		}
-#endif
 #ifndef OPENSSL_NO_SRTP
 		else if (strcmp(*argv, "-use_srtp") == 0) {
 			if (--argc < 1)
@@ -1125,21 +1032,6 @@ bad:
 		sv_usage();
 		goto end;
 	}
-#if !defined(OPENSSL_NO_JPAKE) && !defined(OPENSSL_NO_PSK)
-	if (jpake_secret) {
-		if (psk_key) {
-			BIO_printf(bio_err,
-			    "Can't use JPAKE and PSK together\n");
-			goto end;
-		}
-		psk_identity = "JPAKE";
-		if (cipher) {
-			BIO_printf(bio_err, "JPAKE sets cipher to PSK\n");
-			goto end;
-		}
-		cipher = "PSK";
-	}
-#endif
 
 	SSL_load_error_strings();
 	OpenSSL_add_ssl_algorithms();
@@ -1493,14 +1385,9 @@ bad:
 #endif
 
 #ifndef OPENSSL_NO_PSK
-#ifdef OPENSSL_NO_JPAKE
-	if (psk_key != NULL)
-#else
-	if (psk_key != NULL || jpake_secret)
-#endif
-	{
+	if (psk_key != NULL) {
 		if (s_debug)
-			BIO_printf(bio_s_out, "PSK key given or JPAKE in use, setting server callback\n");
+			BIO_printf(bio_s_out, "PSK key given, setting server callback\n");
 		SSL_CTX_set_psk_server_callback(ctx, psk_server_cb);
 	}
 	if (!SSL_CTX_use_psk_identity_hint(ctx, psk_identity_hint)) {
@@ -1546,22 +1433,6 @@ bad:
 	}
 #endif
 
-#ifndef OPENSSL_NO_SRP
-	if (srp_verifier_file != NULL) {
-		srp_callback_parm.vb = SRP_VBASE_new(srpuserseed);
-		srp_callback_parm.user = NULL;
-		srp_callback_parm.login = NULL;
-		if ((ret = SRP_VBASE_init(srp_callback_parm.vb, srp_verifier_file)) != SRP_NO_ERROR) {
-			BIO_printf(bio_err,
-			    "Cannot initialize SRP verifier file \"%s\":ret=%d\n",
-			    srp_verifier_file, ret);
-			goto end;
-		}
-		SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, verify_callback);
-		SSL_CTX_set_srp_cb_arg(ctx, &srp_callback_parm);
-		SSL_CTX_set_srp_username_callback(ctx, ssl_srp_server_param_cb);
-	} else
-#endif
 	if (CAfile != NULL) {
 		SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(CAfile));
 #ifndef OPENSSL_NO_TLSEXT
@@ -1652,9 +1523,6 @@ sv_body(char *hostname, int s, unsigned char *context)
 	unsigned long l;
 	SSL *con = NULL;
 	BIO *sbio;
-#ifndef OPENSSL_NO_KRB5
-	KSSL_CTX *kctx;
-#endif
 	struct timeval timeout;
 	struct timeval *timeoutp;
 
@@ -1662,7 +1530,6 @@ sv_body(char *hostname, int s, unsigned char *context)
 		BIO_printf(bio_err, "out of memory\n");
 		goto err;
 	}
-#ifdef FIONBIO
 	if (s_nbio) {
 		unsigned long sl = 1;
 
@@ -1671,7 +1538,6 @@ sv_body(char *hostname, int s, unsigned char *context)
 		if (BIO_socket_ioctl(s, FIONBIO, &sl) < 0)
 			ERR_print_errors(bio_err);
 	}
-#endif
 
 	if (con == NULL) {
 		con = SSL_new(ctx);
@@ -1686,13 +1552,6 @@ sv_body(char *hostname, int s, unsigned char *context)
 			SSL_CTX_set_tlsext_status_arg(ctx, &tlscstatp);
 		}
 #endif
-#ifndef OPENSSL_NO_KRB5
-		if ((kctx = kssl_ctx_new()) != NULL) {
-			SSL_set0_kssl_ctx(con, kctx);
-			kssl_ctx_setstring(kctx, KSSL_SERVICE, KRB5SVC);
-			kssl_ctx_setstring(kctx, KSSL_KEYTAB, KRB5KEYTAB);
-		}
-#endif				/* OPENSSL_NO_KRB5 */
 		if (context)
 			SSL_set_session_id_context(con, context,
 			    strlen((char *) context));
@@ -1735,10 +1594,6 @@ sv_body(char *hostname, int s, unsigned char *context)
 		test = BIO_new(BIO_f_nbio_test());
 		sbio = BIO_push(test, sbio);
 	}
-#ifndef OPENSSL_NO_JPAKE
-	if (jpake_secret)
-		jpake_server_auth(bio_s_out, sbio, jpake_secret);
-#endif
 
 	SSL_set_bio(con, sbio, sbio);
 	SSL_set_accept_state(con);
@@ -1879,17 +1734,6 @@ sv_body(char *hostname, int s, unsigned char *context)
 				}
 #endif
 				k = SSL_write(con, &(buf[l]), (unsigned int) i);
-#ifndef OPENSSL_NO_SRP
-				while (SSL_get_error(con, k) == SSL_ERROR_WANT_X509_LOOKUP) {
-					BIO_printf(bio_s_out, "LOOKUP renego during write\n");
-					srp_callback_parm.user = SRP_VBASE_get_by_user(srp_callback_parm.vb, srp_callback_parm.login);
-					if (srp_callback_parm.user)
-						BIO_printf(bio_s_out, "LOOKUP done %s\n", srp_callback_parm.user->info);
-					else
-						BIO_printf(bio_s_out, "LOOKUP not successful\n");
-					k = SSL_write(con, &(buf[l]), (unsigned int) i);
-				}
-#endif
 				switch (SSL_get_error(con, k)) {
 				case SSL_ERROR_NONE:
 					break;
@@ -1930,17 +1774,6 @@ sv_body(char *hostname, int s, unsigned char *context)
 			} else {
 		again:
 				i = SSL_read(con, (char *) buf, bufsize);
-#ifndef OPENSSL_NO_SRP
-				while (SSL_get_error(con, i) == SSL_ERROR_WANT_X509_LOOKUP) {
-					BIO_printf(bio_s_out, "LOOKUP renego during read\n");
-					srp_callback_parm.user = SRP_VBASE_get_by_user(srp_callback_parm.vb, srp_callback_parm.login);
-					if (srp_callback_parm.user)
-						BIO_printf(bio_s_out, "LOOKUP done %s\n", srp_callback_parm.user->info);
-					else
-						BIO_printf(bio_s_out, "LOOKUP not successful\n");
-					i = SSL_read(con, (char *) buf, bufsize);
-				}
-#endif
 				switch (SSL_get_error(con, i)) {
 				case SSL_ERROR_NONE:
 					write(fileno(stdout), buf,
@@ -2004,9 +1837,6 @@ init_ssl_connection(SSL * con)
 	X509 *peer;
 	long verify_error;
 	char buf[BUFSIZ];
-#ifndef OPENSSL_NO_KRB5
-	char *client_princ;
-#endif
 #if !defined(OPENSSL_NO_TLSEXT) && !defined(OPENSSL_NO_NEXTPROTONEG)
 	const unsigned char *next_proto_neg;
 	unsigned next_proto_neg_len;
@@ -2015,17 +1845,6 @@ init_ssl_connection(SSL * con)
 
 
 	i = SSL_accept(con);
-#ifndef OPENSSL_NO_SRP
-	while (i <= 0 && SSL_get_error(con, i) == SSL_ERROR_WANT_X509_LOOKUP) {
-		BIO_printf(bio_s_out, "LOOKUP during accept %s\n", srp_callback_parm.login);
-		srp_callback_parm.user = SRP_VBASE_get_by_user(srp_callback_parm.vb, srp_callback_parm.login);
-		if (srp_callback_parm.user)
-			BIO_printf(bio_s_out, "LOOKUP done %s\n", srp_callback_parm.user->info);
-		else
-			BIO_printf(bio_s_out, "LOOKUP not successful\n");
-		i = SSL_accept(con);
-	}
-#endif
 	if (i <= 0) {
 		if (BIO_sock_should_retry(i)) {
 			BIO_printf(bio_s_out, "DELAY\n");
@@ -2081,13 +1900,6 @@ init_ssl_connection(SSL * con)
 	    TLS1_FLAGS_TLS_PADDING_BUG)
 		BIO_printf(bio_s_out,
 		    "Peer has incorrect TLSv1 block padding\n");
-#ifndef OPENSSL_NO_KRB5
-	client_princ = kssl_ctx_get0_client_princ(SSL_get0_kssl_ctx(con));
-	if (client_princ != NULL) {
-		BIO_printf(bio_s_out, "Kerberos peer principal is %s\n",
-		    client_princ);
-	}
-#endif				/* OPENSSL_NO_KRB5 */
 	BIO_printf(bio_s_out, "Secure Renegotiation IS%s supported\n",
 	    SSL_get_secure_renegotiation_support(con) ? "" : " NOT");
 	if (keymatexportlabel != NULL) {
@@ -2132,9 +1944,6 @@ err:
 	return (ret);
 }
 #endif
-#ifndef OPENSSL_NO_KRB5
-char *client_princ;
-#endif
 
 #if 0
 static int 
@@ -2167,9 +1976,6 @@ www_body(char *hostname, int s, unsigned char *context)
 	SSL *con;
 	const SSL_CIPHER *c;
 	BIO *io, *ssl_bio, *sbio;
-#ifndef OPENSSL_NO_KRB5
-	KSSL_CTX *kctx;
-#endif
 
 	buf = malloc(bufsize);
 	if (buf == NULL)
@@ -2179,7 +1985,6 @@ www_body(char *hostname, int s, unsigned char *context)
 	if ((io == NULL) || (ssl_bio == NULL))
 		goto err;
 
-#ifdef FIONBIO
 	if (s_nbio) {
 		unsigned long sl = 1;
 
@@ -2188,7 +1993,6 @@ www_body(char *hostname, int s, unsigned char *context)
 		if (BIO_socket_ioctl(s, FIONBIO, &sl) < 0)
 			ERR_print_errors(bio_err);
 	}
-#endif
 
 	/* lets make the output buffer a reasonable size */
 	if (!BIO_set_write_buffer_size(io, bufsize))
@@ -2202,12 +2006,6 @@ www_body(char *hostname, int s, unsigned char *context)
 		SSL_set_tlsext_debug_arg(con, bio_s_out);
 	}
 #endif
-#ifndef OPENSSL_NO_KRB5
-	if ((kctx = kssl_ctx_new()) != NULL) {
-		kssl_ctx_setstring(kctx, KSSL_SERVICE, KRB5SVC);
-		kssl_ctx_setstring(kctx, KSSL_KEYTAB, KRB5KEYTAB);
-	}
-#endif				/* OPENSSL_NO_KRB5 */
 	if (context)
 		SSL_set_session_id_context(con, context,
 		    strlen((char *) context));
@@ -2238,17 +2036,6 @@ www_body(char *hostname, int s, unsigned char *context)
 	for (;;) {
 		if (hack) {
 			i = SSL_accept(con);
-#ifndef OPENSSL_NO_SRP
-			while (i <= 0 && SSL_get_error(con, i) == SSL_ERROR_WANT_X509_LOOKUP) {
-				BIO_printf(bio_s_out, "LOOKUP during accept %s\n", srp_callback_parm.login);
-				srp_callback_parm.user = SRP_VBASE_get_by_user(srp_callback_parm.vb, srp_callback_parm.login);
-				if (srp_callback_parm.user)
-					BIO_printf(bio_s_out, "LOOKUP done %s\n", srp_callback_parm.user->info);
-				else
-					BIO_printf(bio_s_out, "LOOKUP not successful\n");
-				i = SSL_accept(con);
-			}
-#endif
 			switch (SSL_get_error(con, i)) {
 			case SSL_ERROR_NONE:
 				break;

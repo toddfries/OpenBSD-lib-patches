@@ -2,7 +2,8 @@
 
 =head1 NAME
 
-SSL_CTX_set_tmp_dh_callback, SSL_CTX_set_tmp_dh, SSL_set_tmp_dh_callback, SSL_set_tmp_dh - handle DH keys for ephemeral key exchange
+SSL_CTX_set_tmp_dh_callback, SSL_CTX_set_tmp_dh, SSL_set_tmp_dh_callback,
+SSL_set_tmp_dh - handle DH keys for ephemeral key exchange
 
 =head1 SYNOPSIS
 
@@ -141,7 +142,7 @@ partly left out.)
       dh_tmp = dh_512;
       break;
     case 1024:
-      if (!dh_1024) 
+      if (!dh_1024)
         dh_1024 = get_dh1024();
       dh_tmp = dh_1024;
       break;

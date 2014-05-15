@@ -136,6 +136,8 @@
  */
 
 #include <sys/types.h>
+#include <sys/ioctl.h>
+
 #include <netinet/in.h>
 #include <assert.h>
 #include <ctype.h>
@@ -157,9 +159,6 @@
 #include <openssl/rand.h>
 #include <openssl/ocsp.h>
 #include <openssl/bn.h>
-#ifndef OPENSSL_NO_SRP
-#include <openssl/srp.h>
-#endif
 #include "s_apps.h"
 #include "timeouts.h"
 
@@ -171,16 +170,13 @@
 
  /*#define TEST_CERT "client.pem" *//* no default cert. */
 
-#undef BUFSIZZ
 #define BUFSIZZ 1024*8
 
 extern int verify_depth;
 extern int verify_error;
 extern int verify_return_error;
 
-#ifdef FIONBIO
 static int c_nbio = 0;
-#endif
 static int c_Pause = 0;
 static int c_debug = 0;
 #ifndef OPENSSL_NO_TLSEXT
@@ -297,9 +293,7 @@ sc_usage(void)
 	BIO_printf(bio_err, " -msg          - Show protocol messages\n");
 	BIO_printf(bio_err, " -nbio_test    - more ssl protocol testing\n");
 	BIO_printf(bio_err, " -state        - print the 'ssl' states\n");
-#ifdef FIONBIO
 	BIO_printf(bio_err, " -nbio         - Run with non-blocking IO\n");
-#endif
 	BIO_printf(bio_err, " -crlf         - convert LF from terminal into CRLF\n");
 	BIO_printf(bio_err, " -quiet        - no s_client output\n");
 	BIO_printf(bio_err, " -ign_eof      - ignore input eof (default when -quiet)\n");
@@ -307,16 +301,6 @@ sc_usage(void)
 #ifndef OPENSSL_NO_PSK
 	BIO_printf(bio_err, " -psk_identity arg - PSK identity\n");
 	BIO_printf(bio_err, " -psk arg      - PSK in hex (without 0x)\n");
-#ifndef OPENSSL_NO_JPAKE
-	BIO_printf(bio_err, " -jpake arg    - JPAKE secret to use\n");
-#endif
-#endif
-#ifndef OPENSSL_NO_SRP
-	BIO_printf(bio_err, " -srpuser user     - SRP authentification for 'user'\n");
-	BIO_printf(bio_err, " -srppass arg      - password for 'user'\n");
-	BIO_printf(bio_err, " -srp_lateuser     - SRP username into second ClientHello message\n");
-	BIO_printf(bio_err, " -srp_moregroups   - Tolerate other than the known g N values.\n");
-	BIO_printf(bio_err, " -srp_strength int - minimal mength in bits for N (default %d).\n", SRP_MINIMAL_N);
 #endif
 	BIO_printf(bio_err, " -ssl3         - just use SSLv3\n");
 	BIO_printf(bio_err, " -tls1_2       - just use TLSv1.2\n");
@@ -377,120 +361,6 @@ ssl_servername_cb(SSL * s, int *ad, void *arg)
 	return SSL_TLSEXT_ERR_OK;
 }
 
-#ifndef OPENSSL_NO_SRP
-
-/* This is a context that we pass to all callbacks */
-typedef struct srp_arg_st {
-	char *srppassin;
-	char *srplogin;
-	int msg;		/* copy from c_msg */
-	int debug;		/* copy from c_debug */
-	int amp;		/* allow more groups */
-	int strength /* minimal size for N */ ;
-} SRP_ARG;
-
-#define SRP_NUMBER_ITERATIONS_FOR_PRIME 64
-
-static int 
-srp_Verify_N_and_g(BIGNUM * N, BIGNUM * g)
-{
-	BN_CTX *bn_ctx = BN_CTX_new();
-	BIGNUM *p = BN_new();
-	BIGNUM *r = BN_new();
-	int ret =
-	g != NULL && N != NULL && bn_ctx != NULL && BN_is_odd(N) &&
-	BN_is_prime_ex(N, SRP_NUMBER_ITERATIONS_FOR_PRIME, bn_ctx, NULL) &&
-	p != NULL && BN_rshift1(p, N) &&
-
-	/* p = (N-1)/2 */
-	BN_is_prime_ex(p, SRP_NUMBER_ITERATIONS_FOR_PRIME, bn_ctx, NULL) &&
-	r != NULL &&
-
-	/* verify g^((N-1)/2) == -1 (mod N) */
-	BN_mod_exp(r, g, p, N, bn_ctx) &&
-	BN_add_word(r, 1) &&
-	BN_cmp(r, N) == 0;
-
-	if (r)
-		BN_free(r);
-	if (p)
-		BN_free(p);
-	if (bn_ctx)
-		BN_CTX_free(bn_ctx);
-	return ret;
-}
-
-/* This callback is used here for two purposes:
-   - extended debugging
-   - making some primality tests for unknown groups
-   The callback is only called for a non default group.
-
-   An application does not need the call back at all if
-   only the stanard groups are used.  In real life situations,
-   client and server already share well known groups,
-   thus there is no need to verify them.
-   Furthermore, in case that a server actually proposes a group that
-   is not one of those defined in RFC 5054, it is more appropriate
-   to add the group to a static list and then compare since
-   primality tests are rather cpu consuming.
-*/
-
-static int 
-ssl_srp_verify_param_cb(SSL * s, void *arg)
-{
-	SRP_ARG *srp_arg = (SRP_ARG *) arg;
-	BIGNUM *N = NULL, *g = NULL;
-	if (!(N = SSL_get_srp_N(s)) || !(g = SSL_get_srp_g(s)))
-		return 0;
-	if (srp_arg->debug || srp_arg->msg || srp_arg->amp == 1) {
-		BIO_printf(bio_err, "SRP parameters:\n");
-		BIO_printf(bio_err, "\tN=");
-		BN_print(bio_err, N);
-		BIO_printf(bio_err, "\n\tg=");
-		BN_print(bio_err, g);
-		BIO_printf(bio_err, "\n");
-	}
-	if (SRP_check_known_gN_param(g, N))
-		return 1;
-
-	if (srp_arg->amp == 1) {
-		if (srp_arg->debug)
-			BIO_printf(bio_err, "SRP param N and g are not known params, going to check deeper.\n");
-
-/* The srp_moregroups is a real debugging feature.
-   Implementors should rather add the value to the known ones.
-   The minimal size has already been tested.
-*/
-		if (BN_num_bits(g) <= BN_BITS && srp_Verify_N_and_g(N, g))
-			return 1;
-	}
-	BIO_printf(bio_err, "SRP param N and g rejected.\n");
-	return 0;
-}
-
-#define PWD_STRLEN 1024
-
-static char *
-ssl_give_srp_client_pwd_cb(SSL * s, void *arg)
-{
-	SRP_ARG *srp_arg = (SRP_ARG *) arg;
-	char *pass = (char *) malloc(PWD_STRLEN + 1);
-	PW_CB_DATA cb_tmp;
-	int l;
-
-	cb_tmp.password = (char *) srp_arg->srppassin;
-	cb_tmp.prompt_info = "SRP user";
-	if ((l = password_callback(pass, PWD_STRLEN, 0, &cb_tmp)) < 0) {
-		BIO_printf(bio_err, "Can't read Password\n");
-		free(pass);
-		return NULL;
-	}
-	*(pass + l) = '\0';
-
-	return pass;
-}
-
-#endif
 #ifndef OPENSSL_NO_SRTP
 char *srtp_profiles = NULL;
 #endif
@@ -545,9 +415,6 @@ s_client_main(int argc, char **argv)
 {
 	unsigned int off = 0, clr = 0;
 	SSL *con = NULL;
-#ifndef OPENSSL_NO_KRB5
-	KSSL_CTX *kctx;
-#endif
 	int s, k, width, state = 0, af = AF_UNSPEC;
 	char *cbuf = NULL, *sbuf = NULL, *mbuf = NULL;
 	int cbuf_len, cbuf_off;
@@ -597,14 +464,6 @@ s_client_main(int argc, char **argv)
 	int peerlen = sizeof(peer);
 	int enable_timeouts = 0;
 	long socket_mtu = 0;
-#ifndef OPENSSL_NO_JPAKE
-	char *jpake_secret = NULL;
-#endif
-#ifndef OPENSSL_NO_SRP
-	char *srppass = NULL;
-	int srp_lateuser = 0;
-	SRP_ARG srp_arg = {NULL, NULL, 0, 0, 0, 1024};
-#endif
 
 	meth = SSLv23_client_method();
 
@@ -630,9 +489,7 @@ s_client_main(int argc, char **argv)
 	}
 	verify_depth = 0;
 	verify_error = X509_V_OK;
-#ifdef FIONBIO
 	c_nbio = 0;
-#endif
 
 	argc--;
 	argv++;
@@ -732,31 +589,6 @@ s_client_main(int argc, char **argv)
 			}
 		}
 #endif
-#ifndef OPENSSL_NO_SRP
-		else if (strcmp(*argv, "-srpuser") == 0) {
-			if (--argc < 1)
-				goto bad;
-			srp_arg.srplogin = *(++argv);
-			meth = TLSv1_client_method();
-		} else if (strcmp(*argv, "-srppass") == 0) {
-			if (--argc < 1)
-				goto bad;
-			srppass = *(++argv);
-			meth = TLSv1_client_method();
-		} else if (strcmp(*argv, "-srp_strength") == 0) {
-			if (--argc < 1)
-				goto bad;
-			srp_arg.strength = atoi(*(++argv));
-			BIO_printf(bio_err, "SRP minimal length for N is %d\n", srp_arg.strength);
-			meth = TLSv1_client_method();
-		} else if (strcmp(*argv, "-srp_lateuser") == 0) {
-			srp_lateuser = 1;
-			meth = TLSv1_client_method();
-		} else if (strcmp(*argv, "-srp_moregroups") == 0) {
-			srp_arg.amp = 1;
-			meth = TLSv1_client_method();
-		}
-#endif
 		else if (strcmp(*argv, "-ssl3") == 0)
 			meth = SSLv3_client_method();
 		else if (strcmp(*argv, "-tls1_2") == 0)
@@ -839,11 +671,9 @@ s_client_main(int argc, char **argv)
 				goto bad;
 			cipher = *(++argv);
 		}
-#ifdef FIONBIO
 		else if (strcmp(*argv, "-nbio") == 0) {
 			c_nbio = 1;
 		}
-#endif
 		else if (strcmp(*argv, "-starttls") == 0) {
 			if (--argc < 1)
 				goto bad;
@@ -891,13 +721,6 @@ s_client_main(int argc, char **argv)
 			/* meth=TLSv1_client_method(); */
 		}
 #endif
-#ifndef OPENSSL_NO_JPAKE
-		else if (strcmp(*argv, "-jpake") == 0) {
-			if (--argc < 1)
-				goto bad;
-			jpake_secret = *++argv;
-		}
-#endif
 #ifndef OPENSSL_NO_SRTP
 		else if (strcmp(*argv, "-use_srtp") == 0) {
 			if (--argc < 1)
@@ -928,21 +751,6 @@ bad:
 		sc_usage();
 		goto end;
 	}
-#if !defined(OPENSSL_NO_JPAKE) && !defined(OPENSSL_NO_PSK)
-	if (jpake_secret) {
-		if (psk_key) {
-			BIO_printf(bio_err,
-			    "Can't use JPAKE and PSK together\n");
-			goto end;
-		}
-		psk_identity = "JPAKE";
-		if (cipher) {
-			BIO_printf(bio_err, "JPAKE sets cipher to PSK\n");
-			goto end;
-		}
-		cipher = "PSK";
-	}
-#endif
 
 	OpenSSL_add_ssl_algorithms();
 	SSL_load_error_strings();
@@ -1004,12 +812,6 @@ bad:
 				bio_c_out = BIO_new_fp(stdout, BIO_NOCLOSE);
 		}
 	}
-#ifndef OPENSSL_NO_SRP
-	if (!app_passwd(bio_err, srppass, NULL, &srp_arg.srppassin, NULL)) {
-		BIO_printf(bio_err, "Error getting password\n");
-		goto end;
-	}
-#endif
 
 	ctx = SSL_CTX_new(meth);
 	if (ctx == NULL) {
@@ -1032,14 +834,9 @@ bad:
 #endif
 
 #ifndef OPENSSL_NO_PSK
-#ifdef OPENSSL_NO_JPAKE
-	if (psk_key != NULL)
-#else
-	if (psk_key != NULL || jpake_secret)
-#endif
-	{
+	if (psk_key != NULL) {
 		if (c_debug)
-			BIO_printf(bio_c_out, "PSK key given or JPAKE in use, setting client callback\n");
+			BIO_printf(bio_c_out, "PSK key given, setting client callback\n");
 		SSL_CTX_set_psk_client_callback(ctx, psk_client_cb);
 	}
 #endif
@@ -1098,21 +895,6 @@ bad:
 		SSL_CTX_set_tlsext_servername_callback(ctx, ssl_servername_cb);
 		SSL_CTX_set_tlsext_servername_arg(ctx, &tlsextcbp);
 	}
-#ifndef OPENSSL_NO_SRP
-	if (srp_arg.srplogin) {
-		if (!srp_lateuser && !SSL_CTX_set_srp_username(ctx, srp_arg.srplogin)) {
-			BIO_printf(bio_err, "Unable to set SRP username\n");
-			goto end;
-		}
-		srp_arg.msg = c_msg;
-		srp_arg.debug = c_debug;
-		SSL_CTX_set_srp_cb_arg(ctx, &srp_arg);
-		SSL_CTX_set_srp_client_pwd_callback(ctx, ssl_give_srp_client_pwd_cb);
-		SSL_CTX_set_srp_strength(ctx, srp_arg.strength);
-		if (c_msg || c_debug || srp_arg.amp == 0)
-			SSL_CTX_set_srp_verify_param_callback(ctx, ssl_srp_verify_param_cb);
-	}
-#endif
 #endif
 
 	con = SSL_new(ctx);
@@ -1145,12 +927,6 @@ bad:
 		}
 	}
 #endif
-#ifndef OPENSSL_NO_KRB5
-	if (con && (kctx = kssl_ctx_new()) != NULL) {
-		SSL_set0_kssl_ctx(con, kctx);
-		kssl_ctx_setstring(kctx, KSSL_SERVER, host);
-	}
-#endif				/* OPENSSL_NO_KRB5  */
 /*	SSL_set_cipher_list(con,"RC4-MD5"); */
 #if 0
 #ifdef TLSEXT_TYPE_opaque_prf_input
@@ -1168,7 +944,6 @@ re_start:
 	}
 	BIO_printf(bio_c_out, "CONNECTED(%08X)\n", s);
 
-#ifdef FIONBIO
 	if (c_nbio) {
 		unsigned long l = 1;
 		BIO_printf(bio_c_out, "turning on non blocking io\n");
@@ -1177,7 +952,6 @@ re_start:
 			goto end;
 		}
 	}
-#endif
 	if (c_Pause & 0x01)
 		SSL_set_debug(con, 1);
 
@@ -1247,10 +1021,6 @@ re_start:
 		}
 #endif
 	}
-#endif
-#ifndef OPENSSL_NO_JPAKE
-	if (jpake_secret)
-		jpake_client_auth(bio_c_out, sbio, jpake_secret);
 #endif
 
 	SSL_set_bio(con, sbio, sbio);
@@ -1390,7 +1160,8 @@ re_start:
 			tty_on = 1;
 			if (in_init) {
 				in_init = 0;
-#if 0				/* This test doesn't really work as intended
+#if 0
+				/* This test doesn't really work as intended
 				 * (needs to be fixed) */
 #ifndef OPENSSL_NO_TLSEXT
 				if (servername != NULL && !SSL_session_reused(con)) {

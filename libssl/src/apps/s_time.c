@@ -81,7 +81,6 @@
 
  /*#define TEST_CERT "client.pem" *//* no default cert. */
 
-#undef BUFSIZZ
 #define BUFSIZZ 1024*10
 
 #define MYBUFSIZ 1024*8
@@ -91,7 +90,6 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 
-#undef SECONDS
 #define SECONDS	30
 extern int verify_depth;
 extern int verify_error;
@@ -120,9 +118,7 @@ static char *s_www_path = NULL;
 static long bytes_read = 0;
 static int st_bugs = 0;
 static int perform = 0;
-#ifdef FIONBIO
 static int t_nbio = 0;
-#endif
 
 static void 
 s_time_init(void)
@@ -142,9 +138,7 @@ s_time_init(void)
 	st_bugs = 0;
 	perform = 0;
 
-#ifdef FIONBIO
 	t_nbio = 0;
-#endif
 }
 
 /***********************************************************************
@@ -166,7 +160,6 @@ s_time_usage(void)
 	printf("usage: s_time <args>\n\n");
 
 	printf("-connect host:port - host:port to connect to (default is %s)\n", SSL_CONNECT_NAME);
-#ifdef FIONBIO
 	printf("-nbio         - Run with non-blocking IO\n");
 	printf("-ssl2         - Just use SSLv2\n");
 	printf("-ssl3         - Just use SSLv3\n");
@@ -174,7 +167,6 @@ s_time_usage(void)
 	printf("-new          - Just time new connections\n");
 	printf("-reuse        - Just time connection reuse\n");
 	printf("-www page     - Retrieve 'page' from the site\n");
-#endif
 	printf(umsg, SECONDS);
 }
 
@@ -253,11 +245,9 @@ parseArgs(int argc, char **argv)
 				goto bad;
 			tm_cipher = *(++argv);
 		}
-#ifdef FIONBIO
 		else if (strcmp(*argv, "-nbio") == 0) {
 			t_nbio = 1;
 		}
-#endif
 		else if (strcmp(*argv, "-www") == 0) {
 			if (--argc < 1)
 				goto bad;
