@@ -1,4 +1,4 @@
-/* crypto/bn/bn_print.c */
+/* $OpenBSD: bn_print.c,v 1.23 2014/07/12 16:03:36 miod Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -56,10 +56,15 @@
  * [including the GNU Public Licence.]
  */
 
-#include <stdio.h>
 #include <ctype.h>
-#include "cryptlib.h"
+#include <stdio.h>
+
+#include <openssl/opensslconf.h>
+
+#include <openssl/bio.h>
 #include <openssl/buffer.h>
+#include <openssl/err.h>
+
 #include "bn_lcl.h"
 
 static const char Hex[]="0123456789ABCDEF";
@@ -72,7 +77,7 @@ BN_bn2hex(const BIGNUM *a)
 	char *buf;
 	char *p;
 
-	buf = (char *)malloc(a->top * BN_BYTES * 2 + 2);
+	buf = malloc(a->top * BN_BYTES * 2 + 2);
 	if (buf == NULL) {
 		BNerr(BN_F_BN_BN2HEX, ERR_R_MALLOC_FAILURE);
 		goto err;
@@ -116,8 +121,8 @@ BN_bn2dec(const BIGNUM *a)
 	 */
 	i = BN_num_bits(a) * 3;
 	num = (i / 10 + i / 1000 + 1) + 1;
-	bn_data = (BN_ULONG *)malloc((num / BN_DEC_NUM + 1) * sizeof(BN_ULONG));
-	buf = (char *)malloc(num + 3);
+	bn_data = reallocarray(NULL, num / BN_DEC_NUM + 1, sizeof(BN_ULONG));
+	buf = malloc(num + 3);
 	if ((buf == NULL) || (bn_data == NULL)) {
 		BNerr(BN_F_BN_BN2DEC, ERR_R_MALLOC_FAILURE);
 		goto err;
@@ -157,10 +162,8 @@ BN_bn2dec(const BIGNUM *a)
 	ok = 1;
 
 err:
-	if (bn_data != NULL)
-		free(bn_data);
-	if (t != NULL)
-		BN_free(t);
+	free(bn_data);
+	BN_free(t);
 	if (!ok && buf) {
 		free(buf);
 		buf = NULL;
@@ -328,7 +331,6 @@ BN_asc2bn(BIGNUM **bn, const char *a)
 }
 
 #ifndef OPENSSL_NO_BIO
-#ifndef OPENSSL_NO_FP_API
 int
 BN_print_fp(FILE *fp, const BIGNUM *a)
 {
@@ -342,7 +344,6 @@ BN_print_fp(FILE *fp, const BIGNUM *a)
 	BIO_free(b);
 	return (ret);
 }
-#endif
 
 int
 BN_print(BIO *bp, const BIGNUM *a)

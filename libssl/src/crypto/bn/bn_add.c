@@ -1,4 +1,4 @@
-/* crypto/bn/bn_add.c */
+/* $OpenBSD: bn_add.c,v 1.9 2014/07/11 08:44:47 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,7 +57,9 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+
+#include <openssl/err.h>
+
 #include "bn_lcl.h"
 
 /* r can == a or b */

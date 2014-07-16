@@ -1,4 +1,4 @@
-/* crypto/evp/e_old.c -*- mode:C; c-file-style: "eay" -*- */
+/* $OpenBSD: e_old.c,v 1.7 2014/07/10 22:45:57 jsing Exp $ */
 /* Written by Richard Levitte (richard@levitte.org) for the OpenSSL
  * project 2004.
  */
@@ -55,6 +55,8 @@
  * Hudson (tjh@cryptsoft.com).
  *
  */
+
+#include <openssl/opensslconf.h>
 
 #ifndef OPENSSL_NO_DEPRECATED
 

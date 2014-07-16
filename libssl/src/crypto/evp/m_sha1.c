@@ -1,4 +1,4 @@
-/* crypto/evp/m_sha1.c */
+/* $OpenBSD: m_sha1.c,v 1.17 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,17 +57,18 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+
+#include <openssl/opensslconf.h>
 
 #ifndef OPENSSL_NO_SHA
 
 #include <openssl/evp.h>
 #include <openssl/objects.h>
 #include <openssl/sha.h>
+
 #ifndef OPENSSL_NO_RSA
 #include <openssl/rsa.h>
 #endif
-
 
 static int
 init(EVP_MD_CTX *ctx)
@@ -88,18 +89,24 @@ final(EVP_MD_CTX *ctx, unsigned char *md)
 }
 
 static const EVP_MD sha1_md = {
-	NID_sha1,
-	NID_sha1WithRSAEncryption,
-	SHA_DIGEST_LENGTH,
-	EVP_MD_FLAG_PKEY_METHOD_SIGNATURE|EVP_MD_FLAG_DIGALGID_ABSENT,
-	init,
-	update,
-	final,
-	NULL,
-	NULL,
-	EVP_PKEY_RSA_method,
-	SHA_CBLOCK,
-	sizeof(EVP_MD *) + sizeof(SHA_CTX),
+	.type = NID_sha1,
+	.pkey_type = NID_sha1WithRSAEncryption,
+	.md_size = SHA_DIGEST_LENGTH,
+	.flags = EVP_MD_FLAG_PKEY_METHOD_SIGNATURE|EVP_MD_FLAG_DIGALGID_ABSENT,
+	.init = init,
+	.update = update,
+	.final = final,
+	.copy = NULL,
+	.cleanup = NULL,
+#ifndef OPENSSL_NO_RSA
+	.sign = (evp_sign_method *)RSA_sign,
+	.verify = (evp_verify_method *)RSA_verify,
+	.required_pkey_type = {
+		EVP_PKEY_RSA, EVP_PKEY_RSA2, 0, 0,
+	},
+#endif
+	.block_size = SHA_CBLOCK,
+	.ctx_size = sizeof(EVP_MD *) + sizeof(SHA_CTX),
 };
 
 const EVP_MD *
@@ -139,18 +146,24 @@ final256(EVP_MD_CTX *ctx, unsigned char *md)
 }
 
 static const EVP_MD sha224_md = {
-	NID_sha224,
-	NID_sha224WithRSAEncryption,
-	SHA224_DIGEST_LENGTH,
-	EVP_MD_FLAG_PKEY_METHOD_SIGNATURE|EVP_MD_FLAG_DIGALGID_ABSENT,
-	init224,
-	update256,
-	final256,
-	NULL,
-	NULL,
-	EVP_PKEY_RSA_method,
-	SHA256_CBLOCK,
-	sizeof(EVP_MD *) + sizeof(SHA256_CTX),
+	.type = NID_sha224,
+	.pkey_type = NID_sha224WithRSAEncryption,
+	.md_size = SHA224_DIGEST_LENGTH,
+	.flags = EVP_MD_FLAG_PKEY_METHOD_SIGNATURE|EVP_MD_FLAG_DIGALGID_ABSENT,
+	.init = init224,
+	.update = update256,
+	.final = final256,
+	.copy = NULL,
+	.cleanup = NULL,
+#ifndef OPENSSL_NO_RSA
+	.sign = (evp_sign_method *)RSA_sign,
+	.verify = (evp_verify_method *)RSA_verify,
+	.required_pkey_type = {
+		EVP_PKEY_RSA, EVP_PKEY_RSA2, 0, 0,
+	},
+#endif
+	.block_size = SHA256_CBLOCK,
+	.ctx_size = sizeof(EVP_MD *) + sizeof(SHA256_CTX),
 };
 
 const EVP_MD *
@@ -160,18 +173,24 @@ EVP_sha224(void)
 }
 
 static const EVP_MD sha256_md = {
-	NID_sha256,
-	NID_sha256WithRSAEncryption,
-	SHA256_DIGEST_LENGTH,
-	EVP_MD_FLAG_PKEY_METHOD_SIGNATURE|EVP_MD_FLAG_DIGALGID_ABSENT,
-	init256,
-	update256,
-	final256,
-	NULL,
-	NULL,
-	EVP_PKEY_RSA_method,
-	SHA256_CBLOCK,
-	sizeof(EVP_MD *) + sizeof(SHA256_CTX),
+	.type = NID_sha256,
+	.pkey_type = NID_sha256WithRSAEncryption,
+	.md_size = SHA256_DIGEST_LENGTH,
+	.flags = EVP_MD_FLAG_PKEY_METHOD_SIGNATURE|EVP_MD_FLAG_DIGALGID_ABSENT,
+	.init = init256,
+	.update = update256,
+	.final = final256,
+	.copy = NULL,
+	.cleanup = NULL,
+#ifndef OPENSSL_NO_RSA
+	.sign = (evp_sign_method *)RSA_sign,
+	.verify = (evp_verify_method *)RSA_verify,
+	.required_pkey_type = {
+		EVP_PKEY_RSA, EVP_PKEY_RSA2, 0, 0,
+	},
+#endif
+	.block_size = SHA256_CBLOCK,
+	.ctx_size = sizeof(EVP_MD *) + sizeof(SHA256_CTX),
 };
 
 const EVP_MD *
@@ -207,18 +226,24 @@ final512(EVP_MD_CTX *ctx, unsigned char *md)
 }
 
 static const EVP_MD sha384_md = {
-	NID_sha384,
-	NID_sha384WithRSAEncryption,
-	SHA384_DIGEST_LENGTH,
-	EVP_MD_FLAG_PKEY_METHOD_SIGNATURE|EVP_MD_FLAG_DIGALGID_ABSENT,
-	init384,
-	update512,
-	final512,
-	NULL,
-	NULL,
-	EVP_PKEY_RSA_method,
-	SHA512_CBLOCK,
-	sizeof(EVP_MD *) + sizeof(SHA512_CTX),
+	.type = NID_sha384,
+	.pkey_type = NID_sha384WithRSAEncryption,
+	.md_size = SHA384_DIGEST_LENGTH,
+	.flags = EVP_MD_FLAG_PKEY_METHOD_SIGNATURE|EVP_MD_FLAG_DIGALGID_ABSENT,
+	.init = init384,
+	.update = update512,
+	.final = final512,
+	.copy = NULL,
+	.cleanup = NULL,
+#ifndef OPENSSL_NO_RSA
+	.sign = (evp_sign_method *)RSA_sign,
+	.verify = (evp_verify_method *)RSA_verify,
+	.required_pkey_type = {
+		EVP_PKEY_RSA, EVP_PKEY_RSA2, 0, 0,
+	},
+#endif
+	.block_size = SHA512_CBLOCK,
+	.ctx_size = sizeof(EVP_MD *) + sizeof(SHA512_CTX),
 };
 
 const EVP_MD *
@@ -228,18 +253,24 @@ EVP_sha384(void)
 }
 
 static const EVP_MD sha512_md = {
-	NID_sha512,
-	NID_sha512WithRSAEncryption,
-	SHA512_DIGEST_LENGTH,
-	EVP_MD_FLAG_PKEY_METHOD_SIGNATURE|EVP_MD_FLAG_DIGALGID_ABSENT,
-	init512,
-	update512,
-	final512,
-	NULL,
-	NULL,
-	EVP_PKEY_RSA_method,
-	SHA512_CBLOCK,
-	sizeof(EVP_MD *) + sizeof(SHA512_CTX),
+	.type = NID_sha512,
+	.pkey_type = NID_sha512WithRSAEncryption,
+	.md_size = SHA512_DIGEST_LENGTH,
+	.flags = EVP_MD_FLAG_PKEY_METHOD_SIGNATURE|EVP_MD_FLAG_DIGALGID_ABSENT,
+	.init = init512,
+	.update = update512,
+	.final = final512,
+	.copy = NULL,
+	.cleanup = NULL,
+#ifndef OPENSSL_NO_RSA
+	.sign = (evp_sign_method *)RSA_sign,
+	.verify = (evp_verify_method *)RSA_verify,
+	.required_pkey_type = {
+		EVP_PKEY_RSA, EVP_PKEY_RSA2, 0, 0,
+	},
+#endif
+	.block_size = SHA512_CBLOCK,
+	.ctx_size = sizeof(EVP_MD *) + sizeof(SHA512_CTX),
 };
 
 const EVP_MD *

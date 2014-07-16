@@ -1,4 +1,4 @@
-/* crypto/evp/digest.c */
+/* $OpenBSD: digest.c,v 1.23 2014/07/13 11:14:02 miod Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -110,9 +110,13 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
-#include <openssl/objects.h>
+#include <string.h>
+
+#include <openssl/opensslconf.h>
+
 #include <openssl/evp.h>
+#include <openssl/objects.h>
+
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
 #endif
@@ -120,18 +124,13 @@
 void
 EVP_MD_CTX_init(EVP_MD_CTX *ctx)
 {
-	memset(ctx, '\0', sizeof *ctx);
+	memset(ctx, 0, sizeof *ctx);
 }
 
 EVP_MD_CTX *
 EVP_MD_CTX_create(void)
 {
-	EVP_MD_CTX *ctx = malloc(sizeof *ctx);
-
-	if (ctx)
-		EVP_MD_CTX_init(ctx);
-
-	return ctx;
+	return calloc(1, sizeof(EVP_MD_CTX));
 }
 
 int
@@ -193,13 +192,19 @@ EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *impl)
 	}
 #endif
 	if (ctx->digest != type) {
-		if (ctx->digest && ctx->digest->ctx_size)
+		if (ctx->digest && ctx->digest->ctx_size && ctx->md_data &&
+		    !EVP_MD_CTX_test_flags(ctx, EVP_MD_CTX_FLAG_REUSE)) {
+			explicit_bzero(ctx->md_data, ctx->digest->ctx_size);
 			free(ctx->md_data);
+			ctx->md_data = NULL;
+		}
 		ctx->digest = type;
 		if (!(ctx->flags & EVP_MD_CTX_FLAG_NO_INIT) && type->ctx_size) {
 			ctx->update = type->update;
 			ctx->md_data = malloc(type->ctx_size);
 			if (ctx->md_data == NULL) {
+				EVP_PKEY_CTX_free(ctx->pctx);
+				ctx->pctx = NULL;
 				EVPerr(EVP_F_EVP_DIGESTINIT_EX,
 				    ERR_R_MALLOC_FAILURE);
 				return 0;
@@ -356,18 +361,17 @@ EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx)
 		ctx->digest->cleanup(ctx);
 	if (ctx->digest && ctx->digest->ctx_size && ctx->md_data &&
 	    !EVP_MD_CTX_test_flags(ctx, EVP_MD_CTX_FLAG_REUSE)) {
-		OPENSSL_cleanse(ctx->md_data, ctx->digest->ctx_size);
+		explicit_bzero(ctx->md_data, ctx->digest->ctx_size);
 		free(ctx->md_data);
 	}
-	if (ctx->pctx)
-		EVP_PKEY_CTX_free(ctx->pctx);
+	EVP_PKEY_CTX_free(ctx->pctx);
 #ifndef OPENSSL_NO_ENGINE
 	if (ctx->engine)
 		/* The EVP_MD we used belongs to an ENGINE, release the
 		 * functional reference we held for this reason. */
 		ENGINE_finish(ctx->engine);
 #endif
-	memset(ctx, '\0', sizeof *ctx);
+	memset(ctx, 0, sizeof *ctx);
 
 	return 1;
 }

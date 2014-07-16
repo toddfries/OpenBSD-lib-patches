@@ -1,4 +1,4 @@
-/* crypto/bn/bn.h */
+/* $OpenBSD: bn.h,v 1.24 2014/06/27 06:07:35 deraadt Exp $ */
 /* Copyright (C) 1995-1997 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -125,10 +125,9 @@
 #ifndef HEADER_BN_H
 #define HEADER_BN_H
 
-#include <openssl/e_os2.h>
-#ifndef OPENSSL_NO_FP_API
+#include <openssl/opensslconf.h>
+
 #include <stdio.h> /* FILE */
-#endif
 #include <openssl/ossl_typ.h>
 #include <openssl/crypto.h>
 
@@ -347,6 +346,7 @@ int BN_GENCB_call(BN_GENCB *cb, int a, int b);
 		_tmp_bn->top = 0; \
 		_tmp_bn->neg = 0; \
 	} while(0)
+
 #ifdef OPENSSL_NO_DEPRECATED
 #define BN_zero(a)	BN_zero_ex(a)
 #else
@@ -441,9 +441,7 @@ int	BN_mod_exp_simple(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
     const BIGNUM *m, BN_CTX *ctx);
 
 int	BN_mask_bits(BIGNUM *a, int n);
-#ifndef OPENSSL_NO_FP_API
 int	BN_print_fp(FILE *fp, const BIGNUM *a);
-#endif
 #ifdef HEADER_BIO_H
 int	BN_print(BIO *fp, const BIGNUM *a);
 #else

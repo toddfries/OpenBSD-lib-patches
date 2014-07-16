@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-BIO_find_type, BIO_next - BIO chain traversal
+BIO_find_type, BIO_next, BIO_method_type - BIO chain traversal
 
 =head1 SYNOPSIS
 
@@ -86,14 +86,12 @@ Traverse a chain looking for digest BIOs:
 
  do {
  	btmp = BIO_find_type(btmp, BIO_TYPE_MD);
-	if(btmp == NULL) break;	/* Not found */
+	if (btmp == NULL)
+		break;	/* Not found */
 	/* btmp is a digest BIO, do something with it ...*/
-   	...
+	...
 
 	btmp = BIO_next(btmp);
  } while(btmp);
 
-
-=head1 SEE ALSO
-
-TBA
+=cut

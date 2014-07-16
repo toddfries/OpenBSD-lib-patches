@@ -1,3 +1,4 @@
+/* $OpenBSD: ec_ameth.c,v 1.13 2014/07/13 15:47:51 logan Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -56,13 +57,18 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
-#include <openssl/x509.h>
-#include <openssl/ec.h>
+
+#include <openssl/opensslconf.h>
+
 #include <openssl/bn.h>
+#include <openssl/ec.h>
+#include <openssl/err.h>
+#include <openssl/x509.h>
+
 #ifndef OPENSSL_NO_CMS
 #include <openssl/cms.h>
 #endif
+
 #include "asn1_locl.h"
 
 static int 
@@ -128,8 +134,7 @@ err:
 		ASN1_OBJECT_free(pval);
 	else
 		ASN1_STRING_free(pval);
-	if (penc)
-		free(penc);
+	free(penc);
 	return 0;
 }
 
@@ -326,7 +331,7 @@ eckey_priv_encode(PKCS8_PRIV_KEY_INFO * p8, const EVP_PKEY * pkey)
 		ECerr(EC_F_ECKEY_PRIV_ENCODE, ERR_R_EC_LIB);
 		return 0;
 	}
-	ep = (unsigned char *) malloc(eplen);
+	ep = malloc(eplen);
 	if (!ep) {
 		EC_KEY_set_enc_flags(ec_key, old_flags);
 		ECerr(EC_F_ECKEY_PRIV_ENCODE, ERR_R_MALLOC_FAILURE);
@@ -368,6 +373,7 @@ ec_bits(const EVP_PKEY * pkey)
 	}
 	group = EC_KEY_get0_group(pkey->pkey.ec);
 	if (!EC_GROUP_get_order(group, order, NULL)) {
+		BN_free(order);
 		ERR_clear_error();
 		return 0;
 	}
@@ -487,14 +493,10 @@ do_EC_KEY_print(BIO * bp, const EC_KEY * x, int off, int ktype)
 err:
 	if (!ret)
 		ECerr(EC_F_DO_EC_KEY_PRINT, reason);
-	if (pub_key)
-		BN_free(pub_key);
-	if (order)
-		BN_free(order);
-	if (ctx)
-		BN_CTX_free(ctx);
-	if (buffer != NULL)
-		free(buffer);
+	BN_free(pub_key);
+	BN_free(order);
+	BN_CTX_free(ctx);
+	free(buffer);
 	return (ret);
 }
 

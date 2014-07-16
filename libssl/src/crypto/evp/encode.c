@@ -1,4 +1,4 @@
-/* crypto/evp/encode.c */
+/* $OpenBSD: encode.c,v 1.18 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,7 +57,8 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+#include <string.h>
+
 #include <openssl/evp.h>
 
 #define conv_bin2ascii(a)	(data_bin2ascii[(a)&0x3f])

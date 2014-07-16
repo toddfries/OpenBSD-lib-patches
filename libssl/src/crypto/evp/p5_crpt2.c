@@ -1,4 +1,4 @@
-/* p5_crpt2.c */
+/* $OpenBSD: p5_crpt2.c,v 1.17 2014/07/11 08:44:48 jsing Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -55,13 +55,20 @@
  * Hudson (tjh@cryptsoft.com).
  *
  */
+
 #include <stdio.h>
 #include <stdlib.h>
-#include "cryptlib.h"
+#include <string.h>
+
+#include <openssl/opensslconf.h>
+
 #if !defined(OPENSSL_NO_HMAC) && !defined(OPENSSL_NO_SHA)
-#include <openssl/x509.h>
+
+#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/x509.h>
+
 #include "evp_locl.h"
 
 /* set this to print out info about the keygen algorithm */
@@ -165,17 +172,6 @@ PKCS5_PBKDF2_HMAC_SHA1(const char *pass, int passlen, const unsigned char *salt,
 	return PKCS5_PBKDF2_HMAC(pass, passlen, salt, saltlen, iter,
 	    EVP_sha1(), keylen, out);
 }
-
-#ifdef DO_TEST
-main()
-{
-	unsigned char out[4];
-	unsigned char salt[] = {0x12, 0x34, 0x56, 0x78};
-	PKCS5_PBKDF2_HMAC_SHA1("password", -1, salt, 4, 5, 4, out);
-	fprintf(stderr, "Out %02X %02X %02X %02X\n",
-	    out[0], out[1], out[2], out[3]);
-}
-#endif
 
 /* Now the key derivation function itself. This is a bit evil because
  * it has to check the ASN1 parameters are valid: and there are quite a

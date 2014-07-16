@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-blowfish, BF_set_key, BF_encrypt, BF_decrypt, BF_ecb_encrypt, BF_cbc_encrypt,
+BF_set_key, BF_encrypt, BF_decrypt, BF_ecb_encrypt, BF_cbc_encrypt,
 BF_cfb64_encrypt, BF_ofb64_encrypt, BF_options - Blowfish encryption
 
 =head1 SYNOPSIS
@@ -100,13 +100,8 @@ Applications should use the higher level functions
 L<EVP_EncryptInit(3)|EVP_EncryptInit(3)> etc. instead of calling the
 blowfish functions directly.
 
-=head1 SEE ALSO
-
-L<des_modes(7)|des_modes(7)>
-
 =head1 HISTORY
 
 The Blowfish functions are available in all versions of SSLeay and OpenSSL.
 
 =cut
-

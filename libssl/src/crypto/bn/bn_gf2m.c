@@ -1,4 +1,4 @@
-/* crypto/bn/bn_gf2m.c */
+/* $OpenBSD: bn_gf2m.c,v 1.15 2014/07/11 08:44:47 jsing Exp $ */
 /* ====================================================================
  * Copyright 2002 Sun Microsystems, Inc. ALL RIGHTS RESERVED.
  *
@@ -91,7 +91,11 @@
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>
-#include "cryptlib.h"
+
+#include <openssl/opensslconf.h>
+
+#include <openssl/err.h>
+
 #include "bn_lcl.h"
 
 #ifndef OPENSSL_NO_EC2M
@@ -547,7 +551,7 @@ BN_GF2m_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *p,
 	bn_check_top(a);
 	bn_check_top(b);
 	bn_check_top(p);
-	if ((arr = (int *)malloc(sizeof(int) * max)) == NULL)
+	if ((arr = reallocarray(NULL, max, sizeof(int))) == NULL)
 		goto err;
 	ret = BN_GF2m_poly2arr(p, arr, max);
 	if (!ret || ret > max) {
@@ -558,8 +562,7 @@ BN_GF2m_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *p,
 	bn_check_top(r);
 
 err:
-	if (arr)
-		free(arr);
+	free(arr);
 	return ret;
 }
 
@@ -610,7 +613,7 @@ BN_GF2m_mod_sqr(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 
 	bn_check_top(a);
 	bn_check_top(p);
-	if ((arr = (int *)malloc(sizeof(int) * max)) == NULL)
+	if ((arr = reallocarray(NULL, max, sizeof(int))) == NULL)
 		goto err;
 	ret = BN_GF2m_poly2arr(p, arr, max);
 	if (!ret || ret > max) {
@@ -621,8 +624,7 @@ BN_GF2m_mod_sqr(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 	bn_check_top(r);
 
 err:
-	if (arr)
-		free(arr);
+	free(arr);
 	return ret;
 }
 
@@ -1039,7 +1041,7 @@ BN_GF2m_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *p,
 	bn_check_top(a);
 	bn_check_top(b);
 	bn_check_top(p);
-	if ((arr = (int *)malloc(sizeof(int) * max)) == NULL)
+	if ((arr = reallocarray(NULL, max, sizeof(int))) == NULL)
 		goto err;
 	ret = BN_GF2m_poly2arr(p, arr, max);
 	if (!ret || ret > max) {
@@ -1050,8 +1052,7 @@ BN_GF2m_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *p,
 	bn_check_top(r);
 
 err:
-	if (arr)
-		free(arr);
+	free(arr);
 	return ret;
 }
 
@@ -1102,7 +1103,7 @@ BN_GF2m_mod_sqrt(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 	int *arr = NULL;
 	bn_check_top(a);
 	bn_check_top(p);
-	if ((arr = (int *)malloc(sizeof(int) * max)) == NULL)
+	if ((arr = reallocarray(NULL, max, sizeof(int))) == NULL)
 		goto err;
 	ret = BN_GF2m_poly2arr(p, arr, max);
 	if (!ret || ret > max) {
@@ -1113,8 +1114,7 @@ BN_GF2m_mod_sqrt(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 	bn_check_top(r);
 
 err:
-	if (arr)
-		free(arr);
+	free(arr);
 	return ret;
 }
 
@@ -1238,7 +1238,7 @@ BN_GF2m_mod_solve_quad(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 
 	bn_check_top(a);
 	bn_check_top(p);
-	if ((arr = (int *)malloc(sizeof(int) * max)) == NULL)
+	if ((arr = reallocarray(NULL, max, sizeof(int))) == NULL)
 		goto err;
 	ret = BN_GF2m_poly2arr(p, arr, max);
 	if (!ret || ret > max) {
@@ -1249,8 +1249,7 @@ BN_GF2m_mod_solve_quad(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 	bn_check_top(r);
 
 err:
-	if (arr)
-		free(arr);
+	free(arr);
 	return ret;
 }
 

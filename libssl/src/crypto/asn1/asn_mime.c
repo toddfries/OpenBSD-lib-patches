@@ -1,4 +1,4 @@
-/* asn_mime.c */
+/* $OpenBSD: asn_mime.c,v 1.22 2014/07/13 16:03:09 beck Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
  */
@@ -52,13 +52,16 @@
  *
  */
 
-#include <stdio.h>
 #include <ctype.h>
-#include "cryptlib.h"
-#include <openssl/rand.h>
-#include <openssl/x509.h>
+#include <stdio.h>
+#include <string.h>
+
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
+#include <openssl/err.h>
+#include <openssl/rand.h>
+#include <openssl/x509.h>
+
 #include "asn1_locl.h"
 
 /* Generalised MIME like utilities for streaming ASN1. Although many
@@ -672,6 +675,8 @@ STACK_OF(MIME_HEADER) *mime_parse_hdr(BIO *bio)
 	int len, state, save_state = 0;
 
 	headers = sk_MIME_HEADER_new(mime_hdr_cmp);
+	if (!headers)
+		return NULL;
 	while ((len = BIO_gets(bio, linebuf, MAX_SMLEN)) > 0) {
 		/* If whitespace at line start then continuation line */
 		if (mhdr && isspace((unsigned char)linebuf[0]))
@@ -826,29 +831,18 @@ mime_hdr_new(char *name, char *value)
 {
 	MIME_HEADER *mhdr;
 	char *tmpname = NULL, *tmpval = NULL, *p;
-	int c;
 
 	if (name) {
-		if (!(tmpname = BUF_strdup(name)))
+		if (!(tmpname = strdup(name)))
 			goto err;
-		for (p = tmpname; *p; p++) {
-			c = (unsigned char)*p;
-			if (isupper(c)) {
-				c = tolower(c);
-				*p = c;
-			}
-		}
+		for (p = tmpname; *p; p++)
+			*p = tolower((unsigned char)*p);
 	}
 	if (value) {
-		if (!(tmpval = BUF_strdup(value)))
+		if (!(tmpval = strdup(value)))
 			goto err;
-		for (p = tmpval; *p; p++) {
-			c = (unsigned char)*p;
-			if (isupper(c)) {
-				c = tolower(c);
-				*p = c;
-			}
-		}
+		for (p = tmpval; *p; p++)
+			*p = tolower((unsigned char)*p);
 	}
 	mhdr = malloc(sizeof(MIME_HEADER));
 	if (!mhdr)
@@ -870,23 +864,17 @@ static int
 mime_hdr_addparam(MIME_HEADER *mhdr, char *name, char *value)
 {
 	char *tmpname = NULL, *tmpval = NULL, *p;
-	int c;
 	MIME_PARAM *mparam;
 
 	if (name) {
-		tmpname = BUF_strdup(name);
+		tmpname = strdup(name);
 		if (!tmpname)
 			goto err;
-		for (p = tmpname; *p; p++) {
-			c = (unsigned char)*p;
-			if (isupper(c)) {
-				c = tolower(c);
-				*p = c;
-			}
-		}
+		for (p = tmpname; *p; p++)
+			*p = tolower((unsigned char)*p);
 	}
 	if (value) {
-		tmpval = BUF_strdup(value);
+		tmpval = strdup(value);
 		if (!tmpval)
 			goto err;
 	}
@@ -949,10 +937,8 @@ mime_param_find(MIME_HEADER *hdr, char *name)
 static void
 mime_hdr_free(MIME_HEADER *hdr)
 {
-	if (hdr->name)
-		free(hdr->name);
-	if (hdr->value)
-		free(hdr->value);
+	free(hdr->name);
+	free(hdr->value);
 	if (hdr->params)
 		sk_MIME_PARAM_pop_free(hdr->params, mime_param_free);
 	free(hdr);
@@ -961,10 +947,8 @@ mime_hdr_free(MIME_HEADER *hdr)
 static void
 mime_param_free(MIME_PARAM *param)
 {
-	if (param->param_name)
-		free(param->param_name);
-	if (param->param_value)
-		free(param->param_value);
+	free(param->param_name);
+	free(param->param_value);
 	free(param);
 }
 
@@ -999,7 +983,7 @@ strip_eol(char *linebuf, int *plen)
 	int len = *plen;
 	char *p, c;
 	int is_eol = 0;
-	p = linebuf + len - 1;
+
 	for (p = linebuf + len - 1; len > 0; len--, p--) {
 		c = *p;
 		if (c == '\n')

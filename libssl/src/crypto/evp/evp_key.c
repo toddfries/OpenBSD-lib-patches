@@ -1,4 +1,4 @@
-/* crypto/evp/evp_key.c */
+/* $OpenBSD: evp_key.c,v 1.18 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,11 +57,12 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
-#include <openssl/x509.h>
-#include <openssl/objects.h>
+#include <string.h>
+
 #include <openssl/evp.h>
+#include <openssl/objects.h>
 #include <openssl/ui.h>
+#include <openssl/x509.h>
 
 /* should be init to zeros. */
 static char prompt_string[80];
@@ -85,9 +86,6 @@ EVP_get_pw_prompt(void)
 		return (prompt_string);
 }
 
-/* For historical reasons, the standard function for reading passwords is
- * in the DES library -- if someone ever wants to disable DES,
- * this function will fail */
 int
 EVP_read_pw_string(char *buf, int len, const char *prompt, int verify)
 {

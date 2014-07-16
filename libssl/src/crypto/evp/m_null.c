@@ -1,4 +1,4 @@
-/* crypto/evp/m_null.c */
+/* $OpenBSD: m_null.c,v 1.9 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,7 +57,7 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+
 #include <openssl/evp.h>
 #include <openssl/objects.h>
 #include <openssl/x509.h>
@@ -81,18 +81,22 @@ final(EVP_MD_CTX *ctx, unsigned char *md)
 }
 
 static const EVP_MD null_md = {
-	NID_undef,
-	NID_undef,
-	0,
-	0,
-	init,
-	update,
-	final,
-	NULL,
-	NULL,
-	EVP_PKEY_NULL_method,
-	0,
-	sizeof(EVP_MD *),
+	.type = NID_undef,
+	.pkey_type = NID_undef,
+	.md_size = 0,
+	.flags = 0,
+	.init = init,
+	.update = update,
+	.final = final,
+	.copy = NULL,
+	.cleanup = NULL,
+	.sign = NULL,
+	.verify = NULL,
+	.required_pkey_type = {
+		0, 0, 0, 0,
+	},
+	.block_size = 0,
+	.ctx_size = sizeof(EVP_MD *),
 };
 
 const EVP_MD *

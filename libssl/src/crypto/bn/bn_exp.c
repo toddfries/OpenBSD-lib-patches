@@ -1,4 +1,4 @@
-/* crypto/bn/bn_exp.c */
+/* $OpenBSD: bn_exp.c,v 1.19 2014/07/11 15:01:49 miod Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -109,16 +109,12 @@
  *
  */
 
-
-#include "cryptlib.h"
-#include "bn_lcl.h"
-
 #include <stdlib.h>
-#if defined(__GNUC__)
-# ifndef alloca
-#  define alloca(s) __builtin_alloca((s))
-# endif
-#endif
+#include <string.h>
+
+#include <openssl/err.h>
+
+#include "bn_lcl.h"
 
 /* maximum precomputation table size for *variable* sliding windows */
 #define TABLE_SIZE	32
@@ -632,23 +628,12 @@ BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 	numPowers = 1 << window;
 	powerbufLen = sizeof(m->d[0]) * (top * numPowers +
 	    ((2*top) > numPowers ? (2*top) : numPowers));
-#ifdef alloca
-	if (powerbufLen < 3072)
-		powerbufFree = alloca(powerbufLen +
-		    MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH);
-	else
-#endif
-	if ((powerbufFree = (unsigned char*)malloc(powerbufLen +
+	if ((powerbufFree = malloc(powerbufLen +
 	    MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH)) == NULL)
 		goto err;
 
 	powerbuf = MOD_EXP_CTIME_ALIGN(powerbufFree);
 	memset(powerbuf, 0, powerbufLen);
-
-#ifdef alloca
-	if (powerbufLen < 3072)
-		powerbufFree = NULL;
-#endif
 
 	/* lay down tmp and am right after powers table */
 	tmp.d = (BN_ULONG *)(powerbuf + sizeof(m->d[0]) * top * numPowers);
@@ -685,7 +670,7 @@ BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
 	/* Dedicated window==4 case improves 512-bit RSA sign by ~15%, but as
 	 * 512-bit RSA is hardly relevant, we omit it to spare size... */
-	if (window == 5) {
+	if (window == 5 && top > 1) {
 		void bn_mul_mont_gather5(BN_ULONG *rp, const BN_ULONG *ap,
 		    const void *table, const BN_ULONG *np,
 		    const BN_ULONG *n0, int num, int power);
@@ -840,8 +825,7 @@ err:
 		BN_MONT_CTX_free(mont);
 	if (powerbuf != NULL) {
 		OPENSSL_cleanse(powerbuf, powerbufLen);
-		if (powerbufFree)
-			free(powerbufFree);
+		free(powerbufFree);
 	}
 	BN_CTX_end(ctx);
 	return (ret);

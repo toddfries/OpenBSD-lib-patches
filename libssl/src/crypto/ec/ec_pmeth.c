@@ -1,3 +1,4 @@
+/* $OpenBSD: ec_pmeth.c,v 1.8 2014/07/12 16:03:37 miod Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -56,12 +57,15 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+#include <string.h>
+
 #include <openssl/asn1t.h>
-#include <openssl/x509.h>
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
+#include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/x509.h>
+
 #include "evp_locl.h"
 
 /* EC pkey context structure */
@@ -110,8 +114,7 @@ pkey_ec_cleanup(EVP_PKEY_CTX * ctx)
 {
 	EC_PKEY_CTX *dctx = ctx->data;
 	if (dctx) {
-		if (dctx->gen_group)
-			EC_GROUP_free(dctx->gen_group);
+		EC_GROUP_free(dctx->gen_group);
 		free(dctx);
 	}
 }
@@ -209,8 +212,7 @@ pkey_ec_ctrl(EVP_PKEY_CTX * ctx, int type, int p1, void *p2)
 			ECerr(EC_F_PKEY_EC_CTRL, EC_R_INVALID_CURVE);
 			return 0;
 		}
-		if (dctx->gen_group)
-			EC_GROUP_free(dctx->gen_group);
+		EC_GROUP_free(dctx->gen_group);
 		dctx->gen_group = group;
 		return 1;
 

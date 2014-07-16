@@ -1,4 +1,4 @@
-/* crypto/evp/p_open.c */
+/* $OpenBSD: p_open.c,v 1.16 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,14 +57,16 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+
+#include <openssl/opensslconf.h>
 
 #ifndef OPENSSL_NO_RSA
 
+#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/objects.h>
-#include <openssl/x509.h>
 #include <openssl/rsa.h>
+#include <openssl/x509.h>
 
 int
 EVP_OpenInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *type,
@@ -88,7 +90,7 @@ EVP_OpenInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *type,
 	}
 
 	size = RSA_size(priv->pkey.rsa);
-	key = (unsigned char *)malloc(size + 2);
+	key = malloc(size + 2);
 	if (key == NULL) {
 		/* ERROR */
 		EVPerr(EVP_F_EVP_OPENINIT, ERR_R_MALLOC_FAILURE);

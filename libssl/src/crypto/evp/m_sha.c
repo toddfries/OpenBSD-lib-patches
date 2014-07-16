@@ -1,4 +1,4 @@
-/* crypto/evp/m_sha.c */
+/* $OpenBSD: m_sha.c,v 1.16 2014/07/13 09:30:02 miod Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,17 +57,18 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+
+#include <openssl/opensslconf.h>
 
 #if !defined(OPENSSL_NO_SHA) && !defined(OPENSSL_NO_SHA0)
 
 #include <openssl/evp.h>
 #include <openssl/objects.h>
 #include <openssl/x509.h>
+
 #ifndef OPENSSL_NO_RSA
 #include <openssl/rsa.h>
 #endif
-#include "evp_locl.h"
 
 static int
 init(EVP_MD_CTX *ctx)
@@ -88,18 +89,24 @@ final(EVP_MD_CTX *ctx, unsigned char *md)
 }
 
 static const EVP_MD sha_md = {
-	NID_sha,
-	NID_shaWithRSAEncryption,
-	SHA_DIGEST_LENGTH,
-	0,
-	init,
-	update,
-	final,
-	NULL,
-	NULL,
-	EVP_PKEY_RSA_method,
-	SHA_CBLOCK,
-	sizeof(EVP_MD *) + sizeof(SHA_CTX),
+	.type = NID_sha,
+	.pkey_type = NID_shaWithRSAEncryption,
+	.md_size = SHA_DIGEST_LENGTH,
+	.flags = 0,
+	.init = init,
+	.update = update,
+	.final = final,
+	.copy = NULL,
+	.cleanup = NULL,
+#ifndef OPENSSL_NO_RSA
+	.sign = (evp_sign_method *)RSA_sign,
+	.verify = (evp_verify_method *)RSA_verify,
+	.required_pkey_type = {
+		EVP_PKEY_RSA, EVP_PKEY_RSA2, 0, 0,
+	},
+#endif
+	.block_size = SHA_CBLOCK,
+	.ctx_size = sizeof(EVP_MD *) + sizeof(SHA_CTX),
 };
 
 const EVP_MD *

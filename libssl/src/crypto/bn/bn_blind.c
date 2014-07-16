@@ -1,4 +1,4 @@
-/* crypto/bn/bn_blind.c */
+/* $OpenBSD: bn_blind.c,v 1.14 2014/07/12 16:03:36 miod Exp $ */
 /* ====================================================================
  * Copyright (c) 1998-2006 The OpenSSL Project.  All rights reserved.
  *
@@ -110,7 +110,11 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+
+#include <openssl/opensslconf.h>
+
+#include <openssl/err.h>
+
 #include "bn_lcl.h"
 
 #define BN_BLINDING_COUNTER	32
@@ -139,11 +143,10 @@ BN_BLINDING_new(const BIGNUM *A, const BIGNUM *Ai, BIGNUM *mod)
 
 	bn_check_top(mod);
 
-	if ((ret = (BN_BLINDING *)malloc(sizeof(BN_BLINDING))) == NULL) {
+	if ((ret = calloc(1, sizeof(BN_BLINDING))) == NULL) {
 		BNerr(BN_F_BN_BLINDING_NEW, ERR_R_MALLOC_FAILURE);
 		return (NULL);
 	}
-	memset(ret, 0, sizeof(BN_BLINDING));
 	if (A != NULL) {
 		if ((ret->A = BN_dup(A))  == NULL)
 			goto err;
@@ -178,14 +181,10 @@ BN_BLINDING_free(BN_BLINDING *r)
 	if (r == NULL)
 		return;
 
-	if (r->A  != NULL)
-		BN_clear_free(r->A );
-	if (r->Ai != NULL)
-		BN_clear_free(r->Ai);
-	if (r->e  != NULL)
-		BN_clear_free(r->e );
-	if (r->mod != NULL)
-		BN_clear_free(r->mod);
+	BN_clear_free(r->A);
+	BN_clear_free(r->Ai);
+	BN_clear_free(r->e);
+	BN_clear_free(r->mod);
 	free(r);
 }
 
@@ -338,8 +337,7 @@ BN_BLINDING_create_param(BN_BLINDING *b, const BIGNUM *e, BIGNUM *m,
 		goto err;
 
 	if (e != NULL) {
-		if (ret->e != NULL)
-			BN_free(ret->e);
+		BN_free(ret->e);
 		ret->e = BN_dup(e);
 	}
 	if (ret->e == NULL)

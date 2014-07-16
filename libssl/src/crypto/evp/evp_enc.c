@@ -1,4 +1,4 @@
-/* crypto/evp/evp_enc.c */
+/* $OpenBSD: evp_enc.c,v 1.24 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,33 +57,32 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
-#include <openssl/evp.h>
+#include <string.h>
+
+#include <openssl/opensslconf.h>
+
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/rand.h>
+
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
 #endif
+
 #include "evp_locl.h"
 
 #define M_do_cipher(ctx, out, in, inl) ctx->cipher->do_cipher(ctx, out, in, inl)
-
-const char EVP_version[] = "EVP" OPENSSL_VERSION_PTEXT;
 
 void
 EVP_CIPHER_CTX_init(EVP_CIPHER_CTX *ctx)
 {
 	memset(ctx, 0, sizeof(EVP_CIPHER_CTX));
-	/* ctx->cipher=NULL; */
 }
 
 EVP_CIPHER_CTX *
 EVP_CIPHER_CTX_new(void)
 {
-	EVP_CIPHER_CTX *ctx = malloc(sizeof *ctx);
-	if (ctx)
-		EVP_CIPHER_CTX_init(ctx);
-	return ctx;
+	return calloc(1, sizeof(EVP_CIPHER_CTX));
 }
 
 int
@@ -548,8 +547,7 @@ EVP_CIPHER_CTX_cleanup(EVP_CIPHER_CTX *c)
 		if (c->cipher_data)
 			OPENSSL_cleanse(c->cipher_data, c->cipher->ctx_size);
 	}
-	if (c->cipher_data)
-		free(c->cipher_data);
+	free(c->cipher_data);
 #ifndef OPENSSL_NO_ENGINE
 	if (c->engine)
 		/* The EVP_CIPHER we used belongs to an ENGINE, release the

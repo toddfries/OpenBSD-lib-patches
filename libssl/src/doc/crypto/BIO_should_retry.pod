@@ -3,7 +3,7 @@
 =head1 NAME
 
 BIO_should_retry, BIO_should_read, BIO_should_write,
-BIO_should_io_special, BIO_retry_type, BIO_should_retry,
+BIO_should_io_special, BIO_retry_type,
 BIO_get_retry_BIO, BIO_get_retry_reason - BIO retry functions
 
 =head1 SYNOPSIS
@@ -109,6 +109,4 @@ that is they cannot retry after a partial read or write. This is usually
 worked around by only passing the relevant data to ASN1 functions when
 the entire structure can be read or written.
 
-=head1 SEE ALSO
-
-TBA
+=cut

@@ -1,3 +1,4 @@
+/* $OpenBSD: ctr128.c,v 1.5 2014/07/09 16:06:13 miod Exp $ */
 /* ====================================================================
  * Copyright (c) 2008 The OpenSSL Project.  All rights reserved.
  *
@@ -82,7 +83,7 @@ ctr128_inc_aligned(unsigned char *counter)
 {
 	size_t *data,c,n;
 
-	if (_BYTE_ORDER == _LITTLE_ENDIAN) {
+	if (BYTE_ORDER == LITTLE_ENDIAN) {
 		ctr128_inc(counter);
 		return;
 	}

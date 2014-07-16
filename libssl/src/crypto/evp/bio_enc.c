@@ -1,4 +1,4 @@
-/* crypto/evp/bio_enc.c */
+/* $OpenBSD: bio_enc.c,v 1.18 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -56,9 +56,10 @@
  * [including the GNU Public Licence.]
  */
 
-#include <stdio.h>
 #include <errno.h>
-#include "cryptlib.h"
+#include <stdio.h>
+#include <string.h>
+
 #include <openssl/buffer.h>
 #include <openssl/evp.h>
 
@@ -108,7 +109,7 @@ enc_new(BIO *bi)
 {
 	BIO_ENC_CTX *ctx;
 
-	ctx = (BIO_ENC_CTX *)malloc(sizeof(BIO_ENC_CTX));
+	ctx = malloc(sizeof(BIO_ENC_CTX));
 	if (ctx == NULL)
 		return (0);
 	EVP_CIPHER_CTX_init(&ctx->cipher);

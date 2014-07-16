@@ -1,4 +1,4 @@
-/* pmeth_fn.c */
+/* $OpenBSD: pmeth_fn.c,v 1.5 2014/07/12 16:03:37 miod Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -58,9 +58,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "cryptlib.h"
-#include <openssl/objects.h>
+
+#include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/objects.h>
+
 #include "evp_locl.h"
 
 #define M_check_autoarg(ctx, arg, arglen, err) \
@@ -329,8 +331,7 @@ EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer)
 		return -1;
 	}
 
-	if (ctx->peerkey)
-		EVP_PKEY_free(ctx->peerkey);
+	EVP_PKEY_free(ctx->peerkey);
 	ctx->peerkey = peer;
 
 	ret = ctx->pmeth->ctrl(ctx, EVP_PKEY_CTRL_PEER_KEY, 1, peer);

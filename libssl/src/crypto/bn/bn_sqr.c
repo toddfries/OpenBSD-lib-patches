@@ -1,4 +1,4 @@
-/* crypto/bn/bn_sqr.c */
+/* $OpenBSD: bn_sqr.c,v 1.11 2014/07/11 13:26:31 miod Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,7 +57,8 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+#include <string.h>
+
 #include "bn_lcl.h"
 
 /* r must not be a */
@@ -77,6 +78,7 @@ BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx)
 	al = a->top;
 	if (al <= 0) {
 		r->top = 0;
+		r->neg = 0;
 		return 1;
 	}
 

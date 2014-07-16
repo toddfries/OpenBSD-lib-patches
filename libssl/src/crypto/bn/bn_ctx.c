@@ -1,4 +1,4 @@
-/* crypto/bn/bn_ctx.c */
+/* $OpenBSD: bn_ctx.c,v 1.13 2014/07/11 08:44:47 jsing Exp $ */
 /* Written by Ulf Moeller for the OpenSSL project. */
 /* ====================================================================
  * Copyright (c) 1998-2004 The OpenSSL Project.  All rights reserved.
@@ -60,10 +60,14 @@
 #endif
 #endif
 
-#include <stdio.h>
 #include <assert.h>
+#include <stdio.h>
+#include <string.h>
 
-#include "cryptlib.h"
+#include <openssl/opensslconf.h>
+
+#include <openssl/err.h>
+
 #include "bn_lcl.h"
 
 /* TODO list
@@ -179,15 +183,19 @@ ctxdbg(BN_CTX *ctx)
 	}
 	fprintf(stderr, "\n");
 }
-#define CTXDBG_ENTRY(str, ctx)	do { \
-				ctxdbg_cur = (str); \
-				fprintf(stderr,"Starting %s\n", ctxdbg_cur); \
-				ctxdbg(ctx); \
-				} while(0)
-#define CTXDBG_EXIT(ctx)	do { \
-				fprintf(stderr,"Ending %s\n", ctxdbg_cur); \
-				ctxdbg(ctx); \
-				} while(0)
+#define CTXDBG_ENTRY(str, ctx) \
+	do { \
+		ctxdbg_cur = (str); \
+		fprintf(stderr, "Starting %s\n", ctxdbg_cur); \
+		ctxdbg(ctx); \
+	} while(0)
+
+#define CTXDBG_EXIT(ctx) \
+	do { \
+		fprintf(stderr, "Ending %s\n", ctxdbg_cur); \
+		ctxdbg(ctx); \
+	} while(0)
+
 #define CTXDBG_RET(ctx,ret)
 #else
 #define CTXDBG_ENTRY(str, ctx)
@@ -349,8 +357,8 @@ BN_STACK_push(BN_STACK *st, unsigned int idx)
 	{
 		unsigned int newsize = (st->size ?
 		    (st->size * 3 / 2) : BN_CTX_START_FRAMES);
-		unsigned int *newitems = malloc(newsize *
-		    sizeof(unsigned int));
+		unsigned int *newitems = reallocarray(NULL,
+		    newsize, sizeof(unsigned int));
 		if (!newitems)
 			return 0;
 		if (st->depth)

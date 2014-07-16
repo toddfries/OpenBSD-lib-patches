@@ -1,3 +1,4 @@
+/* $OpenBSD: armcap.c,v 1.6 2014/06/20 21:00:46 deraadt Exp $ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,13 +43,6 @@ OPENSSL_cpuid_setup(void)
 	if (trigger)
 		return;
 	trigger = 1;
-
-#ifndef __OpenBSD__
-	if ((e = getenv("OPENSSL_armcap"))) {
-		OPENSSL_armcap_P = strtoul(e, NULL, 0);
-		return;
-	}
-#endif
 
 	OPENSSL_armcap_P = 0;
 

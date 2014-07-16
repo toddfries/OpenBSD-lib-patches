@@ -1,4 +1,4 @@
-/* crypto/bn/bn_shift.c */
+/* $OpenBSD: bn_shift.c,v 1.12 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,7 +57,8 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+#include <string.h>
+
 #include "bn_lcl.h"
 
 int

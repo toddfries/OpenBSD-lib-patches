@@ -161,9 +161,8 @@ EVP_MD_CTX_copy_ex() returns 1 if successful or 0 for failure.
 EVP_MD_type(), EVP_MD_pkey_type() and EVP_MD_type() return the NID of the
 corresponding OBJECT IDENTIFIER or NID_undef if none exists.
 
-EVP_MD_size(), EVP_MD_block_size(), EVP_MD_CTX_size(e), EVP_MD_size(),
-EVP_MD_CTX_block_size()	and EVP_MD_block_size() return the digest or block
-size in bytes.
+EVP_MD_size(), EVP_MD_block_size(), EVP_MD_CTX_size() and
+EVP_MD_CTX_block_size() return the digest or block size in bytes.
 
 EVP_md_null(), EVP_md2(), EVP_md5(), EVP_sha(), EVP_sha1(), EVP_dss(),
 EVP_dss1(), EVP_mdc2() and EVP_ripemd160() return pointers to the
@@ -215,39 +214,40 @@ digest name passed on the command line.
  #include <stdio.h>
  #include <openssl/evp.h>
 
+ int
  main(int argc, char *argv[])
  {
- EVP_MD_CTX *mdctx;
- const EVP_MD *md;
- char mess1[] = "Test Message\n";
- char mess2[] = "Hello World\n";
- unsigned char md_value[EVP_MAX_MD_SIZE];
- int md_len, i;
+	EVP_MD_CTX *mdctx;
+	const EVP_MD *md;
+	const char mess1[] = "Test Message\n";
+	const char mess2[] = "Hello World\n";
+	unsigned char md_value[EVP_MAX_MD_SIZE];
+	int md_len, i;
 
- OpenSSL_add_all_digests();
+	OpenSSL_add_all_digests();
 
- if(!argv[1]) {
- 	printf("Usage: mdtest digestname\n");
-	exit(1);
- }
+	if (argc <= 1) {
+		printf("Usage: mdtest digestname\n");
+		exit(1);
+	}
 
- md = EVP_get_digestbyname(argv[1]);
+	md = EVP_get_digestbyname(argv[1]);
+	if (md == NULL) {
+		printf("Unknown message digest %s\n", argv[1]);
+		exit(1);
+	}
 
- if(!md) {
- 	printf("Unknown message digest %s\n", argv[1]);
-	exit(1);
- }
+	mdctx = EVP_MD_CTX_create();
+	EVP_DigestInit_ex(mdctx, md, NULL);
+	EVP_DigestUpdate(mdctx, mess1, strlen(mess1));
+	EVP_DigestUpdate(mdctx, mess2, strlen(mess2));
+	EVP_DigestFinal_ex(mdctx, md_value, &md_len);
+	EVP_MD_CTX_destroy(mdctx);
 
- mdctx = EVP_MD_CTX_create();
- EVP_DigestInit_ex(mdctx, md, NULL);
- EVP_DigestUpdate(mdctx, mess1, strlen(mess1));
- EVP_DigestUpdate(mdctx, mess2, strlen(mess2));
- EVP_DigestFinal_ex(mdctx, md_value, &md_len);
- EVP_MD_CTX_destroy(mdctx);
-
- printf("Digest is: ");
- for(i = 0; i < md_len; i++) printf("%02x", md_value[i]);
- printf("\n");
+	printf("Digest is: ");
+	for(i = 0; i < md_len; i++)
+		printf("%02x", md_value[i]);
+	printf("\n");
  }
 
 =head1 SEE ALSO

@@ -1,4 +1,4 @@
-/* apps/s_time.c */
+/* $OpenBSD: s_time.c,v 1.34 2014/07/14 00:35:10 deraadt Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -63,19 +63,22 @@
    Written and donated by Larry Streepy <streepy@healthcare.com>
   -----------------------------------------*/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/socket.h>
 
-#include "apps.h"
-#include <openssl/x509.h>
-#include <openssl/ssl.h>
-#include <openssl/pem.h>
-#include "s_apps.h"
-#include <openssl/err.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
+#include <string.h>
 #include <unistd.h>
 
+#include "apps.h"
+
+#include <openssl/err.h>
+#include <openssl/pem.h>
+#include <openssl/ssl.h>
+#include <openssl/x509.h>
+
+#include "s_apps.h"
 
 #define SSL_CONNECT_NAME	"localhost:4433"
 
@@ -120,7 +123,7 @@ static int st_bugs = 0;
 static int perform = 0;
 static int t_nbio = 0;
 
-static void 
+static void
 s_time_init(void)
 {
 	host = SSL_CONNECT_NAME;
@@ -144,7 +147,7 @@ s_time_init(void)
 /***********************************************************************
  * usage - display usage message
  */
-static void 
+static void
 s_time_usage(void)
 {
 	static const char umsg[] = "\
@@ -175,10 +178,11 @@ s_time_usage(void)
  *
  * Returns 0 if ok, -1 on bad args
  */
-static int 
+static int
 parseArgs(int argc, char **argv)
 {
 	int badop = 0;
+	const char *errstr;
 
 	verify_depth = 0;
 	verify_error = X509_V_OK;
@@ -208,11 +212,14 @@ parseArgs(int argc, char **argv)
 		else if (strcmp(*argv, "-new") == 0)
 			perform = 1;
 		else if (strcmp(*argv, "-verify") == 0) {
+			const char *errstr;
 
 			tm_verify = SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE;
 			if (--argc < 1)
 				goto bad;
-			verify_depth = atoi(*(++argv));
+			verify_depth = strtonum(*(++argv), 0, INT_MAX, &errstr);
+			if (errstr)
+				goto bad;
 			BIO_printf(bio_err, "verify depth is %d\n", verify_depth);
 
 		} else if (strcmp(*argv, "-cert") == 0) {
@@ -264,7 +271,9 @@ parseArgs(int argc, char **argv)
 
 			if (--argc < 1)
 				goto bad;
-			maxTime = atoi(*(++argv));
+			maxTime = strtonum(*(++argv), 0, INT_MAX, &errstr);
+			if (errstr)
+				goto bad;
 		} else {
 			BIO_printf(bio_err, "unknown option %s\n", *argv);
 			badop = 1;
@@ -292,7 +301,7 @@ bad:
 #define START	0
 #define STOP	1
 
-static double 
+static double
 tm_Time_F(int s)
 {
 	return app_tminterval(s, 1);
@@ -304,7 +313,7 @@ tm_Time_F(int s)
  */
 int s_time_main(int, char **);
 
-int 
+int
 s_time_main(int argc, char **argv)
 {
 	double totalTime = 0.0;
@@ -315,11 +324,7 @@ s_time_main(int argc, char **argv)
 	char buf[1024 * 8];
 	int ver;
 
-	signal(SIGPIPE, SIG_IGN);
 	s_time_init();
-
-	if (bio_err == NULL)
-		bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
 
 	s_time_meth = SSLv23_client_method();
 
@@ -327,7 +332,6 @@ s_time_main(int argc, char **argv)
 	if (parseArgs(argc, argv) < 0)
 		goto end;
 
-	OpenSSL_add_ssl_algorithms();
 	if ((tm_ctx = SSL_CTX_new(s_time_meth)) == NULL)
 		return (1);
 
@@ -338,8 +342,6 @@ s_time_main(int argc, char **argv)
 	SSL_CTX_set_cipher_list(tm_ctx, tm_cipher);
 	if (!set_cert_stuff(tm_ctx, t_cert_file, t_key_file))
 		goto end;
-
-	SSL_load_error_strings();
 
 	if ((!SSL_CTX_load_verify_locations(tm_ctx, CAfile, CApath)) ||
 	    (!SSL_CTX_set_default_verify_paths(tm_ctx))) {
@@ -515,7 +517,7 @@ end:
 		SSL_CTX_free(tm_ctx);
 		tm_ctx = NULL;
 	}
-	
+
 	return (ret);
 }
 

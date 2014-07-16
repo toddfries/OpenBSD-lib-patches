@@ -1,4 +1,4 @@
-/* crypto/evp/evp.h */
+/* $OpenBSD: evp.h,v 1.39 2014/07/11 15:28:27 tedu Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -59,13 +59,7 @@
 #ifndef HEADER_ENVELOPE_H
 #define HEADER_ENVELOPE_H
 
-#ifdef OPENSSL_ALGORITHM_DEFINES
-# include <openssl/opensslconf.h>
-#else
-# define OPENSSL_ALGORITHM_DEFINES
-# include <openssl/opensslconf.h>
-# undef OPENSSL_ALGORITHM_DEFINES
-#endif
+#include <openssl/opensslconf.h>
 
 #include <openssl/ossl_typ.h>
 
@@ -510,11 +504,7 @@ unsigned long EVP_CIPHER_CTX_flags(const EVP_CIPHER_CTX *ctx);
 #define EVP_DigestSignUpdate(a,b,c)	EVP_DigestUpdate(a,b,c)
 #define EVP_DigestVerifyUpdate(a,b,c)	EVP_DigestUpdate(a,b,c)
 
-#ifdef CONST_STRICT
-void BIO_set_md(BIO *, const EVP_MD *md);
-#else
-# define BIO_set_md(b,md)		BIO_ctrl(b,BIO_C_SET_MD,0,(char *)md)
-#endif
+#define BIO_set_md(b,md)		BIO_ctrl(b,BIO_C_SET_MD,0,(char *)md)
 #define BIO_get_md(b,mdp)		BIO_ctrl(b,BIO_C_GET_MD,0,(char *)mdp)
 #define BIO_get_md_ctx(b,mdcp)     BIO_ctrl(b,BIO_C_GET_MD_CTX,0,(char *)mdcp)
 #define BIO_set_md_ctx(b,mdcp)     BIO_ctrl(b,BIO_C_SET_MD_CTX,0,(char *)mdcp)
@@ -640,15 +630,11 @@ int EVP_CIPHER_CTX_rand_key(EVP_CIPHER_CTX *ctx, unsigned char *key);
 BIO_METHOD *BIO_f_md(void);
 BIO_METHOD *BIO_f_base64(void);
 BIO_METHOD *BIO_f_cipher(void);
-BIO_METHOD *BIO_f_reliable(void);
 void BIO_set_cipher(BIO *b, const EVP_CIPHER *c, const unsigned char *k,
     const unsigned char *i, int enc);
 #endif
 
 const EVP_MD *EVP_md_null(void);
-#ifndef OPENSSL_NO_MD2
-const EVP_MD *EVP_md2(void);
-#endif
 #ifndef OPENSSL_NO_MD4
 const EVP_MD *EVP_md4(void);
 #endif
@@ -814,14 +800,6 @@ const EVP_CIPHER *EVP_camellia_256_cfb128(void);
 const EVP_CIPHER *EVP_camellia_256_ofb(void);
 #endif
 
-#ifndef OPENSSL_NO_SEED
-const EVP_CIPHER *EVP_seed_ecb(void);
-const EVP_CIPHER *EVP_seed_cbc(void);
-const EVP_CIPHER *EVP_seed_cfb128(void);
-# define EVP_seed_cfb EVP_seed_cfb128
-const EVP_CIPHER *EVP_seed_ofb(void);
-#endif
-
 #ifndef OPENSSL_NO_CHACHA
 const EVP_CIPHER *EVP_chacha20(void);
 #endif
@@ -830,15 +808,14 @@ void OPENSSL_add_all_algorithms_noconf(void);
 void OPENSSL_add_all_algorithms_conf(void);
 
 #ifdef OPENSSL_LOAD_CONF
-#define OpenSSL_add_all_algorithms() \
-		OPENSSL_add_all_algorithms_conf()
+#define OpenSSL_add_all_algorithms() OPENSSL_add_all_algorithms_conf()
 #else
-#define OpenSSL_add_all_algorithms() \
-		OPENSSL_add_all_algorithms_noconf()
+#define OpenSSL_add_all_algorithms() OPENSSL_add_all_algorithms_noconf()
 #endif
 
 void OpenSSL_add_all_ciphers(void);
 void OpenSSL_add_all_digests(void);
+
 #define SSLeay_add_all_algorithms() OpenSSL_add_all_algorithms()
 #define SSLeay_add_all_ciphers() OpenSSL_add_all_ciphers()
 #define SSLeay_add_all_digests() OpenSSL_add_all_digests()
@@ -1270,49 +1247,51 @@ int EVP_AEAD_CTX_init(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
 void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx);
 
 /* EVP_AEAD_CTX_seal encrypts and authenticates the input and authenticates
- * any additional data (AD). The result is written as output, with the number
- * of bytes written being returned, or -1 on error.
+ * any additional data (AD), the result being written as output. One is
+ * returned on success, otherwise zero.
  *
  * This function may be called (with the same EVP_AEAD_CTX) concurrently with
  * itself or EVP_AEAD_CTX_open.
  *
  * At most max_out_len bytes are written as output and, in order to ensure
  * success, this value should be the length of the input plus the result of
- * EVP_AEAD_overhead.
+ * EVP_AEAD_overhead. On successful return, out_len is set to the actual
+ * number of bytes written.
  *
  * The length of the nonce is must be equal to the result of
  * EVP_AEAD_nonce_length for this AEAD.
  *
  * EVP_AEAD_CTX_seal never results in a partial output. If max_out_len is
- * insufficient, -1 will be returned.
+ * insufficient, zero will be returned and out_len will be set to zero.
  *
  * If the input and output are aliased then out must be <= in. */
-ssize_t EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, unsigned char *out,
-    size_t max_out_len, const unsigned char *nonce, size_t nonce_len,
-    const unsigned char *in, size_t in_len, const unsigned char *ad,
-    size_t ad_len);
+int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, unsigned char *out,
+    size_t *out_len, size_t max_out_len, const unsigned char *nonce,
+    size_t nonce_len, const unsigned char *in, size_t in_len,
+    const unsigned char *ad, size_t ad_len);
 
 /* EVP_AEAD_CTX_open authenticates the input and additional data, decrypting
- * the input and writing it as output. The number of bytes decrypted and
- * written as output is returned, or -1 on error.
+ * the input and writing it as output. One is returned on success, otherwise
+ * zero.
  *
  * This function may be called (with the same EVP_AEAD_CTX) concurrently with
  * itself or EVP_AEAD_CTX_seal.
  *
  * At most the number of input bytes are written as output. In order to ensure
- * success, max_out_len should be at least the same as the input length.
+ * success, max_out_len should be at least the same as the input length. On
+ * successful return out_len is set to the actual number of bytes written.
  *
  * The length of nonce must be equal to the result of EVP_AEAD_nonce_length
  * for this AEAD.
  *
  * EVP_AEAD_CTX_open never results in a partial output. If max_out_len is
- * insufficient, -1 will be returned.
+ * insufficient, zero will be returned and out_len will be set to zero.
  *
  * If the input and output are aliased then out must be <= in. */
-ssize_t EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, unsigned char *out,
-    size_t max_out_len, const unsigned char *nonce, size_t nonce_len,
-    const unsigned char *in, size_t in_len, const unsigned char *ad,
-    size_t ad_len);
+int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, unsigned char *out,
+    size_t *out_len, size_t max_out_len, const unsigned char *nonce,
+    size_t nonce_len, const unsigned char *in, size_t in_len,
+    const unsigned char *ad, size_t ad_len);
 
 void EVP_add_alg_module(void);
 

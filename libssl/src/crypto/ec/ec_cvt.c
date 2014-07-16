@@ -1,4 +1,4 @@
-/* crypto/ec/ec_cvt.c */
+/* $OpenBSD: ec_cvt.c,v 1.6 2014/07/10 22:45:57 jsing Exp $ */
 /*
  * Originally written by Bodo Moeller for the OpenSSL project.
  */
@@ -69,9 +69,10 @@
  *
  */
 
+#include <openssl/opensslconf.h>
+
 #include <openssl/err.h>
 #include "ec_lcl.h"
-
 
 EC_GROUP *
 EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a, const BIGNUM *b,

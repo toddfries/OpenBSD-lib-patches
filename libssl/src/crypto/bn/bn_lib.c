@@ -1,4 +1,4 @@
-/* crypto/bn/bn_lib.c */
+/* $OpenBSD: bn_lib.c,v 1.33 2014/07/12 16:03:36 miod Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -64,10 +64,13 @@
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>
-#include "cryptlib.h"
-#include "bn_lcl.h"
+#include <string.h>
 
-const char BN_version[] = "Big Number" OPENSSL_VERSION_PTEXT;
+#include <openssl/opensslconf.h>
+
+#include <openssl/err.h>
+
+#include "bn_lcl.h"
 
 /* This stuff appears to be completely unused, so is deprecated */
 #ifndef OPENSSL_NO_DEPRECATED
@@ -245,7 +248,7 @@ BN_new(void)
 {
 	BIGNUM *ret;
 
-	if ((ret = (BIGNUM *)malloc(sizeof(BIGNUM))) == NULL) {
+	if ((ret = malloc(sizeof(BIGNUM))) == NULL) {
 		BNerr(BN_F_BN_NEW, ERR_R_MALLOC_FAILURE);
 		return (NULL);
 	}
@@ -278,7 +281,7 @@ bn_expand_internal(const BIGNUM *b, int words)
 		    BN_R_EXPAND_ON_STATIC_BIGNUM_DATA);
 		return (NULL);
 	}
-	a = A = (BN_ULONG *)malloc(sizeof(BN_ULONG)*words);
+	a = A = reallocarray(NULL, words, sizeof(BN_ULONG));
 	if (A == NULL) {
 		BNerr(BN_F_BN_EXPAND_INTERNAL, ERR_R_MALLOC_FAILURE);
 		return (NULL);
@@ -582,8 +585,7 @@ BN_bin2bn(const unsigned char *s, int len, BIGNUM *ret)
 	i = ((n - 1) / BN_BYTES) + 1;
 	m = ((n - 1) % (BN_BYTES));
 	if (bn_wexpand(ret, (int)i) == NULL) {
-		if (bn)
-			BN_free(bn);
+		BN_free(bn);
 		return NULL;
 	}
 	ret->top = i;

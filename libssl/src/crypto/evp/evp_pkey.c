@@ -1,4 +1,4 @@
-/* evp_pkey.c */
+/* $OpenBSD: evp_pkey.c,v 1.17 2014/07/12 16:03:37 miod Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -58,9 +58,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "cryptlib.h"
-#include <openssl/x509.h>
+
+#include <openssl/err.h>
 #include <openssl/rand.h>
+#include <openssl/x509.h>
+
 #include "asn1_locl.h"
 
 /* Extract a private key from a PKCS8 structure */
@@ -102,7 +104,7 @@ EVP_PKCS82PKEY(PKCS8_PRIV_KEY_INFO *p8)
 	return pkey;
 
 error:
-	EVP_PKEY_free (pkey);
+	EVP_PKEY_free(pkey);
 	return NULL;
 }
 

@@ -1,3 +1,4 @@
+/* $OpenBSD: progs.h,v 1.21 2014/06/12 15:49:27 deraadt Exp $ */
 /* Public domain */
 
 extern int asn1parse_main(int argc, char *argv[]);
@@ -130,10 +131,6 @@ FUNCTION functions[] = {
 #endif
 
 	/* Message Digests. */
-#ifndef OPENSSL_NO_MD2
-	{ FUNC_TYPE_MD, "md2", dgst_main },
-	{ FUNC_TYPE_MD, "mdc2", dgst_main },
-#endif
 #ifndef OPENSSL_NO_MD4
 	{ FUNC_TYPE_MD, "md4", dgst_main },
 #endif
@@ -229,13 +226,6 @@ FUNCTION functions[] = {
 	{ FUNC_TYPE_CIPHER, "rc5-ecb", enc_main },
 	{ FUNC_TYPE_CIPHER, "rc5-cfb", enc_main },
 	{ FUNC_TYPE_CIPHER, "rc5-ofb", enc_main },
-#endif
-#ifndef OPENSSL_NO_SEED
-	{ FUNC_TYPE_CIPHER, "seed", enc_main },
-	{ FUNC_TYPE_CIPHER, "seed-cbc", enc_main },
-	{ FUNC_TYPE_CIPHER, "seed-ecb", enc_main },
-	{ FUNC_TYPE_CIPHER, "seed-cfb", enc_main },
-	{ FUNC_TYPE_CIPHER, "seed-ofb", enc_main },
 #endif
 #ifdef ZLIB
 	{ FUNC_TYPE_CIPHER, "zlib", enc_main },

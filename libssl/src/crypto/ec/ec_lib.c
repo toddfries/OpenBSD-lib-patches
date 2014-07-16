@@ -1,4 +1,4 @@
-/* crypto/ec/ec_lib.c */
+/* $OpenBSD: ec_lib.c,v 1.15 2014/07/12 16:03:37 miod Exp $ */
 /*
  * Originally written by Bodo Moeller for the OpenSSL project.
  */
@@ -63,13 +63,12 @@
 
 #include <string.h>
 
+#include <openssl/opensslconf.h>
+
 #include <openssl/err.h>
 #include <openssl/opensslv.h>
 
 #include "ec_lcl.h"
-
-static const char EC_version[] = "EC" OPENSSL_VERSION_PTEXT;
-
 
 /* functions for EC_GROUP objects */
 
@@ -125,13 +124,11 @@ EC_GROUP_free(EC_GROUP * group)
 
 	EC_EX_DATA_free_all_data(&group->extra_data);
 
-	if (group->generator != NULL)
-		EC_POINT_free(group->generator);
+	EC_POINT_free(group->generator);
 	BN_free(&group->order);
 	BN_free(&group->cofactor);
 
-	if (group->seed)
-		free(group->seed);
+	free(group->seed);
 
 	free(group);
 }
@@ -150,8 +147,7 @@ EC_GROUP_clear_free(EC_GROUP * group)
 
 	EC_EX_DATA_clear_free_all_data(&group->extra_data);
 
-	if (group->generator != NULL)
-		EC_POINT_clear_free(group->generator);
+	EC_POINT_clear_free(group->generator);
 	BN_clear_free(&group->order);
 	BN_clear_free(&group->cofactor);
 
@@ -202,10 +198,8 @@ EC_GROUP_copy(EC_GROUP * dest, const EC_GROUP * src)
 			return 0;
 	} else {
 		/* src->generator == NULL */
-		if (dest->generator != NULL) {
-			EC_POINT_clear_free(dest->generator);
-			dest->generator = NULL;
-		}
+		EC_POINT_clear_free(dest->generator);
+		dest->generator = NULL;
 	}
 
 	if (!BN_copy(&dest->order, &src->order))
@@ -218,8 +212,7 @@ EC_GROUP_copy(EC_GROUP * dest, const EC_GROUP * src)
 	dest->asn1_form = src->asn1_form;
 
 	if (src->seed) {
-		if (dest->seed)
-			free(dest->seed);
+		free(dest->seed);
 		dest->seed = malloc(src->seed_len);
 		if (dest->seed == NULL)
 			return 0;
@@ -227,8 +220,7 @@ EC_GROUP_copy(EC_GROUP * dest, const EC_GROUP * src)
 			return 0;
 		dest->seed_len = src->seed_len;
 	} else {
-		if (dest->seed)
-			free(dest->seed);
+		free(dest->seed);
 		dest->seed = NULL;
 		dest->seed_len = 0;
 	}
@@ -256,8 +248,7 @@ EC_GROUP_dup(const EC_GROUP * a)
 
 err:
 	if (!ok) {
-		if (t)
-			EC_GROUP_free(t);
+		EC_GROUP_free(t);
 		return NULL;
 	} else
 		return t;

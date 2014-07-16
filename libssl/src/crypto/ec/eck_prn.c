@@ -1,4 +1,4 @@
-/* crypto/ec/eck_prn.c */
+/* $OpenBSD: eck_prn.c,v 1.10 2014/07/12 16:03:37 miod Exp $ */
 /*
  * Written by Nils Larsch for the OpenSSL project.
  */
@@ -62,12 +62,15 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
-#include <openssl/evp.h>
-#include <openssl/ec.h>
-#include <openssl/bn.h>
+#include <string.h>
 
-#ifndef OPENSSL_NO_FP_API
+#include <openssl/opensslconf.h>
+
+#include <openssl/bn.h>
+#include <openssl/ec.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+
 int 
 ECPKParameters_print_fp(FILE * fp, const EC_GROUP * x, int off)
 {
@@ -115,7 +118,6 @@ ECParameters_print_fp(FILE * fp, const EC_KEY * x)
 	BIO_free(b);
 	return (ret);
 }
-#endif
 
 int 
 EC_KEY_print(BIO * bp, const EC_KEY * x, int off)
@@ -313,22 +315,14 @@ ECPKParameters_print(BIO * bp, const EC_GROUP * x, int off)
 err:
 	if (!ret)
 		ECerr(EC_F_ECPKPARAMETERS_PRINT, reason);
-	if (p)
-		BN_free(p);
-	if (a)
-		BN_free(a);
-	if (b)
-		BN_free(b);
-	if (gen)
-		BN_free(gen);
-	if (order)
-		BN_free(order);
-	if (cofactor)
-		BN_free(cofactor);
-	if (ctx)
-		BN_CTX_free(ctx);
-	if (buffer != NULL)
-		free(buffer);
+	BN_free(p);
+	BN_free(a);
+	BN_free(b);
+	BN_free(gen);
+	BN_free(order);
+	BN_free(cofactor);
+	BN_CTX_free(ctx);
+	free(buffer);
 	return (ret);
 }
 

@@ -1,4 +1,4 @@
-/* crypto/bn/bn_mul.c */
+/* $OpenBSD: bn_mul.c,v 1.19 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -61,9 +61,12 @@
 # define NDEBUG
 #endif
 
-#include <stdio.h>
 #include <assert.h>
-#include "cryptlib.h"
+#include <stdio.h>
+#include <string.h>
+
+#include <openssl/opensslconf.h>
+
 #include "bn_lcl.h"
 
 #if defined(OPENSSL_NO_ASM) || !defined(OPENSSL_BN_ASM_PART_WORDS)

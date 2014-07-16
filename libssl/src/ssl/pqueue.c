@@ -1,4 +1,4 @@
-/* crypto/pqueue/pqueue.c */
+/* $OpenBSD: pqueue.c,v 1.5 2014/06/12 15:49:31 deraadt Exp $ */
 /*
  * DTLS implementation written by Nagendra Modadugu
  * (nagendra@cs.stanford.edu) for the OpenSSL project 2005.
@@ -57,7 +57,9 @@
  *
  */
 
+#include <stdlib.h>
 #include <string.h>
+
 #include "pqueue.h"
 
 typedef struct _pqueue {
@@ -68,7 +70,7 @@ typedef struct _pqueue {
 pitem *
 pitem_new(unsigned char *prio64be, void *data)
 {
-	pitem *item = (pitem *)malloc(sizeof(pitem));
+	pitem *item = malloc(sizeof(pitem));
 
 	if (item == NULL)
 		return NULL;
@@ -84,30 +86,18 @@ pitem_new(unsigned char *prio64be, void *data)
 void
 pitem_free(pitem *item)
 {
-	if (item == NULL)
-		return;
-
 	free(item);
 }
 
 pqueue_s *
 pqueue_new(void)
 {
-	pqueue_s *pq = (pqueue_s *)malloc(sizeof(pqueue_s));
-
-	if (pq == NULL)
-		return NULL;
-
-	memset(pq, 0x00, sizeof(pqueue_s));
-	return pq;
+	return calloc(1, sizeof(pqueue_s));
 }
 
 void
 pqueue_free(pqueue_s *pq)
 {
-	if (pq == NULL)
-		return;
-
 	free(pq);
 }
 
@@ -126,9 +116,8 @@ pqueue_insert(pqueue_s *pq, pitem *item)
 		/* we can compare 64-bit value in big-endian encoding
 		 * with memcmp:-) */
 		int cmp = memcmp(next->priority, item->priority,
-				 sizeof(item->priority));
-		if (cmp > 0)		/* next > item */
-		{
+		    sizeof(item->priority));
+		if (cmp > 0) {		/* next > item */
 			item->next = next;
 
 			if (curr == NULL)
@@ -168,23 +157,13 @@ pitem *
 pqueue_find(pqueue_s *pq, unsigned char *prio64be)
 {
 	pitem *next;
-	pitem *found = NULL;
 
-	if (pq->items == NULL)
-		return NULL;
-
-	for (next = pq->items; next != NULL; next = next->next) {
+	for (next = pq->items; next != NULL; next = next->next)
 		if (memcmp(next->priority, prio64be,
-		    sizeof(next->priority)) == 0) {
-			found = next;
-			break;
-		}
-	}
+		    sizeof(next->priority)) == 0)
+			return next;
 
-	if (!found)
-		return NULL;
-
-	return found;
+	return NULL;
 }
 
 pitem *

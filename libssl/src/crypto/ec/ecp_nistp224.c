@@ -1,4 +1,4 @@
-/* crypto/ec/ecp_nistp224.c */
+/* $OpenBSD: ecp_nistp224.c,v 1.15 2014/07/12 16:03:37 miod Exp $ */
 /*
  * Written by Emilia Kasper (Google) for the OpenSSL project.
  */
@@ -25,12 +25,13 @@
  * and Adam Langley's public domain 64-bit C implementation of curve25519
  */
 
+#include <stdint.h>
+#include <string.h>
+
 #include <openssl/opensslconf.h>
+
 #ifndef OPENSSL_NO_EC_NISTP_64_GCC_128
 
-#include <stdint.h>
-
-#include <string.h>
 #include <openssl/err.h>
 #include "ec_lcl.h"
 
@@ -1188,7 +1189,7 @@ static NISTP224_PRE_COMP *
 nistp224_pre_comp_new()
 {
 	NISTP224_PRE_COMP *ret = NULL;
-	ret = (NISTP224_PRE_COMP *) malloc(sizeof *ret);
+	ret = malloc(sizeof *ret);
 	if (!ret) {
 		ECerr(EC_F_NISTP224_PRE_COMP_NEW, ERR_R_MALLOC_FAILURE);
 		return ret;
@@ -1284,8 +1285,7 @@ ec_GFp_nistp224_group_set_curve(EC_GROUP * group, const BIGNUM * p,
 	ret = ec_GFp_simple_group_set_curve(group, p, a, b, ctx);
 err:
 	BN_CTX_end(ctx);
-	if (new_ctx != NULL)
-		BN_CTX_free(new_ctx);
+	BN_CTX_free(new_ctx);
 	return ret;
 }
 
@@ -1435,10 +1435,13 @@ ec_GFp_nistp224_points_mul(const EC_GROUP * group, EC_POINT * r,
 			 */
 			mixed = 1;
 		}
-		secrets = malloc(num_points * sizeof(felem_bytearray));
-		pre_comp = malloc(num_points * 17 * 3 * sizeof(felem));
-		if (mixed)
-			tmp_felems = malloc((num_points * 17 + 1) * sizeof(felem));
+		secrets = calloc(num_points, sizeof(felem_bytearray));
+		pre_comp = calloc(num_points, 17 * 3 * sizeof(felem));
+		if (mixed) {
+			/* XXX should do more int overflow checking */
+			tmp_felems = reallocarray(NULL,
+			    (num_points * 17 + 1), sizeof(felem));
+		}
 		if ((secrets == NULL) || (pre_comp == NULL) || (mixed && (tmp_felems == NULL))) {
 			ECerr(EC_F_EC_GFP_NISTP224_POINTS_MUL, ERR_R_MALLOC_FAILURE);
 			goto err;
@@ -1448,8 +1451,6 @@ ec_GFp_nistp224_points_mul(const EC_GROUP * group, EC_POINT * r,
 		 * infinity, i.e., they contribute nothing to the linear
 		 * combination
 		 */
-		memset(secrets, 0, num_points * sizeof(felem_bytearray));
-		memset(pre_comp, 0, num_points * 17 * 3 * sizeof(felem));
 		for (i = 0; i < num_points; ++i) {
 			if (i == num)
 				/* the generator */
@@ -1543,16 +1544,11 @@ ec_GFp_nistp224_points_mul(const EC_GROUP * group, EC_POINT * r,
 
 err:
 	BN_CTX_end(ctx);
-	if (generator != NULL)
-		EC_POINT_free(generator);
-	if (new_ctx != NULL)
-		BN_CTX_free(new_ctx);
-	if (secrets != NULL)
-		free(secrets);
-	if (pre_comp != NULL)
-		free(pre_comp);
-	if (tmp_felems != NULL)
-		free(tmp_felems);
+	EC_POINT_free(generator);
+	BN_CTX_free(new_ctx);
+	free(secrets);
+	free(pre_comp);
+	free(tmp_felems);
 	return ret;
 }
 
@@ -1677,12 +1673,9 @@ ec_GFp_nistp224_precompute_mult(EC_GROUP * group, BN_CTX * ctx)
 	pre = NULL;
 err:
 	BN_CTX_end(ctx);
-	if (generator != NULL)
-		EC_POINT_free(generator);
-	if (new_ctx != NULL)
-		BN_CTX_free(new_ctx);
-	if (pre)
-		nistp224_pre_comp_free(pre);
+	EC_POINT_free(generator);
+	BN_CTX_free(new_ctx);
+	nistp224_pre_comp_free(pre);
 	return ret;
 }
 

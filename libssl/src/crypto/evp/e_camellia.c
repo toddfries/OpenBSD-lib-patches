@@ -1,4 +1,4 @@
-/* crypto/evp/e_camellia.c -*- mode:C; c-file-style: "eay" -*- */
+/* $OpenBSD: e_camellia.c,v 1.6 2014/07/10 22:45:57 jsing Exp $ */
 /* ====================================================================
  * Copyright (c) 2006 The OpenSSL Project.  All rights reserved.
  *
@@ -53,12 +53,14 @@
  *
  */
 
+#include <assert.h>
+#include <string.h>
+
 #include <openssl/opensslconf.h>
+
 #ifndef OPENSSL_NO_CAMELLIA
 #include <openssl/evp.h>
 #include <openssl/err.h>
-#include <string.h>
-#include <assert.h>
 #include <openssl/camellia.h>
 #include "evp_locl.h"
 

@@ -1,4 +1,4 @@
-/* crypto/bn/bn_rand.c */
+/* $OpenBSD: bn_rand.c,v 1.15 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -111,9 +111,11 @@
 
 #include <stdio.h>
 #include <time.h>
-#include "cryptlib.h"
-#include "bn_lcl.h"
+
+#include <openssl/err.h>
 #include <openssl/rand.h>
+
+#include "bn_lcl.h"
 
 static int
 bnrand(int pseudorand, BIGNUM *rnd, int bits, int top, int bottom)
@@ -130,7 +132,7 @@ bnrand(int pseudorand, BIGNUM *rnd, int bits, int top, int bottom)
 	bit = (bits - 1) % 8;
 	mask = 0xff << (bit + 1);
 
-	buf = (unsigned char *)malloc(bytes);
+	buf = malloc(bytes);
 	if (buf == NULL) {
 		BNerr(BN_F_BNRAND, ERR_R_MALLOC_FAILURE);
 		goto err;

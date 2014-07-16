@@ -1,4 +1,4 @@
-/* crypto/ec/ec_mult.c */
+/* $OpenBSD: ec_mult.c,v 1.14 2014/07/12 16:03:37 miod Exp $ */
 /*
  * Originally written by Bodo Moeller and Nils Larsch for the OpenSSL project.
  */
@@ -105,7 +105,7 @@ ec_pre_comp_new(const EC_GROUP * group)
 	if (!group)
 		return NULL;
 
-	ret = (EC_PRE_COMP *) malloc(sizeof(EC_PRE_COMP));
+	ret = malloc(sizeof(EC_PRE_COMP));
 	if (!ret) {
 		ECerr(EC_F_EC_PRE_COMP_NEW, ERR_R_MALLOC_FAILURE);
 		return ret;
@@ -425,11 +425,11 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 	}
 	totalnum = num + numblocks;
 
-	wsize = malloc(totalnum * sizeof wsize[0]);
-	wNAF_len = malloc(totalnum * sizeof wNAF_len[0]);
-	wNAF = malloc((totalnum + 1) * sizeof wNAF[0]);	/* includes space for
-							 * pivot */
-	val_sub = malloc(totalnum * sizeof val_sub[0]);
+	wsize = reallocarray(NULL, totalnum, sizeof wsize[0]);
+	wNAF_len = reallocarray(NULL, totalnum, sizeof wNAF_len[0]);
+	/* includes space for pivot */
+	wNAF = reallocarray(NULL, (totalnum + 1), sizeof wNAF[0]);
+	val_sub = reallocarray(NULL, totalnum, sizeof val_sub[0]);
 
 	if (!wsize || !wNAF_len || !wNAF || !val_sub) {
 		ECerr(EC_F_EC_WNAF_MUL, ERR_R_MALLOC_FAILURE);
@@ -573,7 +573,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 	 * to a subarray of 'pre_comp->points' if we already have
 	 * precomputation.
 	 */
-	val = malloc((num_val + 1) * sizeof val[0]);
+	val = reallocarray(NULL, (num_val + 1), sizeof val[0]);
 	if (val == NULL) {
 		ECerr(EC_F_EC_WNAF_MUL, ERR_R_MALLOC_FAILURE);
 		goto err;
@@ -679,14 +679,10 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 	ret = 1;
 
 err:
-	if (new_ctx != NULL)
-		BN_CTX_free(new_ctx);
-	if (tmp != NULL)
-		EC_POINT_free(tmp);
-	if (wsize != NULL)
-		free(wsize);
-	if (wNAF_len != NULL)
-		free(wNAF_len);
+	BN_CTX_free(new_ctx);
+	EC_POINT_free(tmp);
+	free(wsize);
+	free(wNAF_len);
 	if (wNAF != NULL) {
 		signed char **w;
 
@@ -698,12 +694,9 @@ err:
 	if (val != NULL) {
 		for (v = val; *v != NULL; v++)
 			EC_POINT_clear_free(*v);
-
 		free(val);
 	}
-	if (val_sub != NULL) {
-		free(val_sub);
-	}
+	free(val_sub);
 	return ret;
 }
 
@@ -790,7 +783,7 @@ ec_wNAF_precompute_mult(EC_GROUP * group, BN_CTX * ctx)
 	num = pre_points_per_block * numblocks;	/* number of points to
 						 * compute and store */
 
-	points = malloc(sizeof(EC_POINT *) * (num + 1));
+	points = reallocarray(NULL, (num + 1), sizeof(EC_POINT *));
 	if (!points) {
 		ECerr(EC_F_EC_WNAF_PRECOMPUTE_MULT, ERR_R_MALLOC_FAILURE);
 		goto err;
@@ -867,10 +860,8 @@ ec_wNAF_precompute_mult(EC_GROUP * group, BN_CTX * ctx)
 err:
 	if (ctx != NULL)
 		BN_CTX_end(ctx);
-	if (new_ctx != NULL)
-		BN_CTX_free(new_ctx);
-	if (pre_comp)
-		ec_pre_comp_free(pre_comp);
+	BN_CTX_free(new_ctx);
+	ec_pre_comp_free(pre_comp);
 	if (points) {
 		EC_POINT **p;
 
@@ -878,10 +869,8 @@ err:
 			EC_POINT_free(*p);
 		free(points);
 	}
-	if (tmp_point)
-		EC_POINT_free(tmp_point);
-	if (base)
-		EC_POINT_free(base);
+	EC_POINT_free(tmp_point);
+	EC_POINT_free(base);
 	return ret;
 }
 

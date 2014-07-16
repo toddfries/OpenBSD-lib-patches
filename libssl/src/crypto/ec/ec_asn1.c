@@ -1,4 +1,4 @@
-/* crypto/ec/ec_asn1.c */
+/* $OpenBSD: ec_asn1.c,v 1.10 2014/07/12 16:03:37 miod Exp $ */
 /*
  * Written by Nils Larsch for the OpenSSL project.
  */
@@ -57,11 +57,13 @@
  */
 
 #include <string.h>
+
+#include <openssl/opensslconf.h>
+
 #include "ec_lcl.h"
 #include <openssl/err.h>
 #include <openssl/asn1t.h>
 #include <openssl/objects.h>
-
 
 int 
 EC_GROUP_get_basis_type(const EC_GROUP * group)
@@ -402,8 +404,8 @@ ec_asn1_group2fieldid(const EC_GROUP * group, X9_62_FIELDID * field)
 
 	ok = 1;
 
-err:	if (tmp)
-		BN_free(tmp);
+err:
+	BN_free(tmp);
 	return (ok);
 }
 
@@ -507,14 +509,11 @@ ec_asn1_group2curve(const EC_GROUP * group, X9_62_CURVE * curve)
 
 	ok = 1;
 
-err:	if (buffer_1)
-		free(buffer_1);
-	if (buffer_2)
-		free(buffer_2);
-	if (tmp_1)
-		BN_free(tmp_1);
-	if (tmp_2)
-		BN_free(tmp_2);
+err:
+	free(buffer_1);
+	free(buffer_2);
+	BN_free(tmp_1);
+	BN_free(tmp_2);
 	return (ok);
 }
 
@@ -608,10 +607,8 @@ err:	if (!ok) {
 			ECPARAMETERS_free(ret);
 		ret = NULL;
 	}
-	if (tmp)
-		BN_free(tmp);
-	if (buffer)
-		free(buffer);
+	BN_free(tmp);
+	free(buffer);
 	return (ret);
 }
 
@@ -808,8 +805,7 @@ ec_asn1_parameters2group(const ECPARAMETERS * params)
 	}
 	/* extract seed (optional) */
 	if (params->curve->seed != NULL) {
-		if (ret->seed != NULL)
-			free(ret->seed);
+		free(ret->seed);
 		if (!(ret->seed = malloc(params->curve->seed->length))) {
 			ECerr(EC_F_EC_ASN1_PARAMETERS2GROUP,
 			    ERR_R_MALLOC_FAILURE);
@@ -851,10 +847,8 @@ ec_asn1_parameters2group(const ECPARAMETERS * params)
 	}
 	/* extract the cofactor (optional) */
 	if (params->cofactor == NULL) {
-		if (b) {
-			BN_free(b);
-			b = NULL;
-		}
+		BN_free(b);
+		b = NULL;
 	} else if ((b = ASN1_INTEGER_to_BN(params->cofactor, b)) == NULL) {
 		ECerr(EC_F_EC_ASN1_PARAMETERS2GROUP, ERR_R_ASN1_LIB);
 		goto err;
@@ -867,18 +861,13 @@ ec_asn1_parameters2group(const ECPARAMETERS * params)
 	ok = 1;
 
 err:	if (!ok) {
-		if (ret)
-			EC_GROUP_clear_free(ret);
+		EC_GROUP_clear_free(ret);
 		ret = NULL;
 	}
-	if (p)
-		BN_free(p);
-	if (a)
-		BN_free(a);
-	if (b)
-		BN_free(b);
-	if (point)
-		EC_POINT_free(point);
+	BN_free(p);
+	BN_free(a);
+	BN_free(b);
+	EC_POINT_free(point);
 	return (ret);
 }
 
@@ -994,8 +983,7 @@ d2i_ECPrivateKey(EC_KEY ** a, const unsigned char **in, long len)
 		ret = *a;
 
 	if (priv_key->parameters) {
-		if (ret->group)
-			EC_GROUP_clear_free(ret->group);
+		EC_GROUP_clear_free(ret->group);
 		ret->group = ec_asn1_pkparameters2group(priv_key->parameters);
 	}
 	if (ret->group == NULL) {
@@ -1024,8 +1012,7 @@ d2i_ECPrivateKey(EC_KEY ** a, const unsigned char **in, long len)
 		const unsigned char *pub_oct;
 		size_t pub_oct_len;
 
-		if (ret->pub_key)
-			EC_POINT_clear_free(ret->pub_key);
+		EC_POINT_clear_free(ret->pub_key);
 		ret->pub_key = EC_POINT_new(ret->group);
 		if (ret->pub_key == NULL) {
 			ECerr(EC_F_D2I_ECPRIVATEKEY, ERR_R_EC_LIB);
@@ -1096,7 +1083,7 @@ i2d_ECPrivateKey(EC_KEY * a, unsigned char **out)
 			goto err;
 		}
 	}
-	if (!(a->enc_flag & EC_PKEY_NO_PUBKEY)) {
+	if (!(a->enc_flag & EC_PKEY_NO_PUBKEY) && a->pub_key != NULL) {
 		priv_key->publicKey = M_ASN1_BIT_STRING_new();
 		if (priv_key->publicKey == NULL) {
 			ECerr(EC_F_I2D_ECPRIVATEKEY,
@@ -1134,8 +1121,7 @@ i2d_ECPrivateKey(EC_KEY * a, unsigned char **out)
 	}
 	ok = 1;
 err:
-	if (buffer)
-		free(buffer);
+	free(buffer);
 	if (priv_key)
 		EC_PRIVATEKEY_free(priv_key);
 	return (ok ? ret : 0);

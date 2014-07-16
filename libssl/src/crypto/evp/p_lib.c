@@ -1,4 +1,4 @@
-/* crypto/evp/p_lib.c */
+/* $OpenBSD: p_lib.c,v 1.16 2014/07/12 22:26:01 miod Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,21 +57,23 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+
+#include <openssl/opensslconf.h>
+
 #include <openssl/bn.h>
 #include <openssl/err.h>
-#include <openssl/objects.h>
 #include <openssl/evp.h>
-#include <openssl/asn1_mac.h>
+#include <openssl/objects.h>
 #include <openssl/x509.h>
-#ifndef OPENSSL_NO_RSA
-#include <openssl/rsa.h>
+
+#ifndef OPENSSL_NO_DH
+#include <openssl/dh.h>
 #endif
 #ifndef OPENSSL_NO_DSA
 #include <openssl/dsa.h>
 #endif
-#ifndef OPENSSL_NO_DH
-#include <openssl/dh.h>
+#ifndef OPENSSL_NO_RSA
+#include <openssl/rsa.h>
 #endif
 
 #ifndef OPENSSL_NO_ENGINE
@@ -188,7 +190,7 @@ EVP_PKEY_new(void)
 {
 	EVP_PKEY *ret;
 
-	ret = (EVP_PKEY *)malloc(sizeof(EVP_PKEY));
+	ret = malloc(sizeof(EVP_PKEY));
 	if (ret == NULL) {
 		EVPerr(EVP_F_EVP_PKEY_NEW, ERR_R_MALLOC_FAILURE);
 		return (NULL);

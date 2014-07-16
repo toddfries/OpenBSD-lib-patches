@@ -1,4 +1,4 @@
-/* crypto/bn/bn_recp.c */
+/* $OpenBSD: bn_recp.c,v 1.11 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,7 +57,9 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+
+#include <openssl/err.h>
+
 #include "bn_lcl.h"
 
 void
@@ -74,7 +76,7 @@ BN_RECP_CTX_new(void)
 {
 	BN_RECP_CTX *ret;
 
-	if ((ret = (BN_RECP_CTX *)malloc(sizeof(BN_RECP_CTX))) == NULL)
+	if ((ret = malloc(sizeof(BN_RECP_CTX))) == NULL)
 		return (NULL);
 
 	BN_RECP_CTX_init(ret);

@@ -1,4 +1,4 @@
-/* crypto/bn/bn_div.c */
+/* $OpenBSD: bn_div.c,v 1.22 2014/07/11 08:44:47 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,8 +57,12 @@
  */
 
 #include <stdio.h>
+
+#include <openssl/opensslconf.h>
+
 #include <openssl/bn.h>
-#include "cryptlib.h"
+#include <openssl/err.h>
+
 #include "bn_lcl.h"
 
 #if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_NO_INLINE_ASM) \
@@ -209,6 +213,7 @@ BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
 	wnum.top = div_n;
 	/* only needed when BN_ucmp messes up the values between top and max */
 	wnum.dmax  = snum->dmax - loop; /* so we don't step out of bounds */
+	wnum.flags = snum->flags | BN_FLG_STATIC_DATA;
 
 	/* Get the top 2 words of sdiv */
 	/* div_n=sdiv->top; */

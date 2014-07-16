@@ -1,4 +1,4 @@
-/* crypto/bn/bn_kron.c */
+/* $OpenBSD: bn_kron.c,v 1.5 2014/07/11 08:44:48 jsing Exp $ */
 /* ====================================================================
  * Copyright (c) 1998-2000 The OpenSSL Project.  All rights reserved.
  *
@@ -53,7 +53,6 @@
  *
  */
 
-#include "cryptlib.h"
 #include "bn_lcl.h"
 
 /* least significant word */

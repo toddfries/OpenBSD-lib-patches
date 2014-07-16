@@ -1,4 +1,4 @@
-/* crypto/evp/e_xcbc_d.c */
+/* $OpenBSD: e_xcbc_d.c,v 1.12 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,14 +57,17 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+#include <string.h>
+
+#include <openssl/opensslconf.h>
 
 #ifndef OPENSSL_NO_DES
 
+#include <openssl/des.h>
 #include <openssl/evp.h>
 #include <openssl/objects.h>
+
 #include "evp_locl.h"
-#include <openssl/des.h>
 
 static int desx_cbc_init_key(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     const unsigned char *iv, int enc);

@@ -1,4 +1,4 @@
-/* crypto/evp/e_idea.c */
+/* $OpenBSD: e_idea.c,v 1.9 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,13 +57,16 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+
+#include <openssl/opensslconf.h>
 
 #ifndef OPENSSL_NO_IDEA
+
 #include <openssl/evp.h>
-#include <openssl/objects.h>
-#include "evp_locl.h"
 #include <openssl/idea.h>
+#include <openssl/objects.h>
+
+#include "evp_locl.h"
 
 static int idea_init_key(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     const unsigned char *iv, int enc);

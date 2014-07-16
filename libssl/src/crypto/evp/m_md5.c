@@ -1,4 +1,4 @@
-/* crypto/evp/m_md5.c */
+/* $OpenBSD: m_md5.c,v 1.15 2014/07/13 09:30:02 miod Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,18 +57,19 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+
+#include <openssl/opensslconf.h>
 
 #ifndef OPENSSL_NO_MD5
 
 #include <openssl/evp.h>
+#include <openssl/md5.h>
 #include <openssl/objects.h>
 #include <openssl/x509.h>
-#include <openssl/md5.h>
+
 #ifndef OPENSSL_NO_RSA
 #include <openssl/rsa.h>
 #endif
-#include "evp_locl.h"
 
 static int
 init(EVP_MD_CTX *ctx)
@@ -89,18 +90,24 @@ final(EVP_MD_CTX *ctx, unsigned char *md)
 }
 
 static const EVP_MD md5_md = {
-	NID_md5,
-	NID_md5WithRSAEncryption,
-	MD5_DIGEST_LENGTH,
-	0,
-	init,
-	update,
-	final,
-	NULL,
-	NULL,
-	EVP_PKEY_RSA_method,
-	MD5_CBLOCK,
-	sizeof(EVP_MD *) + sizeof(MD5_CTX),
+	.type = NID_md5,
+	.pkey_type = NID_md5WithRSAEncryption,
+	.md_size = MD5_DIGEST_LENGTH,
+	.flags = 0,
+	.init = init,
+	.update = update,
+	.final = final,
+	.copy = NULL,
+	.cleanup = NULL,
+#ifndef OPENSSL_NO_RSA
+	.sign = (evp_sign_method *)RSA_sign,
+	.verify = (evp_verify_method *)RSA_verify,
+	.required_pkey_type = {
+		EVP_PKEY_RSA, EVP_PKEY_RSA2, 0, 0,
+	},
+#endif
+	.block_size = MD5_CBLOCK,
+	.ctx_size = sizeof(EVP_MD *) + sizeof(MD5_CTX),
 };
 
 const EVP_MD *

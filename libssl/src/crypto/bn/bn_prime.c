@@ -1,4 +1,4 @@
-/* crypto/bn/bn_prime.c */
+/* $OpenBSD: bn_prime.c,v 1.11 2014/07/12 16:03:36 miod Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -111,9 +111,10 @@
 
 #include <stdio.h>
 #include <time.h>
-#include "cryptlib.h"
-#include "bn_lcl.h"
+
 #include <openssl/rand.h>
+
+#include "bn_lcl.h"
 
 /* NB: these functions have been "upgraded", the deprecated versions (which are
  * compatibility wrappers using these functions) are in bn_depr.c.
@@ -343,8 +344,7 @@ err:
 		if (ctx_passed == NULL)
 			BN_CTX_free(ctx);
 	}
-	if (mont != NULL)
-		BN_MONT_CTX_free(mont);
+	BN_MONT_CTX_free(mont);
 
 	return (ret);
 }

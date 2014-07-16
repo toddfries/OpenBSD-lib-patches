@@ -1,4 +1,4 @@
-/* crypto/ec/ec_curve.c */
+/* $OpenBSD: ec_curve.c,v 1.7 2014/07/12 16:03:37 miod Exp $ */
 /*
  * Written by Nils Larsch for the OpenSSL project.
  */
@@ -69,10 +69,11 @@
  *
  */
 
+#include <openssl/opensslconf.h>
+
 #include "ec_lcl.h"
 #include <openssl/err.h>
 #include <openssl/obj_mac.h>
-#include <openssl/opensslconf.h>
 
 typedef struct {
 	int field_type,		/* either NID_X9_62_prime_field or
@@ -2980,22 +2981,14 @@ err:
 		EC_GROUP_free(group);
 		group = NULL;
 	}
-	if (P)
-		EC_POINT_free(P);
-	if (ctx)
-		BN_CTX_free(ctx);
-	if (p)
-		BN_free(p);
-	if (a)
-		BN_free(a);
-	if (b)
-		BN_free(b);
-	if (order)
-		BN_free(order);
-	if (x)
-		BN_free(x);
-	if (y)
-		BN_free(y);
+	EC_POINT_free(P);
+	BN_CTX_free(ctx);
+	BN_free(p);
+	BN_free(a);
+	BN_free(b);
+	BN_free(order);
+	BN_free(x);
+	BN_free(y);
 	return group;
 }
 

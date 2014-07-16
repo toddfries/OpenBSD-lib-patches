@@ -1,4 +1,4 @@
-/* crypto/evp/m_dss.c */
+/* $OpenBSD: m_dss.c,v 1.16 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,10 +57,13 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+
+#include <openssl/opensslconf.h>
+
 #include <openssl/evp.h>
 #include <openssl/objects.h>
 #include <openssl/sha.h>
+
 #ifndef OPENSSL_NO_DSA
 #include <openssl/dsa.h>
 #endif
@@ -86,18 +89,24 @@ final(EVP_MD_CTX *ctx, unsigned char *md)
 }
 
 static const EVP_MD dsa_md = {
-	NID_dsaWithSHA,
-	NID_dsaWithSHA,
-	SHA_DIGEST_LENGTH,
-	EVP_MD_FLAG_PKEY_DIGEST,
-	init,
-	update,
-	final,
-	NULL,
-	NULL,
-	EVP_PKEY_DSA_method,
-	SHA_CBLOCK,
-	sizeof(EVP_MD *) + sizeof(SHA_CTX),
+	.type = NID_dsaWithSHA,
+	.pkey_type = NID_dsaWithSHA,
+	.md_size = SHA_DIGEST_LENGTH,
+	.flags = EVP_MD_FLAG_PKEY_DIGEST,
+	.init = init,
+	.update = update,
+	.final = final,
+	.copy = NULL,
+	.cleanup = NULL,
+#ifndef OPENSSL_NO_DSA
+	.sign = (evp_sign_method *)DSA_sign,
+	.verify = (evp_verify_method *)DSA_verify,
+	.required_pkey_type = {
+		EVP_PKEY_DSA, EVP_PKEY_DSA2, EVP_PKEY_DSA3, EVP_PKEY_DSA4, 0,
+	},
+#endif
+	.block_size = SHA_CBLOCK,
+	.ctx_size = sizeof(EVP_MD *) + sizeof(SHA_CTX),
 };
 
 const EVP_MD *

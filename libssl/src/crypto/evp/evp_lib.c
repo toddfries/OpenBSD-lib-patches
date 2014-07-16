@@ -1,4 +1,4 @@
-/* crypto/evp/evp_lib.c */
+/* $OpenBSD: evp_lib.c,v 1.13 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,7 +57,9 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+#include <string.h>
+
+#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/objects.h>
 

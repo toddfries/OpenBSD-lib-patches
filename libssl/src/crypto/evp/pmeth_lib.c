@@ -1,4 +1,4 @@
-/* pmeth_lib.c */
+/* $OpenBSD: pmeth_lib.c,v 1.9 2014/07/12 16:03:37 miod Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -58,12 +58,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "cryptlib.h"
-#include <openssl/objects.h>
+#include <string.h>
+
+#include <openssl/opensslconf.h>
+
 #include <openssl/evp.h>
+#include <openssl/objects.h>
+
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
 #endif
+
 #include "asn1_locl.h"
 #include "evp_locl.h"
 
@@ -196,11 +201,9 @@ EVP_PKEY_meth_new(int id, int flags)
 {
 	EVP_PKEY_METHOD *pmeth;
 
-	pmeth = malloc(sizeof(EVP_PKEY_METHOD));
+	pmeth = calloc(1, sizeof(EVP_PKEY_METHOD));
 	if (!pmeth)
 		return NULL;
-
-	memset(pmeth, 0, sizeof(EVP_PKEY_METHOD));
 
 	pmeth->pkey_id = id;
 	pmeth->flags = flags | EVP_PKEY_FLAG_DYNAMIC;
@@ -368,10 +371,8 @@ EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx)
 		return;
 	if (ctx->pmeth && ctx->pmeth->cleanup)
 		ctx->pmeth->cleanup(ctx);
-	if (ctx->pkey)
-		EVP_PKEY_free(ctx->pkey);
-	if (ctx->peerkey)
-		EVP_PKEY_free(ctx->peerkey);
+	EVP_PKEY_free(ctx->pkey);
+	EVP_PKEY_free(ctx->peerkey);
 #ifndef OPENSSL_NO_ENGINE
 	if (ctx->engine)
 		/* The EVP_PKEY_CTX we used belongs to an ENGINE, release the

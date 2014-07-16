@@ -1,3 +1,4 @@
+/* $OpenBSD: chacha-merged.c,v 1.7 2014/07/11 08:47:47 bcook Exp $ */
 /*
 chacha-merged.c version 20080118
 D. J. Bernstein
@@ -6,15 +7,19 @@ Public domain.
 
 #include <sys/types.h>
 
-struct chacha_ctx {
-	u_int input[16];
-};
+#include <stdint.h>
 
 #define CHACHA_MINKEYLEN 	16
 #define CHACHA_NONCELEN		8
 #define CHACHA_CTRLEN		8
 #define CHACHA_STATELEN		(CHACHA_NONCELEN+CHACHA_CTRLEN)
 #define CHACHA_BLOCKLEN		64
+
+struct chacha_ctx {
+	u_int input[16];
+	uint8_t ks[CHACHA_BLOCKLEN];
+	uint8_t unused;
+};
 
 static inline void chacha_keysetup(struct chacha_ctx *x, const u_char *k,
     u_int kbits)
@@ -107,8 +112,10 @@ chacha_ivsetup(chacha_ctx *x, const u8 *iv, const u8 *counter)
 static inline void
 chacha_encrypt_bytes(chacha_ctx *x, const u8 *m, u8 *c, u32 bytes)
 {
-	u32 x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15;
-	u32 j0, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15;
+	u32 x0, x1, x2, x3, x4, x5, x6, x7;
+	u32 x8, x9, x10, x11, x12, x13, x14, x15;
+	u32 j0, j1, j2, j3, j4, j5, j6, j7;
+	u32 j8, j9, j10, j11, j12, j13, j14, j15;
 	u8 *ctarget = NULL;
 	u8 tmp[64];
 	u_int i;
@@ -135,8 +142,9 @@ chacha_encrypt_bytes(chacha_ctx *x, const u8 *m, u8 *c, u32 bytes)
 
 	for (;;) {
 		if (bytes < 64) {
-			for (i = 0;i < bytes;++i) tmp[i] = m[i];
-				m = tmp;
+			for (i = 0; i < bytes; ++i)
+				tmp[i] = m[i];
+			m = tmp;
 			ctarget = c;
 			c = tmp;
 		}
@@ -183,6 +191,25 @@ chacha_encrypt_bytes(chacha_ctx *x, const u8 *m, u8 *c, u32 bytes)
 		x14 = PLUS(x14, j14);
 		x15 = PLUS(x15, j15);
 
+		if (bytes < 64) {
+			U32TO8_LITTLE(x->ks + 0, x0);
+			U32TO8_LITTLE(x->ks + 4, x1);
+			U32TO8_LITTLE(x->ks + 8, x2);
+			U32TO8_LITTLE(x->ks + 12, x3);
+			U32TO8_LITTLE(x->ks + 16, x4);
+			U32TO8_LITTLE(x->ks + 20, x5);
+			U32TO8_LITTLE(x->ks + 24, x6);
+			U32TO8_LITTLE(x->ks + 28, x7);
+			U32TO8_LITTLE(x->ks + 32, x8);
+			U32TO8_LITTLE(x->ks + 36, x9);
+			U32TO8_LITTLE(x->ks + 40, x10);
+			U32TO8_LITTLE(x->ks + 44, x11);
+			U32TO8_LITTLE(x->ks + 48, x12);
+			U32TO8_LITTLE(x->ks + 52, x13);
+			U32TO8_LITTLE(x->ks + 56, x14);
+			U32TO8_LITTLE(x->ks + 60, x15);
+		}
+
 		x0 = XOR(x0, U8TO32_LITTLE(m + 0));
 		x1 = XOR(x1, U8TO32_LITTLE(m + 4));
 		x2 = XOR(x2, U8TO32_LITTLE(m + 8));
@@ -203,7 +230,10 @@ chacha_encrypt_bytes(chacha_ctx *x, const u8 *m, u8 *c, u32 bytes)
 		j12 = PLUSONE(j12);
 		if (!j12) {
 			j13 = PLUSONE(j13);
-			/* stopping at 2^70 bytes per nonce is user's responsibility */
+			/*
+			 * Stopping at 2^70 bytes per nonce is the user's
+			 * responsibility.
+			 */
 		}
 
 		U32TO8_LITTLE(c + 0, x0);
@@ -230,6 +260,7 @@ chacha_encrypt_bytes(chacha_ctx *x, const u8 *m, u8 *c, u32 bytes)
 			}
 			x->input[12] = j12;
 			x->input[13] = j13;
+			x->unused = 64 - bytes;
 			return;
 		}
 		bytes -= 64;

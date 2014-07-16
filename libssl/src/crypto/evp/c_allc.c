@@ -1,4 +1,4 @@
-/* crypto/evp/c_allc.c */
+/* $OpenBSD: c_allc.c,v 1.13 2014/07/11 08:44:48 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,10 +57,12 @@
  */
 
 #include <stdio.h>
-#include "cryptlib.h"
+
+#include <openssl/opensslconf.h>
+
 #include <openssl/evp.h>
-#include <openssl/pkcs12.h>
 #include <openssl/objects.h>
+#include <openssl/pkcs12.h>
 
 void
 OpenSSL_add_all_ciphers(void)
@@ -111,15 +113,6 @@ OpenSSL_add_all_ciphers(void)
 	EVP_add_cipher(EVP_idea_cbc());
 	EVP_add_cipher_alias(SN_idea_cbc, "IDEA");
 	EVP_add_cipher_alias(SN_idea_cbc, "idea");
-#endif
-
-#ifndef OPENSSL_NO_SEED
-	EVP_add_cipher(EVP_seed_ecb());
-	EVP_add_cipher(EVP_seed_cfb());
-	EVP_add_cipher(EVP_seed_ofb());
-	EVP_add_cipher(EVP_seed_cbc());
-	EVP_add_cipher_alias(SN_seed_cbc, "SEED");
-	EVP_add_cipher_alias(SN_seed_cbc, "seed");
 #endif
 
 #ifndef OPENSSL_NO_RC2

@@ -1,7 +1,7 @@
-/* crypto/bn/knownprimes.c */
+/* $OpenBSD: bn_const.c,v 1.4 2014/06/12 15:49:28 deraadt Exp $ */
 /* Insert boilerplate */
 
-#include "bn.h"
+#include <openssl/bn.h>
 
 /* "First Oakley Default Group" from RFC2409, section 6.1.
  *

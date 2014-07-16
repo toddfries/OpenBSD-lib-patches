@@ -1,3 +1,4 @@
+/* $OpenBSD: wp_block.c,v 1.9 2014/07/09 16:06:13 miod Exp $ */
 /**
  * The Whirlpool hashing function.
  *
@@ -63,6 +64,10 @@ typedef unsigned long long	u64;
         whirlpool_block_mmx(ctx->H.c,inp,num);	return;		\
 					} while (0)
 #  endif
+#elif defined(__arm__)
+#  define SMALL_REGISTER_BANK
+#elif defined(__vax__)
+#  define SMALL_REGISTER_BANK
 #endif
 
 #undef ROTATE
@@ -71,7 +76,7 @@ typedef unsigned long long	u64;
 #      define ROTATE(a,n)	({ u64 ret; asm ("rolq %1,%0"	\
 				   : "=r"(ret) : "J"(n),"0"(a) : "cc"); ret; })
 #  elif defined(__ia64) || defined(__ia64__)
-#    if _BYTE_ORDER == _LITTLE_ENDIAN
+#    if BYTE_ORDER == LITTLE_ENDIAN
 #      define ROTATE(a,n)	({ u64 ret; asm ("shrp %0=%1,%1,%2"	\
 				   : "=r"(ret) : "r"(a),"M"(64-(n))); ret; })
 #    else
@@ -83,7 +88,7 @@ typedef unsigned long long	u64;
 
 #if defined(OPENSSL_SMALL_FOOTPRINT)
 #  if !defined(ROTATE)
-#    if _BYTE_ORDER == _LITTLE_ENDIAN	/* little-endians have to rotate left */
+#    if BYTE_ORDER == LITTLE_ENDIAN	/* little-endians have to rotate left */
 #      define ROTATE(i,n)	((i)<<(n) ^ (i)>>(64-n))
 #    else				/* big-endians have to rotate right */
 #      define ROTATE(i,n)	((i)>>(n) ^ (i)<<(64-n))
